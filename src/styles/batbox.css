@@ -66,11 +66,19 @@
 .hero { position: relative; overflow: hidden; margin: 18px 0 8px; border-radius: 32px; padding: 64px 28px 44px; text-align: center;
   background: linear-gradient(160deg, rgba(52,55,162,.55), rgba(19,29,71,.6) 55%, rgba(139,92,246,.28));
   border: 1px solid rgba(255,255,255,.12); box-shadow: 0 30px 60px -20px rgba(0,0,0,.5); }
-.hero-orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; pointer-events: none; animation: float 14s ease-in-out infinite; }
+/* Bolas de color del fondo (violeta, celeste, rosa): flotan despacio, cada una a su ritmo.
+   Se mueven aunque el sistema tenga "reducir movimiento" (pedido del dueño; ver excepción al final). */
+.hero-orb { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; pointer-events: none; will-change: transform;
+  animation: float 10s ease-in-out infinite; }
 .hero-orb.o1 { width: 320px; height: 320px; background: var(--violet); top: -120px; left: -80px; }
-.hero-orb.o2 { width: 260px; height: 260px; background: var(--cyan); bottom: -140px; right: -40px; opacity: .35; animation-delay: -5s; }
-.hero-orb.o3 { width: 200px; height: 200px; background: var(--pink); top: -60px; right: 18%; opacity: .25; animation-delay: -9s; }
-@keyframes float { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, 16px); } }
+.hero-orb.o2 { width: 260px; height: 260px; background: var(--cyan); bottom: -140px; right: -40px; opacity: .35; animation-duration: 12s; animation-delay: -5s; animation-direction: reverse; }
+.hero-orb.o3 { width: 200px; height: 200px; background: var(--pink); top: -60px; right: 18%; opacity: .25; animation-duration: 9s; animation-delay: -3s; }
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(180px, 60px) scale(1.15); }
+  50% { transform: translate(60px, 160px) scale(.9); }
+  75% { transform: translate(-140px, 70px) scale(1.1); }
+}
 .hero-in { position: relative; max-width: 720px; margin: 0 auto; }
 .hero-logo { width: 76px; height: 76px; margin: 0 auto 14px; border-radius: 24px; display: grid; place-items: center; color: #fff;
   background: linear-gradient(135deg, var(--pink), var(--violet) 55%, var(--indigo)); box-shadow: 0 16px 40px rgba(139,92,246,.45); }
@@ -654,3 +662,10 @@
 .wiki-credit { margin: 32px 0 0; text-align: center; font-size: 12.5px; color: var(--muted); }
 .wiki-credit b { color: #fff; } .wiki-credit a { color: var(--cyan); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 @media (max-width: 760px) { .az-btn { width: 30px; height: 30px; font-size: 12px; } .wiki-letter { font-size: 28px; } }
+
+/* Excepción a "reducir movimiento": las bolas del fondo del Inicio flotan igual (lento, sin destellos). */
+@media (prefers-reduced-motion: reduce) {
+  .hero-orb { animation-duration: 10s !important; animation-iteration-count: infinite !important; }
+  .hero-orb.o2 { animation-duration: 12s !important; }
+  .hero-orb.o3 { animation-duration: 9s !important; }
+}
