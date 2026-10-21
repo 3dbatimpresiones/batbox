@@ -119,8 +119,8 @@
 .thumb.big .thumb-site b { font-size: 16px; }
 .thumb.has-img::after { background: linear-gradient(180deg, transparent 55%, rgba(19,29,71,.55)); }
 /* Portadas verticales (reels/shorts): entera al centro + la misma imagen desenfocada de fondo */
-.thumb.vertical img.thumb-bg { inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); object-fit: cover; filter: blur(18px) brightness(.65) saturate(1.2); }
-.thumb.vertical img.thumb-fg { object-fit: contain; filter: drop-shadow(0 6px 18px rgba(0,0,0,.45)); }
+.thumb.vertical img.thumb-bg, .thumb.contain img.thumb-bg { inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); object-fit: cover; filter: blur(18px) brightness(.65) saturate(1.2); }
+.thumb.vertical img.thumb-fg, .thumb.contain img.thumb-fg { object-fit: contain; filter: drop-shadow(0 6px 18px rgba(0,0,0,.45)); }
 .thumb.vertical::after { background: linear-gradient(180deg, transparent 60%, rgba(19,29,71,.45)); }
 .thumb-platform { position: absolute; top: 10px; left: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
   border-radius: 8px; font-size: 11px; font-weight: 700; background: rgba(19,29,71,.7); color: #fff; backdrop-filter: blur(6px); }

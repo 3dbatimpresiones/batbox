@@ -20,8 +20,10 @@ export const itemLink = (item) => (isDirect(item)
 
 // Miniatura: imagen real si existe (YouTube), si no degradé por tipo/plataforma + ícono.
 export function Thumb({ item, big }) {
-  const icon = item.platform ? MEDIA_PLATFORMS[item.platform]?.icon || 'play' : KIND_ICON[item.kind];
-  const isVideo = item.kind === 'video' || !!item.platform;
+  // "other" = enlace común (no es un video): sin botón de play ni etiqueta de plataforma.
+  const media = item.platform && item.platform !== 'other' ? item.platform : null;
+  const icon = media ? MEDIA_PLATFORMS[media]?.icon || 'play' : KIND_ICON[item.kind];
+  const isVideo = item.kind === 'video' || !!media;
   const src = thumbSrc(item);
   const [broken, setBroken] = useState(false);
   const [iconBroken, setIconBroken] = useState(false);
@@ -30,16 +32,19 @@ export function Thumb({ item, big }) {
   // Recurso sin miniatura: logo + dominio de la página (si se puede ver el enlace).
   const site = !showImg && item.kind === 'resource' && item.url && !iconBroken ? { host: siteHost(item.url), icon: faviconUrl(item.url) } : null;
   const vertical = showImg && isVerticalMedia(item);
+  // Imagen de un recurso: se muestra completa (sin recortar) sobre la misma imagen desenfocada.
+  const contain = showImg && !vertical && item.kind === 'resource';
+  const fitted = vertical || contain;
   return (
-    <div className={`thumb k-${item.kind}${item.platform ? ' p-' + item.platform : ''}${showImg ? ' has-img' : ''}${vertical ? ' vertical' : ''}${big ? ' big' : ''}`}>
-      {vertical && <img className="thumb-bg" src={src} alt="" aria-hidden="true" loading="lazy" referrerPolicy="no-referrer" />}
+    <div className={`thumb k-${item.kind}${media ? ' p-' + media : ''}${showImg ? ' has-img' : ''}${vertical ? ' vertical' : ''}${contain ? ' contain' : ''}${big ? ' big' : ''}`}>
+      {fitted && <img className="thumb-bg" src={src} alt="" aria-hidden="true" loading="lazy" referrerPolicy="no-referrer" />}
       {showImg
-        ? <img className={vertical ? 'thumb-fg' : ''} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
+        ? <img className={fitted ? 'thumb-fg' : ''} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
         : site?.icon
           ? <span className="thumb-site"><img src={site.icon} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setIconBroken(true)} /><b>{site.host}</b></span>
           : <Icon name={icon} size={big ? 54 : 34} />}
       {isVideo && <span className="thumb-play"><Icon name="play" size={16} /></span>}
-      {item.platform && item.kind !== 'video' && <span className="thumb-platform"><Icon name={icon} size={13} /> {PLATFORM_LABEL[item.platform]}</span>}
+      {media && item.kind !== 'video' && <span className="thumb-platform"><Icon name={icon} size={13} /> {PLATFORM_LABEL[media]}</span>}
       {item.duration && <span className="thumb-badge">{item.duration}</span>}
       {item.access === 'club' && <span className="thumb-lock"><Icon name="lock" size={13} /></span>}
     </div>

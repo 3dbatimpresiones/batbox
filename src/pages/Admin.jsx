@@ -277,7 +277,8 @@ function Editor({ slug, kind: newKind }) {
     const autoThumb = !form.thumb_url || form.thumb_url === (form.youtube_id && ytThumb(form.youtube_id));
     set({
       url,
-      platform: form.kind === 'tool' ? null : m.platform,
+      // Recursos y novedades: un enlace común no es "plataforma" (sin play ni etiqueta).
+      platform: form.kind === 'tool' || (m.platform === 'other' && ['resource', 'news'].includes(form.kind)) ? null : m.platform,
       youtube_id: m.youtubeId, instagram_code: m.instagramCode,
       thumb_url: autoThumb ? (m.thumb || '') : form.thumb_url,
     });
