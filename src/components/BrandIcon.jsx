@@ -46,5 +46,5 @@ export function SocialIcon({ social, size = 20 }) {
 // Clase para la cajita del ícono: le pone el color de la marca (.brand-whatsapp, etc.).
 export const brandClass = (social) => {
   const b = brandOf(social);
-  return b ? ' brand brand-' + b : '';
+  return b ? ' brand-logo-box brand-' + b : '';
 };

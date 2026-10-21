@@ -198,7 +198,7 @@
 .social-card:hover { border-color: rgba(93,218,219,.4); transform: translateY(-2px); }
 .social-card.pending { opacity: .7; cursor: default; }
 /* Logos de redes con el color de cada marca (componente BrandIcon) */
-.card-icon.brand { color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.card-icon.brand-logo-box { color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
 .brand-whatsapp { background: #25D366; }
 .brand-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
 .brand-discord { background: #5865F2; }
