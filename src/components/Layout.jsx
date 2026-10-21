@@ -4,6 +4,7 @@ import { NAV, MOBILE_MAIN } from '../data/nav.js';
 import { useContent } from '../data/ContentContext.jsx';
 import { PORTAL_URL } from '../config.js';
 import Icon from './Icon.jsx';
+import { SocialIcon } from './BrandIcon.jsx';
 
 export function Brand({ compact }) {
   return (
@@ -113,7 +114,7 @@ export function Footer() {
       <div className="foot-socials">
         {SOCIALS.filter((s) => s.url).map((s) => (
           <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="icon-btn sm" aria-label={s.label}>
-            <Icon name={s.icon} size={18} />
+            <SocialIcon social={s} size={18} />
           </a>
         ))}
       </div>

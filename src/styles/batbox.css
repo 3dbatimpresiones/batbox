@@ -197,6 +197,16 @@
 .social-card { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 20px; background: rgba(52,55,162,.22); border: 1px solid var(--line); transition: all .2s; }
 .social-card:hover { border-color: rgba(93,218,219,.4); transform: translateY(-2px); }
 .social-card.pending { opacity: .7; cursor: default; }
+/* Logos de redes con el color de cada marca (componente BrandIcon) */
+.card-icon.brand { color: #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.brand-whatsapp { background: #25D366; }
+.brand-instagram { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+.brand-discord { background: #5865F2; }
+.brand-telegram { background: #26A5E4; }
+.brand-youtube { background: #FF0000; }
+.brand-tiktok { background: #010101; box-shadow: -2px -2px 0 rgba(37,244,238,.55), 2px 2px 0 rgba(254,44,85,.55); }
+.brand-facebook { background: #0866FF; }
+.brand-x { background: #000; border: 1px solid rgba(255,255,255,.18); }
 .social-card.pending:hover { transform: none; border-color: var(--line); }
 .sc-txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .sc-txt strong { color: #fff; font-size: 15px; } .sc-txt small { color: var(--muted); font-size: 12px; }

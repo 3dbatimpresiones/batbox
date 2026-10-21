@@ -2,6 +2,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { useContent } from '../data/ContentContext.jsx';
 import { CLUB_BENEFITS } from '../data/sample.js';
 import Icon from '../components/Icon.jsx';
+import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { PageHead, SectionHead } from '../components/ui.jsx';
 
 const STEPS = [
@@ -45,7 +46,7 @@ export default function Community() {
           {SOCIALS.map((s) => (
             <a key={s.id} className={'social-card' + (s.url ? '' : ' pending')} href={s.url || undefined}
               target={s.url ? '_blank' : undefined} rel="noopener noreferrer" aria-disabled={!s.url}>
-              <span className="card-icon"><Icon name={s.icon} /></span>
+              <span className={'card-icon' + brandClass(s)}><SocialIcon social={s} /></span>
               <span className="sc-txt"><strong>{s.label}</strong><small>{s.url ? s.handle : 'Enlace pendiente'}</small></span>
               {s.url && <Icon name="external" size={16} className="sc-ext" />}
             </a>
@@ -70,7 +71,7 @@ export default function Community() {
         <div className="help-ctas">
           {SOCIALS.filter((s) => HELP_GROUPS[s.id] && s.url).map((s) => (
             <a key={s.id} className="btn primary" href={s.url} target="_blank" rel="noopener noreferrer">
-              <Icon name={s.icon} size={16} /> {HELP_GROUPS[s.id]}
+              <SocialIcon social={s} size={16} /> {HELP_GROUPS[s.id]}
             </a>
           ))}
         </div>
