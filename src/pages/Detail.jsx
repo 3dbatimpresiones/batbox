@@ -38,7 +38,9 @@ function Payload({ item }) {
   if (item.url) {
     const platform = PLATFORM_LABEL[item.platform] || item.platformLabel;
     const label = platform ? `Ver en ${platform}` : 'Abrir recurso';
-    return <a className="btn primary" href={item.url} target="_blank" rel="noopener noreferrer">{label} <Icon name="external" size={16} /></a>;
+    // Recursos: misma pestaña (pedido del dueño). Videos/redes siguen abriendo aparte.
+    const newTab = item.kind !== 'resource' && { target: '_blank', rel: 'noopener noreferrer' };
+    return <a className="btn primary" href={item.url} {...newTab}>{label} <Icon name={newTab ? 'external' : 'arrowRight'} size={16} /></a>;
   }
   return (
     <div className="payload-pending">
