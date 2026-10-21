@@ -11,6 +11,7 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_du93qodYkSZRevJ-BgXUGw_B
 export const LINKS = {
   cotizadorPro: 'https://3dbatimpresiones.github.io/cotizador-3dbat-pro/',
   cotizadorFree: 'https://3dbatimpresiones.github.io/cotizador-3dbat-free/',
+  carretesVacios: 'https://3dbatimpresiones.github.io/dbcarretesvacios/',
   // Formulario actual de solicitud de acceso (el mismo que usa el cotizador).
   accessForm: 'https://forms.gle/TTJCnphD3surkyA1A',
 };

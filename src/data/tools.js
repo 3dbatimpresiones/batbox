@@ -27,6 +27,17 @@ export const TOOLS = [
     featured: true,
   },
   {
+    id: 'peso-de-carretes-vacios',
+    name: 'Peso de Carretes Vacíos',
+    description: 'Base de datos comunitaria de bobinas vacías: buscá tu marca y calculá cuánto filamento te queda.',
+    icon: 'box',
+    category: 'Filamento',
+    status: 'available',
+    access: 'free',
+    url: LINKS.carretesVacios,
+    featured: true,
+  },
+  {
     id: 'huecos-pines',
     name: 'Creador de Huecos para Pines',
     description: 'Cargá tu STL o 3MF y restale el hueco del prendedor de 20 mm en segundos, sin abrir un CAD.',

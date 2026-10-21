@@ -22,7 +22,7 @@ const LOCAL_IG_THUMBS = new Set([
 
 // Capturas reales de cada herramienta (public/thumbs/tools/<slug>.jpg).
 // Si en el panel se carga otra imagen para la herramienta, tiene prioridad.
-const LOCAL_TOOL_THUMBS = new Set(['cotizador-free', 'cotizador-pro', 'huecos-pines']);
+const LOCAL_TOOL_THUMBS = new Set(['cotizador-free', 'cotizador-pro', 'huecos-pines', 'peso-de-carretes-vacios']);
 
 // Rutas relativas ("thumbs/...") se resuelven contra la base de la web (/batbox/).
 export const resolveAsset = (p) => (!p ? null : /^https?:\/\//i.test(p) ? p : import.meta.env.BASE_URL + p.replace(/^\/+/, ''));
