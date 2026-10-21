@@ -337,13 +337,14 @@
 .socials-editor { display: flex; flex-direction: column; gap: 12px; }
 .social-edit-row { display: grid; grid-template-columns: auto 1fr 1fr 1.6fr auto; gap: 10px; align-items: center; }
 .social-edit-row .pink-input input { font-size: 14px; padding: 10px 12px; }
+.se-left { display: flex; align-items: center; gap: 10px; }
 .socials-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
 
 @media (max-width: 900px) {
   .ed-grid { grid-template-columns: 1fr; }
   .ed-side { position: static; }
   .social-edit-row { grid-template-columns: 1fr 1fr; }
-  .social-edit-row .icon-pick { grid-column: 1 / -1; }
+  .social-edit-row .se-left { grid-column: 1 / -1; }
 }
 @media (max-width: 760px) {
   .ed-two { grid-template-columns: 1fr; }

@@ -538,6 +538,7 @@ function SocialsEditor() {
   const [list, setList] = useState(() => socials.map((s) => ({ ...s, url: s.url || '' })));
   const [saving, setSaving] = useState(false);
   const set = (i, patch) => setList((l) => l.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const move = (i, dir) => setList((l) => { const n = [...l]; [n[i], n[i + dir]] = [n[i + dir], n[i]]; return n; });
 
   if (source !== 'db') return <Empty icon="alert" title="Edición no disponible" text="Falta correr la migración en Supabase." />;
 
@@ -554,13 +555,19 @@ function SocialsEditor() {
 
   return (
     <div className="card socials-editor">
-      <p className="ed-hint">Estos enlaces aparecen en el inicio, en Comunidad y en el pie de página. Las redes sin enlace se muestran como "Enlace pendiente".</p>
+      <p className="ed-hint">Estos enlaces aparecen en el inicio, en Comunidad y en el pie de página. Las redes sin enlace se muestran como "Enlace pendiente". Ordenalas con las flechas ▲▼ (se muestran en ese orden) y tocá "Guardar redes".</p>
       {list.map((s, i) => (
         <div key={i} className="social-edit-row">
-          <div className="icon-pick compact">
-            {SOCIAL_ICONS.map((ic) => (
-              <button key={ic} type="button" className={'icon-btn sm' + (s.icon === ic ? ' active' : '')} onClick={() => set(i, { icon: ic })}><Icon name={ic} size={16} /></button>
-            ))}
+          <div className="se-left">
+            <div className="ar-order">
+              <button type="button" className="mini-btn" disabled={i === 0} onClick={() => move(i, -1)} title="Subir" aria-label={`Subir ${s.label}`}>▲</button>
+              <button type="button" className="mini-btn" disabled={i === list.length - 1} onClick={() => move(i, 1)} title="Bajar" aria-label={`Bajar ${s.label}`}>▼</button>
+            </div>
+            <div className="icon-pick compact">
+              {SOCIAL_ICONS.map((ic) => (
+                <button key={ic} type="button" className={'icon-btn sm' + (s.icon === ic ? ' active' : '')} onClick={() => set(i, { icon: ic })}><Icon name={ic} size={16} /></button>
+              ))}
+            </div>
           </div>
           <div className="pink-input"><input value={s.label} onChange={(e) => set(i, { label: e.target.value })} placeholder="Nombre" /></div>
           <div className="pink-input"><input value={s.handle} onChange={(e) => set(i, { handle: e.target.value })} placeholder="@usuario o texto" /></div>
