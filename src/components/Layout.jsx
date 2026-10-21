@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { NAV, MOBILE_MAIN } from '../data/nav.js';
 import { useContent } from '../data/ContentContext.jsx';
+import { PORTAL_URL } from '../config.js';
 import Icon from './Icon.jsx';
 
 export function Brand({ compact }) {
@@ -50,6 +51,11 @@ export function Header({ route }) {
           ))}
         </nav>
         <div className="top-actions">
+          {PORTAL_URL && (
+            <a className="portal-link" href={PORTAL_URL} title="Volver a la portada de 3DBAT">
+              <Icon name="arrowLeft" size={16} /><span>3DBAT</span>
+            </a>
+          )}
           <a className={'icon-btn' + (section === 'buscar' ? ' active' : '')} href="#/buscar" title="Buscar" aria-label="Buscar">
             <Icon name="search" />
           </a>
@@ -82,6 +88,7 @@ export function BottomNav({ route }) {
             ))}
             <a href="#/buscar" className="sheet-link"><Icon name="search" /> Buscar</a>
             <a href="#/acceso" className="sheet-link"><Icon name="user" /> Mi cuenta</a>
+            {PORTAL_URL && <a href={PORTAL_URL} className="sheet-link"><Icon name="arrowLeft" /> Portada 3DBAT</a>}
             {isAdmin && <a href="#/admin" className="sheet-link"><Icon name="shield" /> Panel admin</a>}
           </div>
         </div>
@@ -111,7 +118,9 @@ export function Footer() {
           </a>
         ))}
       </div>
-      <p><b>BATBOX</b> · 3DBAT IMPRESIONES · Todo tu universo maker, en un solo lugar.</p>
+      <p>
+        <b>BATBOX</b> · {PORTAL_URL ? <a href={PORTAL_URL}>3DBAT IMPRESIONES</a> : '3DBAT IMPRESIONES'} · Todo tu universo maker, en un solo lugar.
+      </p>
     </footer>
   );
 }

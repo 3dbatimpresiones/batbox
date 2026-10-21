@@ -10,6 +10,14 @@ const STEPS = [
   { n: 3, title: 'Ingresá con Google', text: 'Una vez aprobado, entrás a Makers Club y al Cotizador PRO.' },
 ];
 
+// Cómo pedir ayuda: todas las consultas se resuelven en la comunidad.
+const HELP_STEPS = [
+  { n: 1, title: 'Entrá a la comunidad', text: 'Sumate al Discord o a la comunidad de WhatsApp. Es gratis.' },
+  { n: 2, title: 'Contá qué te pasa', text: 'Impresora, material, slicer y fotos de la pieza: con eso se resuelve más rápido.' },
+  { n: 3, title: 'Lo resolvemos entre todos', text: 'Te responden makers que ya pasaron por lo mismo. Y tu consulta ayuda al próximo.' },
+];
+const HELP_GROUPS = { discord: 'Entrar al Discord', grupos: 'Unirme a la comunidad' };
+
 function ClubCta() {
   const { access, signIn } = useAuth();
   if (access === 'member') return <a className="btn primary" href="#/club">Entrar a Makers Club <Icon name="arrowRight" size={16} /></a>;
@@ -40,6 +48,29 @@ export default function Community() {
               <span className="card-icon"><Icon name={s.icon} /></span>
               <span className="sc-txt"><strong>{s.label}</strong><small>{s.url ? s.handle : 'Enlace pendiente'}</small></span>
               {s.url && <Icon name="external" size={16} className="sc-ext" />}
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="card club-info help-info">
+        <div className="ci-head">
+          <div className="card-icon lg"><Icon name="message" size={24} /></div>
+          <div>
+            <div className="section-label">AYUDA</div>
+            <h2>¿Problemas con tu impresión?</h2>
+          </div>
+        </div>
+        <p className="help-lead">Todas las consultas y ayudas se resuelven en la comunidad, así lo que se responde le sirve a todos.</p>
+        <ol className="steps">
+          {HELP_STEPS.map((s) => (
+            <li key={s.n}><span className="step-n">{s.n}</span><div><strong>{s.title}</strong><small>{s.text}</small></div></li>
+          ))}
+        </ol>
+        <div className="help-ctas">
+          {SOCIALS.filter((s) => HELP_GROUPS[s.id] && s.url).map((s) => (
+            <a key={s.id} className="btn primary" href={s.url} target="_blank" rel="noopener noreferrer">
+              <Icon name={s.icon} size={16} /> {HELP_GROUPS[s.id]}
             </a>
           ))}
         </div>

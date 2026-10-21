@@ -15,6 +15,11 @@ export const LINKS = {
   accessForm: 'https://forms.gle/TTJCnphD3surkyA1A',
 };
 
+// Portada de 3DBAT: BATBOX también se publica dentro del dominio de la web (en /batbox/),
+// y desde ahí se puede volver a la portada (/). En GitHub Pages o en local no hay portada.
+const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
+export const PORTAL_URL = HOST.endsWith('github.io') || HOST === 'localhost' ? null : '/';
+
 // Canales de 3DBAT (para los botones de suscribirse / seguir junto a cada video).
 export const YOUTUBE = {
   channelId: 'UCBWIscRbi6Vq5qvLHVna3Pg',
