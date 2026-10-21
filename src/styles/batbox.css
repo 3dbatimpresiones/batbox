@@ -642,6 +642,16 @@
 .az-btn:hover:not(:disabled) { background: var(--cyan); color: var(--dark); }
 .az-btn:disabled { color: rgba(148,163,184,.4); background: transparent; border-color: var(--line); opacity: 1; }
 .wiki-count { margin: 0; font-size: 12px; color: var(--muted); }
+.wiki-count a { color: var(--cyan); text-decoration: none; }
+.wiki-search-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.wiki-search-row > :first-child { flex: 1 1 320px; }
+.wiki-edit { margin-left: auto; width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 10px; cursor: pointer;
+  color: var(--muted); background: rgba(19,29,71,.5); border: 1px solid var(--line); transition: all .15s; }
+.wiki-edit:hover { color: var(--pink); border-color: rgba(247,142,182,.5); }
+.wiki-term header .chip + .wiki-edit { margin-left: 8px; }
+.wiki-row .mr-main small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wiki-row > svg { color: var(--muted); flex: none; }
+.modal-actions .wiki-del { margin-right: auto; }
 .wiki-group { margin-top: 28px; scroll-margin-top: 96px; }
 .wiki-letter { margin: 0 0 12px; font-size: 34px; font-weight: 800; line-height: 1; color: transparent;
   background: linear-gradient(90deg, var(--pink), var(--cyan)); -webkit-background-clip: text; background-clip: text;

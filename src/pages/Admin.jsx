@@ -4,6 +4,7 @@ import { useContent } from '../data/ContentContext.jsx';
 import { MEDIA_PLATFORMS } from '../data/sample.js';
 import { PLATFORM_LABEL } from '../data/tutorials.js';
 import AdminMembers from './AdminMembers.jsx';
+import AdminWiki from './AdminWiki.jsx';
 import AdminComments from './AdminComments.jsx';
 import AdminActivity from './AdminActivity.jsx';
 import { navigate } from '../lib/router.js';
@@ -64,7 +65,7 @@ export default function Admin({ route }) {
       <MigrationNotice />
       {sub === 'nuevo' && <Editor key={'new-' + arg} kind={KIND[arg] ? arg : 'tutorial'} />}
       {sub === 'editar' && <Editor key={'edit-' + arg} slug={arg} />}
-      {!sub && <Dashboard initialTab={{ miembros: 'members', actividad: 'activity', comentarios: 'comments', redes: 'socials' }[route.query.tab] || 'content'} />}
+      {!sub && <Dashboard initialTab={{ miembros: 'members', actividad: 'activity', comentarios: 'comments', redes: 'socials', wiki: 'wiki' }[route.query.tab] || 'content'} />}
     </div>
   );
 }
@@ -94,11 +95,12 @@ function Dashboard({ initialTab }) {
   return (
     <div>
       <PageHead icon="shield" label="ADMINISTRACIÓN" title={isAdmin ? 'Panel admin' : 'Panel de editor'}
-        text={isAdmin ? 'Contenidos, miembros de Makers Club y redes de BATBOX, todo en un solo lugar.' : 'Contenidos, comentarios y redes de BATBOX.'} />
+        text={isAdmin ? 'Contenidos, miembros de Makers Club y redes de BATBOX, todo en un solo lugar.' : 'Contenidos, WikiBAT, comentarios y redes de BATBOX.'} />
       <div className="view-toggle admin-tabs">
         <button className={'seg' + (tab === 'content' ? ' active' : '')} onClick={() => setTab('content')}>Contenidos</button>
         {isAdmin && <button className={'seg' + (tab === 'members' ? ' active' : '')} onClick={() => setTab('members')}>Miembros</button>}
         {isAdmin && <button className={'seg' + (tab === 'activity' ? ' active' : '')} onClick={() => setTab('activity')}>Actividad</button>}
+        <button className={'seg' + (tab === 'wiki' ? ' active' : '')} onClick={() => setTab('wiki')}>WikiBAT</button>
         <button className={'seg' + (tab === 'comments' ? ' active' : '')} onClick={() => setTab('comments')}>Comentarios</button>
         <button className={'seg' + (tab === 'socials' ? ' active' : '')} onClick={() => setTab('socials')}>Redes</button>
       </div>
@@ -106,6 +108,7 @@ function Dashboard({ initialTab }) {
       {tab === 'socials' && <SocialsEditor key={JSON.stringify(socials)} />}
       {tab === 'members' && isAdmin && <AdminMembers />}
       {tab === 'comments' && <AdminComments />}
+      {tab === 'wiki' && <AdminWiki />}
       {tab === 'activity' && isAdmin && <AdminActivity />}
     </div>
   );
