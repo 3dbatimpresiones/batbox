@@ -558,3 +558,6 @@
   .online-list li { width: 100%; }
   .online-head small { display: none; }
 }
+.act-mode { margin-bottom: 16px; }
+.act-mode .seg { display: inline-flex; align-items: center; gap: 7px; }
+.rank-side b.muted-val { color: var(--muted); font-size: 14px; }

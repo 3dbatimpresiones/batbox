@@ -4,10 +4,12 @@ import Icon from '../components/Icon.jsx';
 import { Empty, SearchInput } from '../components/ui.jsx';
 
 // =====================================================================
-// ACTIVIDAD (pestaña del panel admin) — migración 004
-// Ranking de uso del Cotizador PRO y de BATBOX + quién está en línea.
-// Los datos los da bb_admin_activity(), que verifica is_admin() en la base.
-// "En línea" = usó BATBOX o el cotizador en los últimos 2 minutos.
+// ACTIVIDAD (pestaña del panel admin)
+// * En vivo (migración 004): minutos de uso del Cotizador PRO y de BATBOX
+//   + quién está en línea. bb_admin_activity() verifica is_admin().
+//   "En línea" = usó BATBOX o el cotizador en los últimos 2 minutos.
+// * Historial (migración 005): estimación desde que existe el Supabase con
+//   las renovaciones de sesión. bb_admin_history() (solo admins).
 // =====================================================================
 
 const PERIODS = [{ days: 1, label: 'Hoy' }, { days: 7, label: '7 días' }, { days: 30, label: '30 días' }, { days: 0, label: 'Siempre' }];
@@ -48,7 +50,7 @@ const SIM_ROWS = [
   { user_id: 'e', email: 'maker.cuatro@ejemplo.com', first_name: null, last_name: null, role: 'user', minutes_batbox: 48, minutes_cotizador: 0, sessions: 3, days_active: 2, last_app: 'batbox', last_section: 'media', seconds_ago: 190000, online: false },
 ].map((r) => ({ ...r, minutes_total: r.minutes_batbox + r.minutes_cotizador }));
 
-export default function AdminActivity() {
+function LiveView() {
   const [days, setDays] = useState(30);
   const [sort, setSort] = useState('minutes_total');
   const [q, setQ] = useState('');
@@ -170,6 +172,142 @@ export default function AdminActivity() {
                 </div>
               </li>
             ))}
+          </ol>
+        )}
+    </div>
+  );
+}
+
+export default function AdminActivity() {
+  const [mode, setMode] = useState('live');
+  return (
+    <div>
+      <div className="view-toggle act-mode">
+        <button className={'seg' + (mode === 'live' ? ' active' : '')} onClick={() => setMode('live')}><span className="live-dot sm" /> En vivo</button>
+        <button className={'seg' + (mode === 'history' ? ' active' : '')} onClick={() => setMode('history')}><Icon name="clock" size={14} /> Historial</button>
+      </div>
+      {mode === 'live' ? <LiveView /> : <HistoryView />}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Historial desde el 17/06/2026 (creación del Supabase)
+// ---------------------------------------------------------------------
+const STATUS_CHIP = { pending: ['warn', 'Pendiente'], suspended: ['orange', 'Suspendido'], rejected: ['err', 'Rechazado'], expired: ['muted', 'Vencido'] };
+const fmtDay = (d) => (d ? new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
+const agoSeconds = (d) => (d ? Math.max(0, (Date.now() - new Date(d).getTime()) / 1000) : null);
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+const SIM_HISTORY = [
+  { user_id: 'a', email: 'maker.uno@ejemplo.com', first_name: 'Maker', last_name: 'Uno', role: 'user', status: 'approved', first_seen: '2026-06-18', last_seen: new Date().toISOString(), days_active: 41, hours_active: 96 },
+  { user_id: 'b', email: '3dbatimpresiones@gmail.com', first_name: '3DBAT', last_name: 'Admin', role: 'admin', status: 'approved', first_seen: '2026-06-17', last_seen: new Date().toISOString(), days_active: 55, hours_active: 88 },
+  { user_id: 'd', email: 'maker.tres@ejemplo.com', first_name: 'Maker', last_name: 'Tres', role: 'user', status: 'suspended', first_seen: '2026-07-04', last_seen: '2026-09-30', days_active: 12, hours_active: 19 },
+  { user_id: 'f', email: 'maker.cinco@ejemplo.com', first_name: 'Maker', last_name: 'Cinco', role: 'user', status: 'approved', first_seen: '2026-08-11', last_seen: '2026-08-11', days_active: 0, hours_active: 0 },
+];
+
+function HistoryView() {
+  const [rows, setRows] = useState([]);
+  const [onlineIds, setOnlineIds] = useState(new Set());
+  const [sort, setSort] = useState('hours_active');
+  const [q, setQ] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (SIM) { setRows(SIM_HISTORY); setOnlineIds(new Set(['a', 'b'])); setLoading(false); return; }
+      const [h, live] = await Promise.all([sb.rpc('bb_admin_history'), sb.rpc('bb_admin_activity', { p_days: 1 })]);
+      if (!alive) return;
+      if (h.error) setError(h.error); else setRows(h.data || []);
+      if (!live.error) setOnlineIds(new Set((live.data || []).filter((r) => r.online).map((r) => r.user_id)));
+      setLoading(false);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const ranking = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const other = sort === 'hours_active' ? 'days_active' : 'hours_active';
+    return [...rows]
+      .sort((a, b) => b[sort] - a[sort] || b[other] - a[other])
+      .map((r, i) => ({ ...r, pos: r[sort] > 0 ? i + 1 : null }))
+      .filter((r) => !needle || [r.email, r.first_name, r.last_name].some((v) => v?.toLowerCase().includes(needle)));
+  }, [rows, sort, q]);
+
+  if (error) {
+    const missing = /bb_admin_history|function|42883|PGRST202/i.test((error.message || '') + error.code);
+    return <Empty icon="alert" title={missing ? 'Falta correr la migración 005' : 'No se pudo cargar el historial'}
+      text={missing ? 'Corré supabase/005_batbox_historial.sql en el SQL Editor para ver el historial desde junio.' : error.message} />;
+  }
+
+  const used = rows.filter((r) => r.hours_active > 0);
+  const totalHours = rows.reduce((t, r) => t + r.hours_active, 0);
+  const max = Math.max(1, ...ranking.map((r) => r[sort]));
+  const byHours = sort === 'hours_active';
+
+  return (
+    <div className="activity">
+      <div className="member-stats act-stats">
+        <div className="mstat"><b className="c-cyan">{used.length}</b><span>Usaron el cotizador</span></div>
+        <div className="mstat"><b>{rows.length - used.length}</b><span>Sin uso registrado</span></div>
+        <div className="mstat"><b>~{totalHours} h</b><span>Con la app abierta</span></div>
+        <div className="mstat"><b>17/06/2026</b><span>Datos desde</span></div>
+      </div>
+
+      <div className="filters card">
+        <div className="filter-row">
+          <div className="view-toggle">
+            <button className={'seg' + (byHours ? ' active' : '')} onClick={() => setSort('hours_active')}>Más horas</button>
+            <button className={'seg' + (!byHours ? ' active' : '')} onClick={() => setSort('days_active')}>Más días</button>
+          </div>
+        </div>
+        <SearchInput value={q} onChange={setQ} placeholder="Buscar miembro…" />
+        <p className="ed-hint">
+          <b>Estimación</b> desde que se creó el Supabase, con las renovaciones de sesión que se guardan mientras alguien tiene la app abierta
+          (más o menos una por hora). Hasta el 21/10/2026 todo es uso del <b>Cotizador PRO</b>. Si alguien cerró sesión, esa parte no quedó guardada.
+          Para el tiempo exacto, mirá <b>En vivo</b>.
+        </p>
+      </div>
+
+      {loading ? <div className="empty"><div className="spinner" /></div>
+        : !ranking.length ? <Empty icon="clock" title="Sin resultados" text="Probá con otra búsqueda." />
+        : (
+          <ol className="rank-list">
+            {ranking.map((r) => {
+              const chip = STATUS_CHIP[r.status];
+              const on = onlineIds.has(r.user_id);
+              return (
+                <li key={r.user_id} className={'rank-row' + (r.pos && r.pos <= 3 ? ` top top-${r.pos}` : '')}>
+                  <span className="rank-pos">{r.pos ? (r.pos <= 3 ? <Icon name="trophy" size={18} /> : r.pos) : '—'}</span>
+                  <span className="avatar">{fullName(r).charAt(0).toUpperCase()}{on && <span className="status-dot s-member" />}</span>
+                  <div className="rank-main">
+                    <strong>
+                      {fullName(r)}
+                      {r.role === 'admin' && <span className="chip club">Admin</span>}
+                      {chip && <span className={'chip ' + chip[0]}>{chip[1]}</span>}
+                    </strong>
+                    <small>{r.email}</small>
+                    <div className="rank-bar"><span className="b-cot" style={{ width: `${(r[sort] / max) * 100}%` }} /></div>
+                    <div className="rank-legend">
+                      <span>Cuenta desde {fmtDay(r.first_seen)}</span>
+                      <span>Último ingreso {fmtDay(r.last_seen)}</span>
+                    </div>
+                  </div>
+                  <div className="rank-side">
+                    {r.hours_active ? (
+                      <>
+                        <b>{byHours ? `~${r.hours_active} h` : plural(r.days_active, 'día', 'días')}</b>
+                        <small>{byHours ? plural(r.days_active, 'día', 'días') : `~${r.hours_active} h`}</small>
+                      </>
+                    ) : <b className="muted-val">Sin uso</b>}
+                    {on ? <span className="chip ok"><span className="live-dot sm" />En línea</span>
+                      : <span className="chip muted">{r.last_seen ? fmtAgo(agoSeconds(r.last_seen)) : 'Nunca'}</span>}
+                  </div>
+                </li>
+              );
+            })}
           </ol>
         )}
     </div>
