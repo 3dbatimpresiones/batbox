@@ -10,7 +10,7 @@
 /* ---------- Header ---------- */
 .bb-top { position: sticky; top: 0; z-index: 50; background: rgba(19,29,71,.78); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--line); }
-.bb-top-in { max-width: 1240px; margin: 0 auto; padding: 14px 28px; display: flex; align-items: center; gap: 20px; }
+.bb-top-in { max-width: 1420px; margin: 0 auto; padding: 14px 28px; display: flex; align-items: center; gap: 20px; } /* más ancho que el contenido: el menú tiene 8 secciones + botón 3DBAT */
 .brand { display: flex; align-items: center; gap: 12px; flex: none; }
 .brand-logo { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: #fff;
   background: linear-gradient(135deg, var(--pink), var(--violet) 55%, var(--indigo)); box-shadow: 0 8px 24px rgba(139,92,246,.3); }
@@ -376,6 +376,12 @@
 .foot-socials:empty { display: none; }
 
 /* ---------- Responsive ---------- */
+/* Notebooks (1281–1460px): menú compacto para que entren las 8 secciones + botón 3DBAT */
+@media (max-width: 1460px) {
+  .bb-top-in { gap: 14px; }
+  .nav-link { padding: 8px 9px; }
+  .portal-link { width: 42px; height: 42px; padding: 0; justify-content: center; } .portal-link span { display: none; }
+}
 @media (max-width: 1280px) { /* menú en español más largo: barra inferior hasta 1280px */
   .top-nav { display: none; }
   .bottom-nav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
@@ -619,3 +625,32 @@
 @media (prefers-reduced-motion: reduce) { .tool-shot img { transition: none; } .tool-card.with-shot:hover .tool-shot img { transform: none; } }
 .tool-title { display: flex; align-items: center; gap: 8px; }
 .club-crown { color: var(--pink); flex: none; filter: drop-shadow(0 2px 6px rgba(247,142,182,.35)); }
+
+/* ---------- WikiBAT (glosario A–Z) ---------- */
+.wiki-tools { display: flex; flex-direction: column; gap: 12px; }
+.wiki-az { display: flex; flex-wrap: wrap; gap: 6px; }
+.az-btn { width: 34px; height: 34px; border-radius: 10px; font-weight: 800; font-size: 13px; color: var(--cyan); cursor: pointer;
+  background: rgba(93,218,219,.08); border: 1px solid rgba(93,218,219,.3); transition: all .15s; }
+.az-btn:hover:not(:disabled) { background: var(--cyan); color: var(--dark); }
+.az-btn:disabled { color: rgba(148,163,184,.4); background: transparent; border-color: var(--line); opacity: 1; }
+.wiki-count { margin: 0; font-size: 12px; color: var(--muted); }
+.wiki-group { margin-top: 28px; scroll-margin-top: 96px; }
+.wiki-letter { margin: 0 0 12px; font-size: 34px; font-weight: 800; line-height: 1; color: transparent;
+  background: linear-gradient(90deg, var(--pink), var(--cyan)); -webkit-background-clip: text; background-clip: text;
+  display: flex; align-items: center; gap: 14px; }
+.wiki-letter::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.wiki-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); gap: 12px; }
+.wiki-term { padding: 16px 18px; border-radius: 18px; background: rgba(52,55,162,.25); border: 1px solid var(--line); }
+.wiki-term header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-bottom: 6px; }
+.wiki-term h3 { margin: 0; font-size: 16.5px; color: #fff; }
+.wiki-en { font-size: 12.5px; color: var(--muted); font-style: italic; }
+.wiki-term header .chip { margin-left: auto; }
+.wiki-term p { margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.6; }
+.wiki-pc { display: grid; gap: 8px; margin-top: 10px; }
+.wiki-pc .pc { display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 12px; font-size: 13px; color: #cbd5e1; }
+.wiki-pc .pc b { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.wiki-pc .pc.ok { background: rgba(52,211,153,.08); border: 1px solid rgba(52,211,153,.3); } .wiki-pc .pc.ok b { color: var(--ok); }
+.wiki-pc .pc.warn { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.3); } .wiki-pc .pc.warn b { color: var(--warn); }
+.wiki-credit { margin: 32px 0 0; text-align: center; font-size: 12.5px; color: var(--muted); }
+.wiki-credit b { color: #fff; } .wiki-credit a { color: var(--cyan); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 760px) { .az-btn { width: 30px; height: 30px; font-size: 12px; } .wiki-letter { font-size: 28px; } }

@@ -9,6 +9,7 @@ import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Ca
 const QUICK = [
   { to: '/tools', icon: 'wrench', label: 'Herramientas' },
   { to: '/academy', icon: 'graduation', label: 'Tutoriales' },
+  { to: '/wiki', icon: 'book', label: 'WikiBAT' },
   { to: '/media', icon: 'video', label: 'Multimedia' },
   { to: '/library', icon: 'library', label: 'Recursos' },
   { to: '/community', icon: 'users', label: 'Comunidad' },

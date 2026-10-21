@@ -6,6 +6,7 @@ import { BottomNav, DevBanner, Footer, Header, Toast } from './components/Layout
 import Home from './pages/Home.jsx';
 import { Academy, Library, Media, Tools } from './pages/Catalog.jsx';
 import Community from './pages/Community.jsx';
+import Wiki from './pages/Wiki.jsx';
 import Club from './pages/Club.jsx';
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
@@ -17,6 +18,7 @@ function Page({ route }) {
     case '': return <Home />;
     case 'tools': return <Tools />;
     case 'academy': return <Academy />;
+    case 'wiki': return <Wiki />;
     case 'media': return <Media />;
     case 'library': return <Library />;
     case 'community': return <Community />;
