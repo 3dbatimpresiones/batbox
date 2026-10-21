@@ -27,7 +27,6 @@ import { ContentCard, ToolCard } from '../components/Cards.jsx';
 const KINDS = [
   { value: 'tool', label: 'Herramientas', one: 'Herramienta', icon: 'wrench' },
   { value: 'tutorial', label: 'Tutoriales', one: 'Tutorial', icon: 'graduation' },
-  { value: 'video', label: 'Videos', one: 'Video', icon: 'video' },
   { value: 'resource', label: 'Recursos', one: 'Recurso', icon: 'library' },
   { value: 'news', label: 'Novedades', one: 'Novedad', icon: 'newspaper' },
 ];

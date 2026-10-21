@@ -4,7 +4,7 @@ import { useActivityPing } from './lib/activity.js';
 import { useAuth } from './auth/AuthContext.jsx';
 import { BottomNav, DevBanner, Footer, Header, Toast } from './components/Layout.jsx';
 import Home from './pages/Home.jsx';
-import { Academy, Library, Media, Tools } from './pages/Catalog.jsx';
+import { Academy, Library, Tools } from './pages/Catalog.jsx';
 import Community from './pages/Community.jsx';
 import Wiki from './pages/Wiki.jsx';
 import Club from './pages/Club.jsx';
@@ -19,7 +19,6 @@ function Page({ route }) {
     case 'tools': return <Tools />;
     case 'academy': return <Academy />;
     case 'wiki': return <Wiki />;
-    case 'media': return <Media />;
     case 'library': return <Library />;
     case 'community': return <Community />;
     case 'club': return <Club />;

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { MEDIA_PLATFORMS } from '../data/sample.js';
 import { newest, useContent } from '../data/ContentContext.jsx';
 import { matches } from '../lib/text.js';
 import Icon from '../components/Icon.jsx';
@@ -75,22 +74,6 @@ export function Academy() {
       <PageHead icon="graduation" label="BAT TUTORIALES" title="Tutoriales"
         text="Aprendé a imprimir mejor, diseñar tus piezas y hacer crecer tu emprendimiento." />
       <Filters c={c} categories={categoriesOf(items)} placeholder="Buscar tutoriales…" />
-      <Results list={c.list} />
-    </div>
-  );
-}
-
-export function Media() {
-  const { byKind } = useContent();
-  const all = byKind('video');
-  const items = useMemo(() => newest(all), [all]);
-  const c = useCatalog(items, 'platform');
-  const platforms = categoriesOf(items, 'platform').map((value) => ({ value, label: MEDIA_PLATFORMS[value]?.label || value }));
-  return (
-    <div>
-      <PageHead icon="video" label="BAT MULTIMEDIA" title="Videos y reels"
-        text="Videos de YouTube, Shorts y reels de Instagram de 3DBAT. Algunos se abren directamente en su plataforma." />
-      <Filters c={c} categories={platforms} placeholder="Buscar videos…" />
       <Results list={c.list} />
     </div>
   );

@@ -6,7 +6,7 @@
 // donde lo exclusivo queda protegido por RLS (acá NO está protegido).
 // =====================================================================
 
-// kind: 'video' | 'resource' | 'news'   (los tutoriales reales están en tutorials.js)
+// kind: 'resource' | 'news'   (los tutoriales reales están en tutorials.js)
 // access: 'free' | 'club'
 
 export const LIBRARY_CATEGORIES = ['Modelos', 'Software', 'Aprendizaje', 'Proveedores', 'Utilidades'];
@@ -17,17 +17,10 @@ export const MEDIA_PLATFORMS = {
   other: { label: 'Otro', icon: 'link' },
 };
 
-const V = (o) => ({ kind: 'video', sample: true, url: null, ...o, platformLabel: MEDIA_PLATFORMS[o.platform].label });
 const R = (o) => ({ kind: 'resource', sample: true, url: null, ...o });
 const N = (o) => ({ kind: 'news', sample: true, url: null, ...o });
 
 export const SAMPLE_ITEMS = [
-  // ---- MULTIMEDIA (#/media) ----
-  V({ id: 'vid-timelapse', title: 'Timelapse: dragón articulado', description: 'Impresión completa de un dragón articulado en una sola pieza.', category: 'Timelapse', platform: 'youtube', access: 'free', duration: '3:40', date: '2026-10-16', featured: true }),
-  V({ id: 'vid-tip-soportes', title: 'Tip rápido: soportes que salen solos', description: 'Un ajuste de interfaz que cambia todo.', category: 'Tips', platform: 'short', access: 'free', duration: '0:45', date: '2026-10-11' }),
-  V({ id: 'vid-reel-taller', title: 'Un día en el taller 3DBAT', description: 'Detrás de escena de los pedidos de la semana.', category: 'Detrás de escena', platform: 'instagram', access: 'free', duration: '1:10', date: '2026-10-05' }),
-  V({ id: 'vid-club-live', title: 'Vivo de Makers Club: revisión de perfiles', description: 'Revisamos en vivo los perfiles de impresión que mandaron los miembros.', category: 'Vivos', platform: 'youtube', access: 'club', duration: '58:00', date: '2026-09-28' }),
-
   // ---- RECURSOS (#/library) ----
   R({ id: 'res-printables', title: 'Printables', description: 'Biblioteca enorme de modelos gratuitos con buena moderación.', category: 'Modelos', access: 'free', url: 'https://www.printables.com/', featured: true }),
   R({ id: 'res-makerworld', title: 'MakerWorld', description: 'Modelos listos para imprimir, muchos con perfiles incluidos.', category: 'Modelos', access: 'free', url: 'https://makerworld.com/', featured: true }),

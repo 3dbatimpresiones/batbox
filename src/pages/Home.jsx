@@ -10,7 +10,6 @@ const QUICK = [
   { to: '/tools', icon: 'wrench', label: 'Herramientas' },
   { to: '/academy', icon: 'graduation', label: 'Tutoriales' },
   { to: '/wiki', icon: 'book', label: 'WikiBAT' },
-  { to: '/media', icon: 'video', label: 'Multimedia' },
   { to: '/library', icon: 'library', label: 'Recursos' },
   { to: '/community', icon: 'users', label: 'Comunidad' },
 ];
@@ -45,7 +44,7 @@ export default function Home() {
   const [q, setQ] = useState('');
   const { tools: TOOLS, items, byKind, socials: SOCIALS } = useContent();
   const tutorials = newest(byKind('tutorial')).slice(0, 3);
-  const featured = items.filter((i) => i.featured && (i.kind === 'video' || i.kind === 'tutorial')).slice(0, 3);
+  const featured = items.filter((i) => i.featured && i.kind === 'tutorial').slice(0, 3);
   const allResources = byKind('resource');
   const resources = (allResources.some((i) => i.featured) ? allResources.filter((i) => i.featured) : allResources).slice(0, 4);
   const news = newest(byKind('news')).slice(0, 4);
@@ -83,10 +82,12 @@ export default function Home() {
 
       <ClubBanner />
 
-      <section className="block">
-        <SectionHead label="DESTACADOS" title="Lo que no te podés perder" to="/media" linkText="Ver Multimedia" />
-        <Grid min={340}>{featured.map((i) => <ContentCard key={i.id} item={i} />)}</Grid>
-      </section>
+      {featured.length > 0 && (
+        <section className="block">
+          <SectionHead label="DESTACADOS" title="Lo que no te podés perder" to="/academy" linkText="Ver tutoriales" />
+          <Grid min={340}>{featured.map((i) => <ContentCard key={i.id} item={i} />)}</Grid>
+        </section>
+      )}
 
       <div className="two-blocks">
         <section className="block">

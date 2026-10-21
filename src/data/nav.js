@@ -5,7 +5,6 @@ export const NAV = [
   { to: '/tools', key: 'tools', label: 'Herramientas', short: 'Herramientas', icon: 'wrench' },
   { to: '/academy', key: 'academy', label: 'Tutoriales', short: 'Tutoriales', icon: 'graduation' },
   { to: '/wiki', key: 'wiki', label: 'WikiBAT', short: 'WikiBAT', icon: 'book' },
-  { to: '/media', key: 'media', label: 'Multimedia', short: 'Multimedia', icon: 'video' },
   { to: '/library', key: 'library', label: 'Recursos', short: 'Recursos', icon: 'library' },
   { to: '/community', key: 'community', label: 'Comunidad', short: 'Comunidad', icon: 'users' },
   { to: '/club', key: 'club', label: 'Makers Club', short: 'Makers Club', icon: 'crown' },

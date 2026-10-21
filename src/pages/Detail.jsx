@@ -10,8 +10,8 @@ import { CommunityBox, PlatformActions } from '../components/Interaction.jsx';
 import { AccessChip, Empty, PageHead, SampleChip, SearchInput } from '../components/ui.jsx';
 import { ContentCard, Grid, Thumb, ToolCard } from '../components/Cards.jsx';
 
-const KIND_LABEL = { tutorial: 'BAT TUTORIALES', video: 'BAT MULTIMEDIA', resource: 'BAT RECURSOS', news: 'NOVEDADES' };
-const KIND_BACK = { tutorial: '/academy', video: '/media', resource: '/library', news: '/' };
+const KIND_LABEL = { tutorial: 'BAT TUTORIALES', resource: 'BAT RECURSOS', news: 'NOVEDADES' };
+const KIND_BACK = { tutorial: '/academy', resource: '/library', news: '/' };
 
 // Reproductor embebido (YouTube / Instagram) o, si no se puede, enlace externo.
 export function Embed({ item }) {

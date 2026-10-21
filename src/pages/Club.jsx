@@ -30,7 +30,6 @@ export default function Club() {
   const clubTools = TOOLS.filter((t) => t.access === 'club');
   const tutorials = newest(byKind('tutorial').filter((i) => i.access === 'club'));
   const resources = byKind('resource').filter((i) => i.access === 'club');
-  const media = byKind('video').filter((i) => i.access === 'club');
   const news = newest(byKind('news').filter((i) => i.access === 'club'));
 
   return (
@@ -72,7 +71,7 @@ export default function Club() {
       <div className="two-blocks">
         <section className="block">
           <SectionHead label="RECURSOS ESPECIALES" title="Archivos y listas del taller" />
-          <Grid min={220}>{[...resources, ...media].map((i) => <ContentCard key={i.id} item={i} />)}</Grid>
+          <Grid min={220}>{resources.map((i) => <ContentCard key={i.id} item={i} />)}</Grid>
         </section>
         <section className="block">
           <SectionHead label="NOVEDADES DE MAKERS CLUB" title="Lo último para miembros" />

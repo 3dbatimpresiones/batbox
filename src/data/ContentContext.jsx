@@ -26,7 +26,9 @@ function simRows() {
     rawYoutubeId: x.youtubeId || (x.url?.match(/[?&]v=([^&]+)/) || [])[1] || null, embeddable: x.platform !== 'youtube' || !!x.youtubeId, body: '',
   }));
 }
-const SAMPLE_KINDS = ['video', 'resource', 'news'];
+const SAMPLE_KINDS = ['resource', 'news'];
+// Módulo Multimedia eliminado (2026-10-21): los videos no se muestran en ningún lado.
+const HIDDEN_KINDS = ['video'];
 
 function mapRow(r) {
   const b = (Array.isArray(r.bb_content_body) ? r.bb_content_body[0] : r.bb_content_body) || null;
@@ -117,6 +119,7 @@ export function ContentProvider({ children }) {
     } else {
       ({ tools, items } = LOCAL);
     }
+    items = items.filter((i) => !HIDDEN_KINDS.includes(i.kind));
     const socials = Array.isArray(state.settings.socials) ? state.settings.socials : DEFAULT_SOCIALS;
     return {
       ...state,
