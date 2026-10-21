@@ -12,7 +12,7 @@ import { ContentCard, Grid, NewsRow, ToolCard } from '../components/Cards.jsx';
 const COMING = ['Perfil', 'Favoritos', 'Proyectos guardados'];
 
 export default function Club() {
-  const { isMember, isAdmin, member, displayName } = useAuth();
+  const { isMember, isAdmin, isEditor, member, displayName } = useAuth();
   const { tools: TOOLS, byKind } = useContent();
 
   if (!isMember) {
@@ -47,6 +47,7 @@ export default function Club() {
           <div className="chips">
             <span className="chip ok"><Icon name="check" size={12} /> Miembro activo</span>
             {isAdmin && <span className="chip club">✦ Admin</span>}
+            {isEditor && <span className="chip cat">✎ Editor</span>}
           </div>
           <small>{member.email}</small>
           {member.subscription_expires_at && <small>Vence: {fmtDate(member.subscription_expires_at.slice(0, 10))}</small>}

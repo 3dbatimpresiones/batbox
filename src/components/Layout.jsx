@@ -69,7 +69,7 @@ export function Header({ route }) {
 export function BottomNav({ route }) {
   const section = route.parts[0] ?? '';
   const [open, setOpen] = useState(false);
-  const { isAdmin } = useAuth();
+  const { canEdit, isAdmin } = useAuth();
   useEffect(() => setOpen(false), [route.path]);
 
   const main = NAV.filter((n) => MOBILE_MAIN.includes(n.key));
@@ -88,7 +88,7 @@ export function BottomNav({ route }) {
             ))}
             <a href="#/buscar" className="sheet-link"><Icon name="search" /> Buscar</a>
             <a href="#/acceso" className="sheet-link"><Icon name="user" /> Mi cuenta</a>
-            {isAdmin && <a href="#/admin" className="sheet-link"><Icon name="shield" /> Panel admin</a>}
+            {canEdit && <a href="#/admin" className="sheet-link"><Icon name="shield" /> {isAdmin ? 'Panel admin' : 'Panel de editor'}</a>}
           </div>
         </div>
       )}

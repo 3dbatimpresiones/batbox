@@ -127,7 +127,7 @@ export function ContentProvider({ children }) {
       byKind: (kind) => (kind === 'tool' ? tools : items.filter((i) => i.kind === kind)),
       findItem: (slug) => items.find((i) => i.id === slug),
       socials,
-      adminRows: state.rows, // incluye borradores (solo llegan si sos admin, por RLS)
+      adminRows: state.rows, // incluye borradores (solo llegan si sos admin o editor, por RLS)
       reload,
       statsOf: (dbId) => (dbId ? stats[dbId] : undefined),
       interactionsEnabled: Object.keys(stats).length > 0,

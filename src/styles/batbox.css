@@ -460,6 +460,23 @@
 .md-rows dt { color: var(--muted); } .md-rows dd { margin: 0; color: #e2e8f0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
 .member-detail .section-label { margin-top: 14px; }
 .md-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+/* Equipo (admins y editores) y permisos de cada miembro */
+.team-card { padding: 20px; margin-bottom: 18px; }
+.team-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.team-head h3 { margin: 0; color: #fff; font-size: 18px; }
+.team-head .section-label { margin: 0 0 6px; }
+.team-head .ed-hint { max-width: 420px; }
+.team-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 10px; }
+.team-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; text-align: left; color: inherit; cursor: pointer;
+  background: rgba(19,29,71,.45); border: 1px solid var(--line); transition: border-color .2s; min-width: 0; }
+.team-row:hover { border-color: rgba(93,218,219,.35); }
+.team-row .avatar { flex: none; }
+.admin-tabs { max-width: 100%; overflow-x: auto; scrollbar-width: none; } /* 5 pestañas: en celular se deslizan */
+.admin-tabs::-webkit-scrollbar { display: none; }
+.admin-tabs .seg { flex: none; }
+.role-toggle { margin-bottom: 8px; }
+.role-toggle .seg { flex: 1; }
+.ed-hint.warn { color: var(--warn); margin-top: 6px; }
 .act-btn { padding: 10px; border-radius: 12px; font-weight: 800; font-size: 13.5px; border: 1px solid; transition: transform .15s; }
 .act-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .act-btn.t-ok { color: var(--ok); background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.4); }

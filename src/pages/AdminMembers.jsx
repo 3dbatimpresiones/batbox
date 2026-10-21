@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
+import { OWNER_EMAILS } from '../config.js';
 
 // =====================================================================
 // MIEMBROS DE MAKERS CLUB (pestaña del panel admin)
@@ -10,7 +11,8 @@ import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
 //   admin_get_all_members · admin_add_member · admin_update_member_status
 //   admin_update_notes · admin_update_expiration
 // Todas verifican is_admin() en la base y dejan registro en admin_actions.
-// No hay ninguna tabla ni regla nueva: es otra pantalla para los mismos datos.
+// Equipo (migración 007): bb_admin_set_role da o quita Editor / Admin y solo
+// la acepta una cuenta dueña (bb_owner_emails). Las dueñas no se pueden tocar.
 // =====================================================================
 
 const STATUS = {
@@ -36,6 +38,21 @@ const ACTIONS_FOR = {
   expired: ['reactivate', 'suspended'],
 };
 
+// Permisos dentro de BATBOX (migración 007). Solo una cuenta dueña los cambia (bb_admin_set_role).
+const ROLES = [
+  { value: 'user', label: 'Miembro', info: 'Usa BATBOX y el Cotizador. No ve el panel.' },
+  { value: 'editor', label: 'Editor', info: 'Crea, edita y borra contenidos, imágenes y redes, y modera comentarios. No ve los datos de los miembros.' },
+  { value: 'admin', label: 'Admin', info: 'Todo lo del editor + ve y gestiona los miembros (correos, celulares, notas, aprobar y suspender) y la actividad.' },
+];
+const isOwnerAccount = (m) => OWNER_EMAILS.includes((m.email || '').toLowerCase());
+
+function RoleChip({ m }) {
+  if (isOwnerAccount(m) && m.role === 'admin') return <span className="chip club">★ Dueño</span>;
+  if (m.role === 'admin') return <span className="chip club">✦ Admin</span>;
+  if (m.role === 'editor') return <span className="chip cat">✎ Editor</span>;
+  return null;
+}
+
 const EMPTY_ADD = { email: '', first_name: '', last_name: '', discord: '', instagram: '', phone: '', notes: '', approve: true };
 const fmt = (d) => (d ? new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
 const fullName = (m) => [m.first_name, m.last_name].filter(Boolean).join(' ') || 'Sin nombre';
@@ -44,13 +61,15 @@ const fullName = (m) => [m.first_name, m.last_name].filter(Boolean).join(' ') ||
 const SIM = import.meta.env.DEV && new URLSearchParams(window.location.search).has('simdb');
 const SIM_MEMBERS = [
   { id: 's1', email: '3dbatimpresiones@gmail.com', first_name: '3DBAT', last_name: 'Admin', status: 'approved', role: 'admin', created_at: '2026-06-17', approved_at: '2026-06-17', last_access_at: '2026-10-21' },
+  { id: 's5', email: 'admin.comunidad@ejemplo.com', first_name: 'Admin', last_name: 'Comunidad', status: 'approved', role: 'editor', created_at: '2026-09-01', approved_at: '2026-09-01', last_access_at: '2026-10-20' },
   { id: 's2', email: 'maker.uno@ejemplo.com', first_name: 'Maker', last_name: 'Uno', discord_username: 'makeruno', instagram_username: 'maker.uno', phone: '11 5555-0001', status: 'approved', role: 'user', created_at: '2026-07-02', approved_at: '2026-07-02', last_access_at: '2026-10-19', internal_notes: 'Pagó por transferencia.' },
   { id: 's3', email: 'maker.dos@ejemplo.com', first_name: 'Maker', last_name: 'Dos', status: 'pending', role: 'user', created_at: '2026-10-20' },
   { id: 's4', email: 'maker.tres@ejemplo.com', first_name: 'Maker', last_name: 'Tres', status: 'suspended', role: 'user', created_at: '2026-08-11', subscription_expires_at: '2026-11-30' },
 ];
 
 export default function AdminMembers() {
-  const { notify } = useAuth();
+  const { notify, isOwner } = useAuth();
+  const [roleChange, setRoleChange] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -115,9 +134,35 @@ export default function AdminMembers() {
   }
 
   const counts = Object.fromEntries(Object.keys(STATUS).map((s) => [s, members.filter((m) => m.status === s).length]));
+  const team = members.filter((m) => m.role === 'admin' || m.role === 'editor')
+    .sort((a, b) => Number(isOwnerAccount(b)) - Number(isOwnerAccount(a)) || (a.role === b.role ? 0 : a.role === 'admin' ? -1 : 1));
 
   return (
     <div className="members">
+      <section className="card team-card">
+        <div className="team-head">
+          <div>
+            <div className="section-label">EQUIPO</div>
+            <h3>Quiénes administran BATBOX</h3>
+          </div>
+          <p className="ed-hint">
+            {isOwner
+              ? 'Para sumar a alguien, abrí su ficha en la lista de abajo y elegí su permiso: Editor o Admin.'
+              : 'Solo la cuenta dueña puede dar o quitar permisos.'}
+          </p>
+        </div>
+        <div className="team-list">
+          {team.map((m) => (
+            <button key={m.id} className="team-row" onClick={() => setSelectedId(m.id)}>
+              <span className="avatar">{(m.first_name?.[0] || m.email?.[0] || '?').toUpperCase()}</span>
+              <span className="mr-main"><strong>{fullName(m)}</strong><small>{m.email}</small></span>
+              <RoleChip m={m} />
+              {m.status !== 'approved' && <span className={'chip ' + STATUS[m.status]?.cls}>{STATUS[m.status]?.label}</span>}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <div className="member-stats">
         <button className={'mstat' + (filter === 'all' ? ' active' : '')} onClick={() => setFilter('all')}>
           <b className="c-cyan">{members.length}</b><span>Total</span>
@@ -144,7 +189,7 @@ export default function AdminMembers() {
               <button key={m.id} className="member-row" onClick={() => setSelectedId(m.id)}>
                 <span className="avatar">{(m.first_name?.[0] || m.email?.[0] || '?').toUpperCase()}</span>
                 <span className="mr-main">
-                  <strong>{fullName(m)} {m.role === 'admin' && <span className="chip club">✦ Admin</span>}</strong>
+                  <strong>{fullName(m)} <RoleChip m={m} /></strong>
                   <small>{m.email}</small>
                   {(m.discord_username || m.instagram_username) && (
                     <small className="mr-social">
@@ -163,7 +208,8 @@ export default function AdminMembers() {
         )}
 
       {selected && (
-        <MemberDetail m={selected} busy={busy} onClose={() => setSelectedId(null)}
+        <MemberDetail m={selected} busy={busy} canManageRoles={isOwner} onClose={() => setSelectedId(null)}
+          onRole={(role) => setRoleChange({ member: selected, role })}
           onAction={(a) => setConfirm({ ...ACTIONS[a], member: selected })}
           onSaveNotes={(notes) => rpc('admin_update_notes', { p_member_id: selected.id, p_notes: notes }, 'Notas guardadas')}
           onSaveExpiry={(date) => rpc('admin_update_expiration', { p_member_id: selected.id, p_expires_at: date ? date + 'T23:59:59-03:00' : null }, date ? 'Vencimiento guardado' : 'Vencimiento quitado')} />
@@ -175,6 +221,17 @@ export default function AdminMembers() {
         onYes={async () => {
           const c = confirm; setConfirm(null);
           await rpc('admin_update_member_status', { p_member_id: c.member.id, p_new_status: c.next, p_notes: null }, `${c.label}: listo`);
+        }} />
+
+      <Confirm open={!!roleChange} danger={roleChange?.role === 'admin'}
+        title={roleChange ? `${fullName(roleChange.member)} → ${ROLES.find((r) => r.value === roleChange.role)?.label}` : ''}
+        text={roleChange ? (roleChange.role === 'user'
+          ? `${roleChange.member.email} deja de tener permisos en el panel (sigue siendo miembro).`
+          : `${roleChange.member.email} va a poder: ${ROLES.find((r) => r.value === roleChange.role)?.info}`) : ''}
+        yes="Confirmar" onNo={() => setRoleChange(null)}
+        onYes={async () => {
+          const c = roleChange; setRoleChange(null);
+          await rpc('bb_admin_set_role', { p_member_id: c.member.id, p_role: c.role }, 'Permiso actualizado');
         }} />
 
       {add && (
@@ -210,7 +267,9 @@ export default function AdminMembers() {
   );
 }
 
-function MemberDetail({ m, busy, onClose, onAction, onSaveNotes, onSaveExpiry }) {
+function MemberDetail({ m, busy, canManageRoles, onClose, onRole, onAction, onSaveNotes, onSaveExpiry }) {
+  const owner = isOwnerAccount(m);
+  const roleInfo = ROLES.find((r) => r.value === m.role) || ROLES[0];
   const [notes, setNotes] = useState(m.internal_notes || '');
   const [expiry, setExpiry] = useState(m.subscription_expires_at ? m.subscription_expires_at.slice(0, 10) : '');
   useEffect(() => { setNotes(m.internal_notes || ''); setExpiry(m.subscription_expires_at ? m.subscription_expires_at.slice(0, 10) : ''); }, [m]);
@@ -237,15 +296,38 @@ function MemberDetail({ m, busy, onClose, onAction, onSaveNotes, onSaveExpiry })
 
         <dl className="md-rows">
           {rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
-          {m.role === 'admin' && <div><dt>Rol</dt><dd><span className="chip club">✦ Admin</span></dd></div>}
         </dl>
 
+        <div className="section-label">PERMISOS EN BATBOX</div>
+        {owner ? (
+          <p className="ed-hint"><RoleChip m={m} /> Cuenta dueña: tiene todos los permisos y nadie se los puede cambiar.</p>
+        ) : canManageRoles ? (
+          <>
+            <div className="view-toggle role-toggle">
+              {ROLES.map((r) => (
+                <button key={r.value} className={'seg' + (m.role === r.value ? ' active' : '')} disabled={busy}
+                  onClick={() => m.role !== r.value && onRole(r.value)}>{r.label}</button>
+              ))}
+            </div>
+            <p className="ed-hint">{roleInfo.info}</p>
+            {m.role !== 'user' && m.status !== 'approved' && (
+              <p className="ed-hint warn">Mientras no esté aprobado, no puede usar estos permisos.</p>
+            )}
+          </>
+        ) : (
+          <p className="ed-hint">{m.role === 'user' ? 'Miembro (sin permisos en el panel).' : <><RoleChip m={m} /> {roleInfo.info}</>} Solo la cuenta dueña puede cambiarlo.</p>
+        )}
+
         <div className="section-label">ACCIONES</div>
-        <div className="md-actions">
-          {(ACTIONS_FOR[m.status] || []).map((a) => (
-            <button key={a} className={'act-btn t-' + ACTIONS[a].cls} disabled={busy} onClick={() => onAction(a)}>{ACTIONS[a].label}</button>
-          ))}
-        </div>
+        {owner && !canManageRoles ? (
+          <p className="ed-hint">Solo la cuenta dueña puede cambiar el estado de esta cuenta.</p>
+        ) : (
+          <div className="md-actions">
+            {(ACTIONS_FOR[m.status] || []).map((a) => (
+              <button key={a} className={'act-btn t-' + ACTIONS[a].cls} disabled={busy} onClick={() => onAction(a)}>{ACTIONS[a].label}</button>
+            ))}
+          </div>
+        )}
 
         <div className="section-label">NOTAS INTERNAS</div>
         <div className="pink-input"><textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Solo las ven los admins" /></div>

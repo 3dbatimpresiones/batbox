@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { sb } from '../lib/supabase.js';
 import { currentRoute } from '../lib/router.js';
+import { OWNER_EMAILS } from '../config.js';
 
 // =====================================================================
 // AUTH DE BATBOX
@@ -30,17 +31,21 @@ function deriveAccess({ loading, session, member, error }) {
 }
 
 // ---- Modo simulación (SOLO en `npm run dev`, Vite lo elimina del build) ----
-// http://localhost:5173/batbox/?simular=member|admin|pending|none|rejected|suspended|expired
+// http://localhost:5173/batbox/?simular=member|editor|admin|owner|pending|none|rejected|suspended|expired
 // Sirve para ver cada estado de la interfaz sin iniciar sesión. No toca Supabase.
 const SIM = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('simular') : null;
 function simulatedState(kind) {
   const session = { user: { id: 'sim', email: 'maker@ejemplo.com', user_metadata: { full_name: 'Maker Ejemplo' } } };
   if (kind === 'guest') return { loading: false, session: null, member: null, error: null };
   if (kind === 'none') return { loading: false, session, member: null, error: null };
-  const status = kind === 'admin' || kind === 'member' ? 'approved' : kind;
+  if (kind === 'owner') { // dueño: admin con un correo de OWNER_EMAILS
+    return { loading: false, session: { user: { ...session.user, email: OWNER_EMAILS[0] } }, error: null,
+      member: { email: OWNER_EMAILS[0], first_name: '3DBAT', status: 'approved', role: 'admin', subscription_expires_at: null } };
+  }
+  const status = ['admin', 'editor', 'member'].includes(kind) ? 'approved' : kind;
   return {
     loading: false, session, error: null,
-    member: { email: 'maker@ejemplo.com', first_name: 'Maker', status, role: kind === 'admin' ? 'admin' : 'user', subscription_expires_at: null },
+    member: { email: 'maker@ejemplo.com', first_name: 'Maker', status, role: kind === 'admin' || kind === 'editor' ? kind : 'user', subscription_expires_at: null },
   };
 }
 
@@ -147,8 +152,14 @@ export function AuthProvider({ children }) {
       user,
       access,
       isMember: access === 'member',
-      // Solo para mostrar el acceso al panel. Toda acción admin la valida la base.
+      // Solo para mostrar el acceso al panel. Toda acción la valida la base (RLS / RPC).
+      // Editor: contenidos, redes y comentarios. Admin: además Miembros y Actividad.
+      // Dueño: además da y quita permisos (bb_admin_set_role).
       isAdmin: access === 'member' && state.member?.role === 'admin',
+      isEditor: access === 'member' && state.member?.role === 'editor',
+      canEdit: access === 'member' && ['admin', 'editor'].includes(state.member?.role),
+      isOwner: access === 'member' && state.member?.role === 'admin'
+        && OWNER_EMAILS.includes((state.member?.email || user?.email || '').toLowerCase()),
       displayName: state.member?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || user?.email || '',
       email: state.member?.email || user?.email || '',
       signIn,

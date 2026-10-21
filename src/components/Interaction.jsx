@@ -64,7 +64,8 @@ function ago(iso) {
 }
 
 export function CommunityBox({ item }) {
-  const { isMember, isAdmin, access, user, signIn, notify } = useAuth();
+  // isAdmin acá = puede moderar comentarios (admin o editor)
+  const { isMember, canEdit: isAdmin, access, user, signIn, notify } = useAuth();
   const { statsOf, reloadStats, interactionsEnabled } = useContent();
   const [mine, setMine] = useState(null);
   const [comments, setComments] = useState([]);

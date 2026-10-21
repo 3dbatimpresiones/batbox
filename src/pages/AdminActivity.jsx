@@ -151,7 +151,7 @@ function LiveView() {
                 <div className="rank-main">
                   <strong>
                     {fullName(r)}
-                    {r.role === 'admin' && <span className="chip club">Admin</span>}
+                    {r.role === 'admin' && <span className="chip club">Admin</span>}{r.role === 'editor' && <span className="chip cat">Editor</span>}
                   </strong>
                   <small>{r.email}</small>
                   <div className="rank-bar" title={`Cotizador ${fmtMinutes(r.minutes_cotizador)} · BATBOX ${fmtMinutes(r.minutes_batbox)}`}>
@@ -286,7 +286,7 @@ function HistoryView() {
                   <div className="rank-main">
                     <strong>
                       {fullName(r)}
-                      {r.role === 'admin' && <span className="chip club">Admin</span>}
+                      {r.role === 'admin' && <span className="chip club">Admin</span>}{r.role === 'editor' && <span className="chip cat">Editor</span>}
                       {chip && <span className={'chip ' + chip[0]}>{chip[1]}</span>}
                     </strong>
                     <small>{r.email}</small>

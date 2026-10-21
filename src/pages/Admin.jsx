@@ -42,16 +42,16 @@ const SOCIAL_ICONS = ['instagram', 'youtube', 'message', 'users', 'link'];
 
 // ---------------------------------------------------------------------
 export default function Admin({ route }) {
-  const { isAdmin, access, simulated } = useAuth();
+  const { canEdit, access, simulated } = useAuth();
 
-  if (!isAdmin) {
+  if (!canEdit) {
     if (access === 'loading') return <div className="narrow"><AccessPanel /></div>;
     return (
       <div className="narrow">
         <div className="gate card">
           <div className="big-ico tone-err"><Icon name="shield" size={26} /></div>
           <h2>Sin permisos</h2>
-          <p className="gate-text">Esta sección es solo para administradores de 3DBAT.</p>
+          <p className="gate-text">Esta sección es solo para el equipo de 3DBAT (administradores y editores).</p>
           <div className="gate-actions"><a className="btn ghost wide" href="#/">Volver al inicio</a></div>
         </div>
       </div>
@@ -88,24 +88,26 @@ function MigrationNotice() {
 // LISTADO
 // ---------------------------------------------------------------------
 function Dashboard({ initialTab }) {
-  const [tab, setTab] = useState(initialTab);
+  const { isAdmin } = useAuth();
+  // Miembros y Actividad muestran datos personales: solo admins (los editores no).
+  const [tab, setTab] = useState(!isAdmin && ['members', 'activity'].includes(initialTab) ? 'content' : initialTab);
   const { socials } = useContent();
   return (
     <div>
-      <PageHead icon="shield" label="ADMINISTRACIÓN" title="Panel admin"
-        text="Contenidos, miembros de Makers Club y redes de BATBOX, todo en un solo lugar." />
+      <PageHead icon="shield" label="ADMINISTRACIÓN" title={isAdmin ? 'Panel admin' : 'Panel de editor'}
+        text={isAdmin ? 'Contenidos, miembros de Makers Club y redes de BATBOX, todo en un solo lugar.' : 'Contenidos, comentarios y redes de BATBOX.'} />
       <div className="view-toggle admin-tabs">
         <button className={'seg' + (tab === 'content' ? ' active' : '')} onClick={() => setTab('content')}>Contenidos</button>
-        <button className={'seg' + (tab === 'members' ? ' active' : '')} onClick={() => setTab('members')}>Miembros</button>
-        <button className={'seg' + (tab === 'activity' ? ' active' : '')} onClick={() => setTab('activity')}>Actividad</button>
+        {isAdmin && <button className={'seg' + (tab === 'members' ? ' active' : '')} onClick={() => setTab('members')}>Miembros</button>}
+        {isAdmin && <button className={'seg' + (tab === 'activity' ? ' active' : '')} onClick={() => setTab('activity')}>Actividad</button>}
         <button className={'seg' + (tab === 'comments' ? ' active' : '')} onClick={() => setTab('comments')}>Comentarios</button>
         <button className={'seg' + (tab === 'socials' ? ' active' : '')} onClick={() => setTab('socials')}>Redes</button>
       </div>
       {tab === 'content' && <ContentList />}
       {tab === 'socials' && <SocialsEditor key={JSON.stringify(socials)} />}
-      {tab === 'members' && <AdminMembers />}
+      {tab === 'members' && isAdmin && <AdminMembers />}
       {tab === 'comments' && <AdminComments />}
-      {tab === 'activity' && <AdminActivity />}
+      {tab === 'activity' && isAdmin && <AdminActivity />}
     </div>
   );
 }
