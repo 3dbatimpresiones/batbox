@@ -114,3 +114,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .spinner { animation-duration: 1.2s !important; animation-iteration-count: infinite !important; } /* "cargando" sigue girando */
 }
+
+/* Chrome "navegación con cursor" (F7): sin cursor de texto titilando sobre textos fijos.
+   Solo se ve en los campos para escribir. */
+html { caret-color: transparent; }
+input, textarea, select, [contenteditable]:not([contenteditable="false"]) { caret-color: auto; }
