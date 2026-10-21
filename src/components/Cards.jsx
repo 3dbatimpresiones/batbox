@@ -113,16 +113,29 @@ function ToolAction({ tool }) {
 }
 
 export function ToolCard({ tool }) {
-  const st = TOOL_STATUS[tool.status];
+  const st = TOOL_STATUS[tool.status] || TOOL_STATUS.available;
+  const [shotOk, setShotOk] = useState(true);
+  const shot = shotOk ? thumbSrc(tool) : null;
+  const chips = (
+    <div className="chips">
+      <span className={'chip ' + st.cls}>{st.label}</span>
+      <AccessChip access={tool.access} />
+    </div>
+  );
   return (
-    <article className="card tool-card">
-      <div className="tool-top">
-        <div className="card-icon lg"><Icon name={tool.icon} size={24} /></div>
-        <div className="chips">
-          <span className={'chip ' + st.cls}>{st.label}</span>
-          <AccessChip access={tool.access} />
+    <article className={'card tool-card' + (shot ? ' with-shot' : '') + (tool.status === 'soon' ? ' is-soon' : '')}>
+      {shot ? (
+        <div className="tool-shot">
+          <img src={shot} alt={`Vista de ${tool.name}`} loading="lazy" onError={() => setShotOk(false)} />
+          {chips}
+          <div className="card-icon lg"><Icon name={tool.icon} size={24} /></div>
         </div>
-      </div>
+      ) : (
+        <div className="tool-top">
+          <div className="card-icon lg"><Icon name={tool.icon} size={24} /></div>
+          {chips}
+        </div>
+      )}
       <h3>{tool.name}</h3>
       <p>{tool.description}</p>
       <div className="tool-foot">

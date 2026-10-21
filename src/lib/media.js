@@ -20,13 +20,19 @@ const LOCAL_IG_THUMBS = new Set([
   'DOJMBfgDn4O', 'DOOz7fcEfWo', 'DPzx5-WEbBN', 'DUoCF6vEYAh', 'DUq_u2dEs36', 'DVgnzHjEfpH',
 ]);
 
+// Capturas reales de cada herramienta (public/thumbs/tools/<slug>.jpg).
+// Si en el panel se carga otra imagen para la herramienta, tiene prioridad.
+const LOCAL_TOOL_THUMBS = new Set(['cotizador-free', 'cotizador-pro', 'huecos-pines']);
+
 // Rutas relativas ("thumbs/...") se resuelven contra la base de la web (/batbox/).
 export const resolveAsset = (p) => (!p ? null : /^https?:\/\//i.test(p) ? p : import.meta.env.BASE_URL + p.replace(/^\/+/, ''));
 
-// Miniatura de un contenido: la cargada (thumb_url) o la portada local de Instagram.
+// Miniatura de un contenido: la cargada (thumb_url), la portada local de Instagram
+// o la captura local de la herramienta.
 export function thumbSrc(item) {
   if (item.thumb) return resolveAsset(item.thumb);
   if (item.instagramCode && LOCAL_IG_THUMBS.has(item.instagramCode)) return resolveAsset(`thumbs/ig/${item.instagramCode}.jpg`);
+  if (LOCAL_TOOL_THUMBS.has(item.id)) return resolveAsset(`thumbs/tools/${item.id}.jpg`);
   return null;
 }
 
