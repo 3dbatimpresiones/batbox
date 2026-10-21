@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useRoute } from './lib/router.js';
+import { useActivityPing } from './lib/activity.js';
+import { useAuth } from './auth/AuthContext.jsx';
 import { BottomNav, DevBanner, Footer, Header, Toast } from './components/Layout.jsx';
 import Home from './pages/Home.jsx';
 import { Academy, Library, Media, Tools } from './pages/Catalog.jsx';
@@ -29,6 +31,9 @@ function Page({ route }) {
 
 export default function App() {
   const route = useRoute();
+  const { isMember, simulated } = useAuth();
+  // Minutos de uso para el ranking de admins (solo miembros aprobados).
+  useActivityPing(isMember && !simulated, route.parts[0] || 'inicio');
   // Al cambiar de sección se arranca arriba (no al filtrar ni al buscar).
   useEffect(() => { window.scrollTo(0, 0); }, [route.path]);
 

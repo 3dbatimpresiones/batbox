@@ -5,6 +5,7 @@ import { MEDIA_PLATFORMS } from '../data/sample.js';
 import { PLATFORM_LABEL } from '../data/tutorials.js';
 import AdminMembers from './AdminMembers.jsx';
 import AdminComments from './AdminComments.jsx';
+import AdminActivity from './AdminActivity.jsx';
 import { navigate } from '../lib/router.js';
 import { matches } from '../lib/text.js';
 import { isHttpUrl, parseMediaUrl, slugify, thumbSrc, ytThumb } from '../lib/media.js';
@@ -64,7 +65,7 @@ export default function Admin({ route }) {
       <MigrationNotice />
       {sub === 'nuevo' && <Editor key={'new-' + arg} kind={KIND[arg] ? arg : 'tutorial'} />}
       {sub === 'editar' && <Editor key={'edit-' + arg} slug={arg} />}
-      {!sub && <Dashboard initialTab={{ miembros: 'members', comentarios: 'comments', redes: 'socials' }[route.query.tab] || 'content'} />}
+      {!sub && <Dashboard initialTab={{ miembros: 'members', actividad: 'activity', comentarios: 'comments', redes: 'socials' }[route.query.tab] || 'content'} />}
     </div>
   );
 }
@@ -96,6 +97,7 @@ function Dashboard({ initialTab }) {
       <div className="view-toggle admin-tabs">
         <button className={'seg' + (tab === 'content' ? ' active' : '')} onClick={() => setTab('content')}>Contenidos</button>
         <button className={'seg' + (tab === 'members' ? ' active' : '')} onClick={() => setTab('members')}>Miembros</button>
+        <button className={'seg' + (tab === 'activity' ? ' active' : '')} onClick={() => setTab('activity')}>Actividad</button>
         <button className={'seg' + (tab === 'comments' ? ' active' : '')} onClick={() => setTab('comments')}>Comentarios</button>
         <button className={'seg' + (tab === 'socials' ? ' active' : '')} onClick={() => setTab('socials')}>Redes</button>
       </div>
@@ -103,6 +105,7 @@ function Dashboard({ initialTab }) {
       {tab === 'socials' && <SocialsEditor key={JSON.stringify(socials)} />}
       {tab === 'members' && <AdminMembers />}
       {tab === 'comments' && <AdminComments />}
+      {tab === 'activity' && <AdminActivity />}
     </div>
   );
 }

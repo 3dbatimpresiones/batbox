@@ -512,3 +512,49 @@
   font-size: 13px; font-weight: 800; color: var(--dark); border: 0; background: var(--bb-gradient); box-shadow: 0 8px 18px rgba(139,92,246,.3); transition: transform .15s; }
 .magic-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .magic-btn .spinner.xs { border-color: rgba(19,29,71,.25); border-top-color: var(--dark); }
+
+/* ---- Panel admin · Actividad (ranking + en línea) ---- */
+.act-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.act-stats .mstat b { font-size: 20px; text-align: center; }
+.live-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(52,211,153,.6); animation: live-pulse 2s infinite; flex: none; }
+.live-dot.sm { width: 7px; height: 7px; margin-right: 2px; }
+@keyframes live-pulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); } 70% { box-shadow: 0 0 0 8px rgba(52,211,153,0); } 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0); } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+.online-box { padding: 16px 18px; margin-bottom: 16px; border-radius: 22px; display: flex; flex-direction: column; gap: 12px; }
+.online-head { display: flex; align-items: center; gap: 8px; }
+.online-head b { color: #fff; font-size: 15px; }
+.online-head small { flex: 1; color: var(--muted); font-size: 12px; }
+.online-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.online-list li { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; border-radius: 14px; background: rgba(52,211,153,.07); border: 1px solid rgba(52,211,153,.25); min-width: 0; }
+.online-list li > div { display: flex; flex-direction: column; min-width: 0; }
+.online-list b { color: #fff; font-size: 13.5px; }
+.online-list small { color: var(--muted); font-size: 12px; }
+.rank-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rank-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 16px; background: rgba(52,55,162,.22); border: 1px solid var(--line); }
+.rank-row .avatar { flex: none; }
+.rank-pos { flex: none; width: 30px; text-align: center; font-weight: 800; font-size: 15px; color: var(--muted); display: grid; place-items: center; }
+.rank-row.top-1 { border-color: rgba(251,191,36,.45); background: linear-gradient(90deg, rgba(251,191,36,.10), rgba(52,55,162,.22) 45%); }
+.rank-row.top-1 .rank-pos { color: var(--warn); }
+.rank-row.top-2 .rank-pos { color: #cbd5e1; }
+.rank-row.top-3 .rank-pos { color: #d6955b; }
+.rank-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.rank-main strong { display: flex; align-items: center; gap: 8px; color: #fff; font-size: 14.5px; }
+.rank-main small { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-bar { display: flex; height: 7px; border-radius: 99px; background: rgba(255,255,255,.06); overflow: hidden; margin-top: 4px; }
+.rank-bar span { height: 100%; }
+.b-cot { background: var(--cyan); } .b-bb { background: var(--pink); }
+.rank-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11.5px; color: var(--muted); }
+.rank-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.rank-legend i { width: 8px; height: 8px; border-radius: 3px; display: inline-block; }
+.rank-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; text-align: right; }
+.rank-side b { color: #fff; font-size: 16px; font-weight: 800; }
+.rank-side small { color: var(--muted); font-size: 11.5px; max-width: 170px; }
+@media (max-width: 760px) {
+  .act-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rank-row { flex-wrap: wrap; gap: 10px 12px; }
+  .rank-main { flex-basis: calc(100% - 100px); }
+  .rank-side { flex-direction: row; align-items: center; width: 100%; justify-content: space-between; padding-left: 42px; flex-wrap: wrap; }
+  .rank-side small { max-width: none; }
+  .online-list li { width: 100%; }
+  .online-head small { display: none; }
+}
