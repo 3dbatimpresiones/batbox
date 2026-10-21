@@ -11,9 +11,12 @@ import { CardStats } from './Interaction.jsx';
 
 const KIND_ICON = { tutorial: 'graduation', video: 'play', resource: 'library', news: 'newspaper' };
 
-// Un recurso con enlace lleva directo a la página, en la misma pestaña (pedido del dueño).
-// Sin enlace visible (Makers Club sin acceso) abre su ficha, que explica cómo acceder.
-export const itemHref = (item) => (item.kind === 'resource' && item.url ? item.url : '#/ver/' + item.id);
+// Un recurso con enlace abre directo la página en una pestaña aparte, sin sacar de BATBOX
+// (pedido del dueño). Sin enlace visible (Makers Club sin acceso) abre su ficha, que explica cómo acceder.
+const isDirect = (item) => item.kind === 'resource' && !!item.url;
+export const itemLink = (item) => (isDirect(item)
+  ? { href: item.url, target: '_blank', rel: 'noopener noreferrer' }
+  : { href: '#/ver/' + item.id });
 
 // Miniatura: imagen real si existe (YouTube), si no degradé por tipo/plataforma + ícono.
 export function Thumb({ item, big }) {
@@ -46,7 +49,7 @@ export function Thumb({ item, big }) {
 // Versión compacta (fila con ícono) para listas laterales.
 export function MiniCard({ item }) {
   return (
-    <a className="mini-card" href={itemHref(item)}>
+    <a className="mini-card" {...itemLink(item)}>
       <span className={`mini-ico k-${item.kind}`}><Icon name={KIND_ICON[item.kind]} size={20} />
         {item.access === 'club' && <span className="mini-lock"><Icon name="lock" size={10} /></span>}
       </span>
@@ -64,7 +67,7 @@ export function MiniCard({ item }) {
 
 export function ContentCard({ item }) {
   return (
-    <a className="c-card" href={itemHref(item)}>
+    <a className="c-card" {...itemLink(item)}>
       <Thumb item={item} />
       <div className="c-body">
         <div className="chips">
