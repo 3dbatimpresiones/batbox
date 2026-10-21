@@ -104,7 +104,7 @@ export function Library() {
   const filtering = c.q || c.cat !== 'all' || c.acc !== 'all';
   return (
     <div>
-      <PageHead icon="library" label="BAT LIBRERÍA" title="Recursos"
+      <PageHead icon="library" label="BAT RECURSOS" title="Recursos"
         text="Enlaces, programas y recursos útiles para makers, elegidos por 3DBAT." />
       {!filtering && featured.length > 0 && (
         <section className="block tight">

@@ -20,7 +20,7 @@ const SORTS = [
 ];
 const SORT_NOTE = { minutes_total: 'de uso en total', minutes_cotizador: 'en el Cotizador', minutes_batbox: 'en BATBOX' };
 const SECTION = {
-  inicio: 'Inicio', tools: 'Herramientas', academy: 'Tutoriales', media: 'Multimedia', library: 'Librería',
+  inicio: 'Inicio', tools: 'Herramientas', academy: 'Tutoriales', media: 'Multimedia', library: 'Recursos',
   community: 'Comunidad', club: 'Makers Club', acceso: 'Mi cuenta', admin: 'Panel admin', buscar: 'Búsqueda', ver: 'viendo un contenido',
 };
 const REFRESH = 30 * 1000;

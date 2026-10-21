@@ -10,7 +10,7 @@ const QUICK = [
   { to: '/tools', icon: 'wrench', label: 'Herramientas' },
   { to: '/academy', icon: 'graduation', label: 'Tutoriales' },
   { to: '/media', icon: 'video', label: 'Multimedia' },
-  { to: '/library', icon: 'library', label: 'Librería' },
+  { to: '/library', icon: 'library', label: 'Recursos' },
   { to: '/community', icon: 'users', label: 'Comunidad' },
 ];
 
@@ -89,7 +89,7 @@ export default function Home() {
 
       <div className="two-blocks">
         <section className="block">
-          <SectionHead label="BAT LIBRERÍA" title="Recursos recomendados" to="/library" />
+          <SectionHead label="BAT RECURSOS" title="Recursos recomendados" to="/library" />
           <div className="card mini-list">{resources.map((i) => <MiniCard key={i.id} item={i} />)}</div>
         </section>
         <section className="block">
