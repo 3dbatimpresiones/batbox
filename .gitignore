@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+
+# Privado: migraciones SQL y Edge Functions (se cargan a mano en Supabase, no se publican)
+*.sql
+supabase/
