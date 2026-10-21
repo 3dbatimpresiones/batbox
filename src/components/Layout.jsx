@@ -41,6 +41,11 @@ export function Header({ route }) {
   return (
     <header className="bb-top">
       <div className="bb-top-in">
+        {PORTAL_URL && (
+          <a className="portal-link" href={PORTAL_URL} title="Volver a la portada de 3DBAT" aria-label="Volver a la portada de 3DBAT">
+            <Icon name="home" size={18} /><span>3DBAT</span>
+          </a>
+        )}
         <Brand />
         <nav className="top-nav" aria-label="Secciones">
           {NAV.map((n) => (
@@ -51,11 +56,6 @@ export function Header({ route }) {
           ))}
         </nav>
         <div className="top-actions">
-          {PORTAL_URL && (
-            <a className="portal-link" href={PORTAL_URL} title="Volver a la portada de 3DBAT">
-              <Icon name="arrowLeft" size={16} /><span>3DBAT</span>
-            </a>
-          )}
           <a className={'icon-btn' + (section === 'buscar' ? ' active' : '')} href="#/buscar" title="Buscar" aria-label="Buscar">
             <Icon name="search" />
           </a>
@@ -88,7 +88,6 @@ export function BottomNav({ route }) {
             ))}
             <a href="#/buscar" className="sheet-link"><Icon name="search" /> Buscar</a>
             <a href="#/acceso" className="sheet-link"><Icon name="user" /> Mi cuenta</a>
-            {PORTAL_URL && <a href={PORTAL_URL} className="sheet-link"><Icon name="arrowLeft" /> Portada 3DBAT</a>}
             {isAdmin && <a href="#/admin" className="sheet-link"><Icon name="shield" /> Panel admin</a>}
           </div>
         </div>

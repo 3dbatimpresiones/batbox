@@ -250,9 +250,10 @@
 .help-lead { margin: 0 0 18px; color: #cbd5e1; font-size: 14.5px; line-height: 1.55; }
 .help-ctas { display: flex; flex-wrap: wrap; gap: 10px; }
 .help-ctas:empty { display: none; }
-.portal-link { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 12px; font-size: 13px; font-weight: 700;
-  color: #cbd5e1; text-decoration: none; border: 1px solid var(--line); background: rgba(19,29,71,.45); transition: all .2s; }
-.portal-link:hover { color: var(--cyan); border-color: rgba(93,218,219,.4); }
+/* Volver a la portada de 3DBAT: siempre a la izquierda de todo, en rosa (pedido del dueño) */
+.portal-link { display: inline-flex; align-items: center; gap: 7px; flex: none; padding: 10px 14px; border-radius: 14px; font-size: 14px; font-weight: 800;
+  color: var(--dark); text-decoration: none; background: var(--pink); box-shadow: 0 8px 18px rgba(247,142,182,.3); transition: transform .15s, box-shadow .2s; }
+.portal-link:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(247,142,182,.42); }
 .foot p a { color: inherit; text-decoration: none; } .foot p a:hover { color: var(--cyan); }
 .cta-note { color: var(--muted); font-size: 12.5px; }
 
@@ -370,7 +371,6 @@
 /* ---------- Responsive ---------- */
 @media (max-width: 1180px) {
   .top-nav { display: none; }
-  .portal-link { display: none; } /* en celular va en el menú "Más" */
   .bottom-nav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
     background: rgba(19,29,71,.92); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--line); }
   .bn-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px; border: 0; border-radius: 12px;
@@ -389,6 +389,7 @@
   .brand-logo { width: 40px; height: 40px; border-radius: 12px; }
   .brand-name { font-size: 19px; }
   .acct-name { display: none; }
+  .portal-link { width: 42px; height: 42px; padding: 0; justify-content: center; } .portal-link span { display: none; }
   .acct-btn { padding: 0 6px; } .acct-btn.login { padding: 0 14px; }
   .icon-btn { width: 42px; height: 42px; } .acct-btn { height: 42px; }
   .hero { padding: 44px 18px 32px; border-radius: 26px; margin-top: 12px; }
@@ -408,6 +409,8 @@
   .cw-status { width: 100%; }
 }
 @media (max-width: 400px) {
+  .bb-top-in { gap: 8px; padding-left: 12px; padding-right: 12px; } .top-actions { gap: 6px; } .acct-btn.login { padding: 0 10px; }
+  .top-actions .icon-btn { display: none; } /* "Buscar" sigue en el menú "Más" */
   .brand-by { display: none; }
 }
 .detail-body { margin-top: 26px; white-space: pre-wrap; color: #cbd5e1; font-size: 15px; line-height: 1.7; }
