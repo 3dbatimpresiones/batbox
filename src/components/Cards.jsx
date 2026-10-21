@@ -136,7 +136,7 @@ export function ToolCard({ tool }) {
           {chips}
         </div>
       )}
-      <h3>{tool.name}</h3>
+      <h3 className="tool-title">{tool.access === 'club' && <Icon name="crown" size={19} className="club-crown" />}{tool.name}</h3>
       <p>{tool.description}</p>
       <div className="tool-foot">
         {tool.category ? <span className="chip cat">{tool.category}</span> : <span />}

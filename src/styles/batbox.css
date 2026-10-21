@@ -582,3 +582,5 @@
 .tool-card.with-shot h3 { margin-top: 2px; }
 .tool-card.is-soon .tool-shot img { filter: grayscale(.45) brightness(.8); }
 @media (prefers-reduced-motion: reduce) { .tool-shot img { transition: none; } .tool-card.with-shot:hover .tool-shot img { transform: none; } }
+.tool-title { display: flex; align-items: center; gap: 8px; }
+.club-crown { color: var(--pink); flex: none; filter: drop-shadow(0 2px 6px rgba(247,142,182,.35)); }
