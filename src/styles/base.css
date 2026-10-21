@@ -108,6 +108,9 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .big-ico.tone-muted { color: var(--neutral); background: rgba(156,163,175,.14); }
 .big-ico.tone-ok { color: var(--ok); background: rgba(52,211,153,.14); }
 
+/* "Reducir movimiento" del sistema: las animaciones se ejecutan UNA vez y quedan quietas.
+   Sin iteration-count 1, las infinitas (fondo del Inicio) se repetían cada .01ms y parpadeaban. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .spinner { animation-duration: 1.2s !important; animation-iteration-count: infinite !important; } /* "cargando" sigue girando */
 }
