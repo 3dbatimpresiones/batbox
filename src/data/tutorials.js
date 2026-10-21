@@ -1,5 +1,5 @@
 // =====================================================================
-// TUTORIALES REALES de 3DBAT (BAT ACADEMY)
+// TUTORIALES REALES de 3DBAT (sección Tutoriales; ruta interna #/academy)
 // Importados el 2026-10-21 desde la extensión "Makers 3DBAT Admin Suite"
 // (sección Tutoriales). Las descripciones son borradores a partir del
 // título: la extensión no tenía descripción cargada.

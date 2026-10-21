@@ -59,12 +59,12 @@ export default function Club() {
       </section>
 
       <section className="block">
-        <SectionHead label="TUTORIALES EXCLUSIVOS" title="Solo para miembros" to="/academy" linkText="Toda la Academy" />
+        <SectionHead label="TUTORIALES EXCLUSIVOS" title="Solo para miembros" to="/academy" linkText="Todos los tutoriales" />
         {tutorials.length
           ? <Grid min={340}>{tutorials.map((i) => <ContentCard key={i.id} item={i} />)}</Grid>
           : <div className="card coming-soon">
               <Icon name="graduation" size={22} className="c-cyan" />
-              <span>Muy pronto vas a tener acá tutoriales exclusivos para miembros. Mientras tanto, mirá todos los de <a href="#/academy">BAT Academy</a>.</span>
+              <span>Muy pronto vas a tener acá tutoriales exclusivos para miembros. Mientras tanto, mirá todos los de <a href="#/academy">Tutoriales</a>.</span>
             </div>}
       </section>
 

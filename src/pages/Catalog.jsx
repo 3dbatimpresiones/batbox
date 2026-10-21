@@ -51,7 +51,7 @@ export function Tools() {
   const { tools: TOOLS } = useContent();
   return (
     <div>
-      <PageHead icon="wrench" label="BAT TOOLS" title="Herramientas"
+      <PageHead icon="wrench" label="BAT HERRAMIENTAS" title="Herramientas"
         text="Apps y calculadoras para tu taller. Algunas son gratuitas y otras exclusivas de Makers Club." />
       <Grid min={320}>
         {TOOLS.map((t) => <ToolCard key={t.id} tool={t} />)}
@@ -72,7 +72,7 @@ export function Academy() {
   const c = useCatalog(items);
   return (
     <div>
-      <PageHead icon="graduation" label="BAT ACADEMY" title="Tutoriales"
+      <PageHead icon="graduation" label="BAT TUTORIALES" title="Tutoriales"
         text="Aprendé a imprimir mejor, diseñar tus piezas y hacer crecer tu emprendimiento." />
       <Filters c={c} categories={categoriesOf(items)} placeholder="Buscar tutoriales…" />
       <Results list={c.list} />
@@ -88,7 +88,7 @@ export function Media() {
   const platforms = categoriesOf(items, 'platform').map((value) => ({ value, label: MEDIA_PLATFORMS[value]?.label || value }));
   return (
     <div>
-      <PageHead icon="video" label="BAT MEDIA" title="Videos y reels"
+      <PageHead icon="video" label="BAT MULTIMEDIA" title="Videos y reels"
         text="Videos de YouTube, Shorts y reels de Instagram de 3DBAT. Algunos se abren directamente en su plataforma." />
       <Filters c={c} categories={platforms} placeholder="Buscar videos…" />
       <Results list={c.list} />
@@ -104,7 +104,7 @@ export function Library() {
   const filtering = c.q || c.cat !== 'all' || c.acc !== 'all';
   return (
     <div>
-      <PageHead icon="library" label="BAT LIBRARY" title="Recursos"
+      <PageHead icon="library" label="BAT LIBRERÍA" title="Recursos"
         text="Enlaces, programas y recursos útiles para makers, elegidos por 3DBAT." />
       {!filtering && featured.length > 0 && (
         <section className="block tight">

@@ -36,7 +36,7 @@ export default function Community() {
   const { socials: SOCIALS } = useContent();
   return (
     <div>
-      <PageHead icon="users" label="BAT COMMUNITY" title="Comunidad Makers 3DBAT"
+      <PageHead icon="users" label="BAT COMUNIDAD" title="Comunidad Makers 3DBAT"
         text="Una comunidad de makers que imprimen, diseñan y emprenden. Sumate a los grupos, seguinos en redes y conocé Makers Club." />
 
       <section className="block tight">

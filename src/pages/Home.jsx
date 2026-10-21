@@ -9,8 +9,8 @@ import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Ca
 const QUICK = [
   { to: '/tools', icon: 'wrench', label: 'Herramientas' },
   { to: '/academy', icon: 'graduation', label: 'Tutoriales' },
-  { to: '/media', icon: 'video', label: 'Videos y reels' },
-  { to: '/library', icon: 'library', label: 'Recursos' },
+  { to: '/media', icon: 'video', label: 'Multimedia' },
+  { to: '/library', icon: 'library', label: 'Librería' },
   { to: '/community', icon: 'users', label: 'Comunidad' },
 ];
 
@@ -71,25 +71,25 @@ export default function Home() {
       </section>
 
       <section className="block">
-        <SectionHead label="BAT TOOLS" title="Accesos rápidos" to="/tools" />
+        <SectionHead label="BAT HERRAMIENTAS" title="Accesos rápidos" to="/tools" />
         <Grid min={340}>{TOOLS.map((t) => <ToolCard key={t.id} tool={t} />)}</Grid>
       </section>
 
       <section className="block">
-        <SectionHead label="BAT ACADEMY" title="Últimos tutoriales" to="/academy" />
+        <SectionHead label="BAT TUTORIALES" title="Últimos tutoriales" to="/academy" />
         <Grid min={340}>{tutorials.map((i) => <ContentCard key={i.id} item={i} />)}</Grid>
       </section>
 
       <ClubBanner />
 
       <section className="block">
-        <SectionHead label="DESTACADOS" title="Lo que no te podés perder" to="/media" linkText="Ver BAT Media" />
+        <SectionHead label="DESTACADOS" title="Lo que no te podés perder" to="/media" linkText="Ver Multimedia" />
         <Grid min={340}>{featured.map((i) => <ContentCard key={i.id} item={i} />)}</Grid>
       </section>
 
       <div className="two-blocks">
         <section className="block">
-          <SectionHead label="BAT LIBRARY" title="Recursos recomendados" to="/library" />
+          <SectionHead label="BAT LIBRERÍA" title="Recursos recomendados" to="/library" />
           <div className="card mini-list">{resources.map((i) => <MiniCard key={i.id} item={i} />)}</div>
         </section>
         <section className="block">
