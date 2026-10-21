@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { isVerticalMedia, thumbSrc } from '../lib/media.js';
+import { faviconUrl, isVerticalMedia, siteHost, thumbSrc } from '../lib/media.js';
 import { TOOL_STATUS } from '../data/tools.js';
 import { MEDIA_PLATFORMS } from '../data/sample.js';
 import { PLATFORM_LABEL } from '../data/tutorials.js';
@@ -17,15 +17,20 @@ export function Thumb({ item, big }) {
   const isVideo = item.kind === 'video' || !!item.platform;
   const src = thumbSrc(item);
   const [broken, setBroken] = useState(false);
-  useEffect(() => setBroken(false), [src]);
+  const [iconBroken, setIconBroken] = useState(false);
+  useEffect(() => { setBroken(false); setIconBroken(false); }, [src, item.url]);
   const showImg = src && !broken;
+  // Recurso sin miniatura: logo + dominio de la página (si se puede ver el enlace).
+  const site = !showImg && item.kind === 'resource' && item.url && !iconBroken ? { host: siteHost(item.url), icon: faviconUrl(item.url) } : null;
   const vertical = showImg && isVerticalMedia(item);
   return (
     <div className={`thumb k-${item.kind}${item.platform ? ' p-' + item.platform : ''}${showImg ? ' has-img' : ''}${vertical ? ' vertical' : ''}${big ? ' big' : ''}`}>
       {vertical && <img className="thumb-bg" src={src} alt="" aria-hidden="true" loading="lazy" referrerPolicy="no-referrer" />}
       {showImg
         ? <img className={vertical ? 'thumb-fg' : ''} src={src} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} />
-        : <Icon name={icon} size={big ? 54 : 34} />}
+        : site?.icon
+          ? <span className="thumb-site"><img src={site.icon} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setIconBroken(true)} /><b>{site.host}</b></span>
+          : <Icon name={icon} size={big ? 54 : 34} />}
       {isVideo && <span className="thumb-play"><Icon name="play" size={16} /></span>}
       {item.platform && item.kind !== 'video' && <span className="thumb-platform"><Icon name={icon} size={13} /> {PLATFORM_LABEL[item.platform]}</span>}
       {item.duration && <span className="thumb-badge">{item.duration}</span>}

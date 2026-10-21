@@ -60,7 +60,7 @@ export async function uploadImage(file, nameHint = 'imagen') {
   return sb.storage.from('batbox-media').getPublicUrl(path).data.publicUrl;
 }
 
-// Datos de un enlace de YouTube/Instagram (Edge Function "bb-link-preview").
+// Datos de un enlace de YouTube, Instagram o una página web (Edge Function "bb-link-preview").
 // Si la función no está instalada, para YouTube se usa su oEmbed público
 // (título y miniatura; la descripción solo la da la función).
 export async function fetchLinkPreview(url, parsed) {
@@ -70,6 +70,10 @@ export async function fetchLinkPreview(url, parsed) {
   const status = error?.context?.status;
   if (error?.context?.json) { try { message = (await error.context.json()).error || message; } catch { /* sin cuerpo */ } }
   if (status === 403) throw new Error(message || 'Solo administradores pueden usar esta función.');
+  // Función vieja (solo YouTube/Instagram) instalada en Supabase.
+  if (!parsed?.youtubeId && !parsed?.instagramCode && /YouTube o Instagram/i.test(message || '')) {
+    throw new Error('Para leer páginas web hay que actualizar la función bb-link-preview en Supabase.');
+  }
   if (parsed?.youtubeId) {
     const o = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + parsed.youtubeId)}&format=json`);
     const fallback = { platform: parsed.platform, youtubeId: parsed.youtubeId, thumb: parsed.thumb, embeddable: o.status !== 401 && o.status !== 403, title: '', description: '' };

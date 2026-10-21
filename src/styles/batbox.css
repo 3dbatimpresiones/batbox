@@ -110,6 +110,13 @@
 .thumb.p-instagram { background: linear-gradient(135deg, #f58529, #dd2a7b 45%, var(--violet) 80%, var(--indigo)); }
 .thumb.p-youtube:not(.has-img) { background: linear-gradient(135deg, #c4302b, var(--violet) 70%, var(--indigo)); }
 .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* Recurso sin miniatura: logo de la página + dominio */
+.thumb-site { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.thumb .thumb-site img { position: static; width: 64px; height: 64px; object-fit: contain; padding: 10px; border-radius: 18px;
+  background: #fff; box-shadow: 0 10px 24px rgba(0,0,0,.3); }
+.thumb-site b { font-size: 13px; font-weight: 700; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.35); }
+.thumb.big .thumb-site img { width: 96px; height: 96px; padding: 14px; border-radius: 24px; }
+.thumb.big .thumb-site b { font-size: 16px; }
 .thumb.has-img::after { background: linear-gradient(180deg, transparent 55%, rgba(19,29,71,.55)); }
 /* Portadas verticales (reels/shorts): entera al centro + la misma imagen desenfocada de fondo */
 .thumb.vertical img.thumb-bg { inset: -24px; width: calc(100% + 48px); height: calc(100% + 48px); object-fit: cover; filter: blur(18px) brightness(.65) saturate(1.2); }

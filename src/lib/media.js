@@ -46,3 +46,13 @@ export function slugify(text = '') {
 }
 
 export const isHttpUrl = (s) => /^https?:\/\/\S+$/i.test((s || '').trim());
+
+// Dominio de un enlace ("www.printables.com" → "printables.com") y su ícono (favicon),
+// para que un recurso sin miniatura muestre de qué página es.
+export function siteHost(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+export const faviconUrl = (url) => {
+  const host = siteHost(url);
+  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128` : null;
+};

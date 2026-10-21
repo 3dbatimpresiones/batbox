@@ -290,11 +290,22 @@ function Editor({ slug, kind: newKind }) {
     }
   };
 
+  // Página web pegada entera en un contenido nuevo (campo vacío): se completa sola,
+  // igual que YouTube/Instagram. Al escribir a mano no, para no leer enlaces a medias.
+  const onPasteUrl = (e) => {
+    const pasted = e.clipboardData.getData('text').trim();
+    const m = parseMediaUrl(pasted);
+    if (!isNew || form.kind === 'tool' || form.url.trim() || !isHttpUrl(pasted) || m.youtubeId || m.instagramCode) return;
+    if (autoFilledId.current === pasted) return;
+    autoFilledId.current = pasted;
+    setTimeout(() => fillFromLink(pasted, false), 0);
+  };
+
   // Trae título, descripción y miniatura desde el enlace (Edge Function bb-link-preview).
   // overwrite=true (botón) reemplaza esos campos; false (automático) solo completa los vacíos.
   const fillFromLink = async (url = form.url, overwrite = true) => {
     const m = parseMediaUrl(url);
-    if (!m.youtubeId && !m.instagramCode) { notify('err', 'Pegá un enlace de YouTube o Instagram.'); return; }
+    if (!m.youtubeId && !m.instagramCode && !isHttpUrl(url)) { notify('err', 'Pegá un enlace que empiece con https://'); return; }
     setFetchingMeta(true);
     try {
       const { data, partial } = await api.fetchLinkPreview(url, m);
@@ -400,11 +411,11 @@ function Editor({ slug, kind: newKind }) {
           <Field label="Descripción" hint="Una o dos líneas: es lo que se ve en la tarjeta.">
             <div className="pink-input"><textarea rows={3} value={form.description} onChange={(e) => set({ description: e.target.value })} /></div>
           </Field>
-          <Field label={form.kind === 'tool' ? 'Enlace de la herramienta' : 'Enlace (YouTube, Instagram u otro)'}
-            hint={form.kind === 'tool' ? 'La dirección que abre el botón "Abrir herramienta".' : 'Pegá el enlace y BATBOX detecta solo la plataforma y la miniatura.'}>
-            <div className="pink-input"><input value={form.url} onChange={(e) => onUrl(e.target.value)} placeholder="https://…" /></div>
+          <Field label={form.kind === 'tool' ? 'Enlace de la herramienta' : 'Enlace (YouTube, Instagram o página web)'}
+            hint={form.kind === 'tool' ? 'La dirección que abre el botón "Abrir herramienta".' : 'Pegá el enlace y se completan solos título, descripción y miniatura (YouTube, Instagram o cualquier página).'}>
+            <div className="pink-input"><input value={form.url} onChange={(e) => onUrl(e.target.value)} onPaste={onPasteUrl} placeholder="https://…" /></div>
           </Field>
-          {form.kind !== 'tool' && (form.youtube_id || form.instagram_code) && (
+          {form.kind !== 'tool' && (form.youtube_id || form.instagram_code || isHttpUrl(form.url)) && (
             <button type="button" className="magic-btn" onClick={() => fillFromLink()} disabled={fetchingMeta}
               title="Trae título, descripción y miniatura del enlace (reemplaza lo que haya en esos campos)">
               {fetchingMeta ? <><span className="spinner xs" /> Buscando datos del enlace…</> : <><Icon name="sparkles" size={16} /> Completar con el enlace</>}
