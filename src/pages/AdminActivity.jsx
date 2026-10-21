@@ -18,6 +18,7 @@ const SORTS = [
   { key: 'minutes_cotizador', label: 'Cotizador' },
   { key: 'minutes_batbox', label: 'BATBOX' },
 ];
+const SORT_NOTE = { minutes_total: 'de uso en total', minutes_cotizador: 'en el Cotizador', minutes_batbox: 'en BATBOX' };
 const SECTION = {
   inicio: 'Inicio', tools: 'BAT Tools', academy: 'BAT Academy', media: 'BAT Media', library: 'BAT Library',
   community: 'Comunidad', club: 'Makers Club', acceso: 'Mi cuenta', admin: 'Panel admin', buscar: 'Búsqueda', ver: 'viendo un contenido',
@@ -164,10 +165,10 @@ function LiveView() {
                   </div>
                 </div>
                 <div className="rank-side">
-                  <b>{fmtMinutes(r[sort])}</b>
+                  <div className="metric main"><b>{fmtMinutes(r[sort])}</b><small>{SORT_NOTE[sort]} · {periodLabel}</small></div>
                   {r.online
                     ? <span className="chip ok"><span className="live-dot sm" />En línea</span>
-                    : <span className="chip muted">{fmtAgo(r.seconds_ago)}</span>}
+                    : <span className="chip muted">Última vez {fmtAgo(r.seconds_ago).toLowerCase()}</span>}
                   {r.online && <small>{where(r)}</small>}
                 </div>
               </li>
@@ -297,13 +298,17 @@ function HistoryView() {
                   </div>
                   <div className="rank-side">
                     {r.hours_active ? (
-                      <>
-                        <b>{byHours ? `~${r.hours_active} h` : plural(r.days_active, 'día', 'días')}</b>
-                        <small>{byHours ? plural(r.days_active, 'día', 'días') : `~${r.hours_active} h`}</small>
-                      </>
-                    ) : <b className="muted-val">Sin uso</b>}
+                      <div className={'rank-metrics' + (byHours ? '' : ' days-first')}>
+                        <div className={'metric' + (byHours ? ' main' : '')} title="Horas distintas en las que tuvo el cotizador abierto (aproximado)">
+                          <b>~{r.hours_active} h</b><small>con el cotizador abierto</small>
+                        </div>
+                        <div className={'metric' + (byHours ? '' : ' main')} title="Cantidad de días distintos en los que entró">
+                          <b>{plural(r.days_active, 'día', 'días')}</b><small>distintos en que entró</small>
+                        </div>
+                      </div>
+                    ) : <div className="metric"><b className="muted-val">Sin uso</b><small>no hay registro de que lo haya abierto</small></div>}
                     {on ? <span className="chip ok"><span className="live-dot sm" />En línea</span>
-                      : <span className="chip muted">{r.last_seen ? fmtAgo(agoSeconds(r.last_seen)) : 'Nunca'}</span>}
+                      : <span className="chip muted">{r.last_seen ? `Última vez ${fmtAgo(agoSeconds(r.last_seen)).toLowerCase()}` : 'Nunca entró'}</span>}
                   </div>
                 </li>
               );
