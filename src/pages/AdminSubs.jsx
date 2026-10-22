@@ -3,11 +3,12 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
 import {
   PAY_STATUS, SUB_STATUS, adminSubscriptions, daysLeft, deleteManualPayment, downloadCsv, fmtDate, linkSubscription,
-  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago,
+  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago, unlinkSubscription,
 } from '../lib/subsApi.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
 import { MonthlyIncome } from '../components/OrderCharts.jsx';
+import { suggest } from '../lib/match.js';
 import '../styles/orders.css';
 
 // =====================================================================
@@ -217,7 +218,9 @@ export default function AdminSubs() {
       </section>
 
       {loose.length > 0 && <LooseSubs subs={loose} members={members} payments={club.payments} busy={busy}
-        onLink={(s, mid) => run(() => linkSubscription(s.id, mid), 'Suscripción unida')} />}
+        onLink={(s, mid) => run(() => linkSubscription(s.id, mid), 'Suscripción unida')}
+        onLinkMany={(pairs) => run(async () => { for (const [sid, mid] of pairs) await linkSubscription(sid, mid); },
+          `${pairs.length} suscripciones unidas`)} />}
 
       {lateApproved.length > 0 && (filter === 'late' || filter === 'paying') && (
         <div className="admin-warn">
@@ -249,7 +252,8 @@ export default function AdminSubs() {
 
       {selRow && <SubDetail r={selRow} busy={busy} onClose={() => setSel(null)}
         onManual={(f) => run(() => manualPayment(selRow.m.id, f), 'Pago registrado')}
-        onDelete={(p) => run(() => deleteManualPayment(p.id), 'Pago manual borrado')} />}
+        onDelete={(p) => run(() => deleteManualPayment(p.id), 'Pago manual borrado')}
+        onUnlink={(s) => run(() => unlinkSubscription(s.id), 'Suscripción desunida: volvió a "Sin unir"')} />}
 
       <Confirm open={!!confirm} danger title="Marcar como vencidos"
         text={confirm ? `Dejan de entrar a Makers Club y al Cotizador PRO hasta que vuelvan a pagar: ${confirm.map((r) => fullName(r.m)).join(', ')}.` : ''}
@@ -294,9 +298,10 @@ function SubRow({ r, onOpen }) {
   );
 }
 
-function SubDetail({ r, busy, onClose, onManual, onDelete }) {
+function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink }) {
   const [f, setF] = useState({ amount: r.sub?.amount || r.last?.amount || '', date: today(), months: 1, notes: '' });
   const [toDel, setToDel] = useState(null);
+  const [toUnlink, setToUnlink] = useState(null);
   const sub = r.sub;
   const how = { email: 'sola, por el correo', operacion: 'con el número de operación', admin: 'a mano (admin)' };
   const rowsInfo = [
@@ -323,6 +328,21 @@ function SubDetail({ r, busy, onClose, onManual, onDelete }) {
           <span className={'chip ' + STATES[r.state].cls}>{STATES[r.state].label}</span>
         </div>
         <dl className="md-rows">{rowsInfo.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+
+        {r.subs.length > 0 && <>
+          <div className="section-label">SUSCRIPCIONES DE MERCADO PAGO UNIDAS</div>
+          <div className="pay-list">
+            {r.subs.map((s) => (
+              <div key={s.id} className="pay-row">
+                <span className={'chip ' + (SUB_STATUS[s.status]?.cls || 'muted')}>{SUB_STATUS[s.status]?.label || s.status}</span>
+                <span className="pr-sub">{s.payer_name || s.payer_email || 'Sin datos del pagador'}{s.payer_name && s.payer_email && <small> · {s.payer_email}</small>}</span>
+                <small className="pr-op">Desde {fmtDate(s.date_created)}{s.linked_by ? ` · unida ${how[s.linked_by]}` : ''}</small>
+                <button className="chip-btn" disabled={busy} onClick={() => setToUnlink(s)}>Desunir</button>
+              </div>
+            ))}
+          </div>
+          <p className="ed-hint">¿No es de esta persona? Desunila: vuelve a "Sin unir" y no se borra nada.</p>
+        </>}
 
         <div className="section-label">HISTORIAL DE PAGOS</div>
         {!r.pays.length ? <p className="ed-hint">Todavía no tiene pagos registrados.</p> : (
@@ -359,6 +379,9 @@ function SubDetail({ r, busy, onClose, onManual, onDelete }) {
         <button className="btn primary wide" disabled={busy || f.amount === ''} onClick={save}>{busy ? 'Guardando…' : 'Registrar pago'}</button>
 
         <div className="modal-actions"><button className="btn ghost" onClick={onClose}>Cerrar</button></div>
+        <Confirm open={!!toUnlink} title="Desunir suscripción"
+          text={toUnlink ? `${toUnlink.payer_name || toUnlink.payer_email || 'Esta suscripción'} deja de estar unida a ${fullName(r.m)} y vuelve a "Sin unir". ${fullName(r.m)} NO pierde el acceso; si tenía otra fecha de vencimiento, revisala en Miembros.` : ''}
+          yes="Desunir" onNo={() => setToUnlink(null)} onYes={() => { const s = toUnlink; setToUnlink(null); onUnlink(s); }} />
         <Confirm open={!!toDel} danger title="Borrar pago manual" text={toDel ? `${fmtDate(toDel.paid_at)} · ${money(toDel.amount)}. El vencimiento se vuelve a calcular.` : ''}
           yes="Borrar" onNo={() => setToDel(null)} onYes={() => { const p = toDel; setToDel(null); onDelete(p); }} />
       </div>
@@ -367,33 +390,73 @@ function SubDetail({ r, busy, onClose, onManual, onDelete }) {
 }
 
 // Suscripciones que no se pudieron unir solas (pagó con un correo que no está en la lista
-// y todavía no puso su número de operación).
-function LooseSubs({ subs, members, payments, busy, onLink }) {
+// y todavía no puso su número de operación). BATBOX sugiere quién es (lib/match.js).
+function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany }) {
   const [pick, setPick] = useState({});
+  const [showOld, setShowOld] = useState(false);
+  const [bulk, setBulk] = useState(null);
   const sorted = useMemo(() => [...members].sort((a, b) => fullName(a).localeCompare(fullName(b), 'es')), [members]);
+  const rows = useMemo(() => subs
+    .map((s) => ({ s, sug: suggest(s, members), active: s.status === 'authorized' }))
+    .sort((a, b) => Number(b.active) - Number(a.active) || Number(!!b.sug) - Number(!!a.sug) || new Date(b.s.date_created) - new Date(a.s.date_created)),
+  [subs, members]);
+  const active = rows.filter((r) => r.active);
+  const shown = showOld ? rows : active;
+  const safe = rows.filter((r) => r.sug?.safe);
+
   return (
     <section className="card loose-subs">
       <div className="section-label">SIN UNIR · {subs.length}</div>
       <h3>Suscripciones que todavía no son de nadie</h3>
-      <p className="ed-hint">Pagaron con un correo de Mercado Pago que no está en la lista y todavía no pusieron su número de operación. Si sabés quién es, elegilo y tocá Unir.</p>
-      {subs.map((s) => {
-        const ops = payments.filter((p) => p.subscription_id === s.id && p.status === 'approved');
+      <p className="ed-hint">
+        Pagaron con un correo de Mercado Pago distinto al de su cuenta y todavía no pusieron su número de operación.
+        BATBOX sugiere quién es comparando el correo y el nombre del pagador con tu lista. Revisá y tocá Unir.
+      </p>
+      <div className="lr-tools">
+        {safe.length > 0 && (
+          <button className="btn primary small" disabled={busy} onClick={() => setBulk(safe)}>
+            <Icon name="check" size={15} /> Unir las {safe.length} sugerencias seguras
+          </button>
+        )}
+        {rows.length > active.length && (
+          <button className="btn ghost small" onClick={() => setShowOld(!showOld)}>
+            {showOld ? 'Ver solo las activas' : `Ver también las canceladas (${rows.length - active.length})`}
+          </button>
+        )}
+      </div>
+      {!shown.length && <p className="ed-hint">No hay suscripciones activas sin unir.</p>}
+      {shown.map(({ s, sug }) => {
+        const ops = payments.filter((p) => p.subscription_id === s.id && p.status === 'approved' && !p.id.startsWith('res-'));
+        const value = pick[s.id] ?? sug?.member.id ?? '';
         return (
-          <div key={s.id} className="loose-row">
+          <div key={s.id} className={'loose-row' + (sug?.safe ? ' safe' : '')}>
             <div className="lr-main">
-              <strong>{s.payer_email || 'Correo no informado por Mercado Pago'}</strong>
-              <small>{fmtDate(s.date_created)} · {money(s.amount)} · {SUB_STATUS[s.status]?.label || s.status}{ops[0] && <> · Op. {ops[0].id}</>}</small>
+              <strong>{s.payer_name || s.payer_email || 'Sin datos del pagador'}</strong>
+              {s.payer_name && s.payer_email && <small>{s.payer_email}</small>}
+              <small>
+                <span className={'chip ' + (SUB_STATUS[s.status]?.cls || 'muted')}>{SUB_STATUS[s.status]?.label || s.status}</span>
+                {' '}Desde {fmtDate(s.date_created)} · {money(s.amount)}{ops[0] && <> · Op. {ops[0].id}</>}
+              </small>
+              {sug && (
+                <small className={'lr-sug' + (sug.safe ? ' safe' : '')}>
+                  {sug.safe ? '✓ Sugerencia segura' : 'Posible'}: <b>{fullName(sug.member)}</b> ({sug.why})
+                </small>
+              )}
             </div>
             <div className="lr-pick">
-              <div className="pink-input"><select value={pick[s.id] || ''} onChange={(e) => setPick({ ...pick, [s.id]: e.target.value })}>
+              <div className="pink-input"><select value={value} onChange={(e) => setPick({ ...pick, [s.id]: e.target.value })}>
                 <option value="">Elegí un miembro…</option>
                 {sorted.map((m) => <option key={m.id} value={m.id}>{fullName(m)} · {m.email}</option>)}
               </select></div>
-              <button className="btn primary small" disabled={busy || !pick[s.id]} onClick={() => onLink(s, pick[s.id])}>Unir</button>
+              <button className="btn primary small" disabled={busy || !value} onClick={() => onLink(s, value)}>Unir</button>
             </div>
           </div>
         );
       })}
+      <Confirm open={!!bulk} title={`Unir ${bulk?.length || 0} suscripciones`}
+        text={bulk ? bulk.map((r) => `${r.s.payer_name || r.s.payer_email || r.s.id} → ${fullName(r.sug.member)}`).join(' · ') : ''}
+        yes="Unir todas" onNo={() => setBulk(null)}
+        onYes={() => { const b = bulk; setBulk(null); onLinkMany(b.map((r) => [r.s.id, r.sug.member.id])); }} />
     </section>
   );
 }

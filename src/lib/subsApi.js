@@ -44,6 +44,11 @@ export async function linkSubscription(subId, memberId) {
   if (error) throw new Error(msg(error));
 }
 
+export async function unlinkSubscription(subId) {
+  const { error } = await sb.rpc('bb_admin_unlink_subscription', { p_sub: subId });
+  if (error) throw new Error(/bb_admin_unlink_subscription|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 017 en Supabase.' : error.message);
+}
+
 export async function manualPayment(memberId, { amount, date, months, notes }) {
   const { error } = await sb.rpc('bb_admin_manual_payment', {
     p_member: memberId, p_amount: Number(amount), p_paid_at: date, p_months: Number(months), p_notes: notes || '',
@@ -126,7 +131,10 @@ if (SIM_DB) {
 }
 export const SIM_SUBS = SIM_DB ? {
   subscriptions: [
-    { id: 's4', status: 'authorized', payer_email: 'cuenta.mp@hotmail.com', amount: 5000, date_created: d(-1), next_payment_date: d(29), member_id: null },
+    { id: 's4', status: 'authorized', payer_email: 'cuenta.mp@hotmail.com', payer_name: 'Maker Cuatro', amount: 5000, date_created: d(-1), next_payment_date: d(29), member_id: null },
+    { id: 's5', status: 'authorized', payer_email: 'makerseis.ventas@yahoo.com', amount: 5000, date_created: d(-20), next_payment_date: d(10), member_id: null },
+    { id: 's6', status: 'authorized', payer_email: 'otra.persona@gmail.com', payer_name: 'Juana Gómez', amount: 5000, date_created: d(-40), next_payment_date: d(20), member_id: null },
+    { id: 's7', status: 'cancelled', payer_email: 'vieja@hotmail.com', amount: 4000, date_created: d(-300), next_payment_date: null, member_id: null },
     { id: 's1', status: 'authorized', payer_email: 'maker.uno@ejemplo.com', amount: 5000, date_created: d(-240), next_payment_date: d(23), member_id: 'm1', linked_by: 'email' },
     { id: 's2', status: 'authorized', payer_email: 'otro.correo@yahoo.com', amount: 5000, date_created: d(-120), next_payment_date: d(-6), member_id: 'm2', linked_by: 'operacion' },
     { id: 'a1', product: 'publicidad', status: 'authorized', payer_email: 'tienda.filamentos@ejemplo.com', amount: 9000, date_created: d(-150), next_payment_date: d(28), member_id: null },
