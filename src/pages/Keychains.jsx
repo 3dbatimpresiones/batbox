@@ -16,6 +16,7 @@ import '../styles/keychains.css';
 // =====================================================================
 
 const FREE_NAMES = 1;
+const DEFAULT_NAME = 'Makers3dbat'; // nombre con el que abre la herramienta
 const SAMPLE = 'Sofi\nMateo\nValentina\nJuan Cruz\nEmma\nBenja';
 
 // ---------- Worker (arma el 3D en segundo plano) ----------
@@ -246,7 +247,7 @@ export default function Keychains() {
   const notifyRef = useRef(notifyNow); notifyRef.current = notifyNow;
   const notify = useCallback((t, m) => notifyRef.current(t, m), []);
   const { addFont, build, merge, ref } = useBuilder();
-  const [namesRaw, setNamesRaw] = useState('Anna');
+  const [namesRaw, setNamesRaw] = useState(DEFAULT_NAME);
   const [twoLines, setTwoLines] = useState(false);
   const [dedupe, setDedupe] = useState(true);
   const [font, setFont] = useState({ id: 'pacifico', family: 'Pacifico', weight: 400 });
@@ -410,7 +411,7 @@ export default function Keychains() {
               <span className="kc-count"><b>{unique.length}</b> {unique.length === 1 ? 'nombre' : 'nombres'}{dupCount > 0 && !dedupe ? ` · ${dupCount} repetidos` : ''}</span>
               <span className="kc-links">
                 <button type="button" onClick={() => fileRef.current?.click()}>Subir lista (.txt / .csv)</button>
-                {!namesRaw.trim() || namesRaw === 'Anna' ? <button type="button" onClick={() => setNamesRaw(SAMPLE)}>Probar con ejemplo</button>
+                {!namesRaw.trim() || namesRaw === DEFAULT_NAME ? <button type="button" onClick={() => setNamesRaw(SAMPLE)}>Probar con ejemplo</button>
                   : <button type="button" onClick={() => setNamesRaw('')}>Borrar</button>}
               </span>
               <input ref={fileRef} type="file" accept=".txt,.csv,text/plain,text/csv" hidden onChange={(e) => { loadList(e.target.files?.[0]); e.target.value = ''; }} />
@@ -427,7 +428,7 @@ export default function Keychains() {
           </Sec>
 
           <Sec title="Fuente" icon="🔤">
-            <FontPicker font={font} sample={(names[0] || 'Anna').slice(0, 18)} onPick={(f) => setFont(f)} canUpload={isMember} onUpload={(f) => (f ? onUpload(f) : notify('err', 'Subir tu propia fuente es de Makers Club.'))} />
+            <FontPicker font={font} sample={(names[0] || DEFAULT_NAME).slice(0, 18)} onPick={(f) => setFont(f)} canUpload={isMember} onUpload={(f) => (f ? onUpload(f) : notify('err', 'Subir tu propia fuente es de Makers Club.'))} />
           </Sec>
 
           <Sec title="Texto" icon="✍️">
