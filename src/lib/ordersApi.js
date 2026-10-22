@@ -251,7 +251,11 @@ export function productKey(name = '') {
 // Exporta a CSV que Excel abre bien en español (separador ; y acentos OK).
 export function exportCsv(orders, filename) {
   const head = ['Fecha', 'Producto', 'Cliente', 'Contacto', 'Cantidad', 'Precio', 'Costo', 'Ganancia', 'Seña', 'Saldo', 'Cobrado', 'Estado', 'Producción', 'Entrega', 'Notas'];
-  const cell = (v) => { const s = v == null ? '' : String(v); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const cell = (v) => {
+    let s = v == null ? '' : String(v);
+    if (/^[=+\-@]/.test(s) && !/^-?\d+([.,]\d+)?$/.test(s)) s = "'" + s; // que Excel no lo tome como fórmula
+    return /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
   const n = (v) => (v == null ? '' : String(v).replace('.', ','));
   const rows = orders.map((o) => [o.order_date, o.product, o.client_name, o.client_contact, o.quantity, n(o.price), n(o.cost), n(profitOf(o)),
     n(o.deposit), n(balanceOf(o)), o.paid ? 'Sí' : 'No', statusOf(o.status).label, o.production_date || '', o.delivery_date || '', o.notes]);
