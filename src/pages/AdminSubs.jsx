@@ -100,7 +100,7 @@ export default function AdminSubs() {
         + r.other_plans.map((p) => `${p.reason || 'sin nombre'} (${p.count}, id ${p.plan_id})`).join(' · '));
       await load();
     }
-    catch (e) { notify('err', e.message); }
+    catch (e) { notify('err', e.message); await load(); }
     finally { setSyncing(false); }
   };
 
