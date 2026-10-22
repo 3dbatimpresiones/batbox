@@ -27,6 +27,17 @@ export const TOOLS = [
     featured: true,
   },
   {
+    id: 'control-de-pedidos',
+    name: 'Control de Pedidos',
+    description: 'Organizá los pedidos de tu emprendimiento: clientes, señas, estados, entregas, ganancia del mes y compras pendientes. Todo guardado en tu cuenta.',
+    icon: 'clipboard',
+    category: 'Gestión',
+    status: 'available',
+    access: 'club',
+    url: '#/pedidos', // se abre dentro de BATBOX
+    featured: true,
+  },
+  {
     id: 'peso-de-carretes-vacios',
     name: 'Peso de Carretes Vacíos',
     description: 'Base de datos comunitaria de bobinas vacías: buscá tu marca y calculá cuánto filamento te queda.',

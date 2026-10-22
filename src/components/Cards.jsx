@@ -116,7 +116,11 @@ function ToolAction({ tool }) {
     return <button className="btn ghost" disabled>Próximamente</button>;
   }
   // El enlace de una herramienta club solo llega a miembros (RLS); el resto ve cómo acceder.
-  const open = !tool.url ? <button className="btn ghost" disabled>Sin enlace</button> : (
+  // Las herramientas propias de BATBOX (#/…) se abren en la misma pestaña.
+  const internal = tool.url?.startsWith('#/');
+  const open = !tool.url ? <button className="btn ghost" disabled>Sin enlace</button> : internal ? (
+    <a className="btn primary" href={tool.url}>Abrir herramienta <Icon name="arrowRight" size={16} /></a>
+  ) : (
     <a className="btn primary" href={tool.url} target="_blank" rel="noopener">
       Abrir herramienta <Icon name="external" size={16} />
     </a>

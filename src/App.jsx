@@ -8,6 +8,7 @@ import { Academy, Library, Tools } from './pages/Catalog.jsx';
 import Community from './pages/Community.jsx';
 import Wiki from './pages/Wiki.jsx';
 import Club from './pages/Club.jsx';
+import Orders from './pages/Orders.jsx';
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
 import { Detail, NotFound, Search } from './pages/Detail.jsx';
@@ -22,6 +23,7 @@ function Page({ route }) {
     case 'library': return <Library />;
     case 'community': return <Community />;
     case 'club': return <Club />;
+    case 'pedidos': return <Orders />;
     case 'acceso': return <Account />;
     case 'admin': return <Admin route={route} />;
     case 'buscar': return <Search q={query.q ?? ''} />;

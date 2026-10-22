@@ -1,0 +1,91 @@
+import { useState } from 'react';
+
+// Gráficos del Control de Pedidos. Una sola serie por gráfico (cian de 3DBAT):
+// la ganancia y los pedidos se ven en el cartel al pasar el mouse o tocar.
+const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+const compact = (v) => (v >= 1e6 ? `$${(v / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })} M`
+  : v >= 1e3 ? `$${Math.round(v / 1e3).toLocaleString('es-AR')} mil` : `$${Math.round(v)}`);
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+export const monthLabel = (ym, long = false) => {
+  const [y, m] = ym.split('-').map(Number);
+  if (long) return new Date(y, m - 1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase());
+  return `${MONTHS[m - 1]} ${String(y).slice(2)}`;
+};
+
+// Escala "linda" para el eje: 0, 1/3, 2/3 y el máximo redondeado.
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = 10 ** Math.floor(Math.log10(v));
+  const n = v / p;
+  return (n <= 1.5 ? 1.5 : n <= 3 ? 3 : n <= 6 ? 6 : 10) * p;
+}
+
+// Productos más pedidos del mes (unidades). Barras horizontales con el valor al final.
+export function TopProducts({ rows }) {
+  const [hover, setHover] = useState(null);
+  if (!rows.length) return <p className="oc-empty">Todavía no hay pedidos este mes.</p>;
+  const max = Math.max(...rows.map((r) => r.units));
+  return (
+    <div className="oc-hbars" onMouseLeave={() => setHover(null)}>
+      {rows.map((r, i) => (
+        <div key={r.key} className={'oc-hrow' + (hover === i ? ' on' : '')} onMouseEnter={() => setHover(i)}
+          onFocus={() => setHover(i)} onBlur={() => setHover(null)} tabIndex={0}
+          aria-label={`${r.key}: ${r.units} unidades, ${money.format(r.income)}`}>
+          <span className="oc-hlabel" title={r.key}>{r.key}</span>
+          <span className="oc-htrack"><span className="oc-hbar" style={{ width: `${Math.max(2, (r.units / max) * 100)}%` }} /></span>
+          <span className="oc-hval">{r.units.toLocaleString('es-AR')}</span>
+          {hover === i && (
+            <span className="oc-tip" role="tooltip">
+              <b>{r.key}</b>
+              <span>{r.units.toLocaleString('es-AR')} unidades · {r.count} {r.count === 1 ? 'pedido' : 'pedidos'}</span>
+              <span>{money.format(r.income)}</span>
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Ingresos de los últimos meses. Tocar una barra abre ese mes.
+export function MonthlyIncome({ rows, selected, onSelect }) {
+  const [hover, setHover] = useState(null);
+  const max = niceMax(Math.max(0, ...rows.map((r) => r.income)));
+  const ticks = [max, (max * 2) / 3, max / 3, 0];
+  return (
+    <div className="oc-vchart">
+      <div className="oc-axis" aria-hidden="true">
+        {ticks.map((t) => <span key={t}>{compact(t)}</span>)}
+      </div>
+      <div className="oc-plot" onMouseLeave={() => setHover(null)}>
+        <div className="oc-area" aria-hidden="true">
+          {ticks.map((t) => <span key={t} className="oc-grid" style={{ bottom: `${(t / max) * 100}%` }} />)}
+        </div>
+        <div className="oc-cols">
+          {rows.map((r, i) => (
+            <button key={r.month} type="button" className={'oc-col' + (r.month === selected ? ' sel' : '') + (hover === i ? ' on' : '')}
+              onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
+              onClick={() => onSelect(r.month)}
+              aria-label={`${monthLabel(r.month, true)}: ${money.format(r.income)}`}>
+              <span className="oc-vbar" style={{ height: `${r.income > 0 ? Math.max(1.5, (r.income / max) * 100) : 0}%` }} />
+              <span className="oc-xl">{MONTHS[Number(r.month.slice(5)) - 1]}<span className="oc-yr"> {r.month.slice(2, 4)}</span></span>
+              {hover === i && (
+                <span className={'oc-tip' + (i > rows.length - 4 ? ' left' : '')} role="tooltip">
+                  <b>{monthLabel(r.month, true)}</b>
+                  <span>Ingresos: {money.format(r.income)}</span>
+                  {r.profit != null && <span>Ganancia: {money.format(r.profit)}</span>}
+                  <span>{r.count} {r.count === 1 ? 'pedido' : 'pedidos'}</span>
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="sr-only"><table>
+        <caption>Ingresos por mes</caption>
+        <thead><tr><th>Mes</th><th>Ingresos</th><th>Ganancia</th><th>Pedidos</th></tr></thead>
+        <tbody>{rows.map((r) => <tr key={r.month}><td>{monthLabel(r.month, true)}</td><td>{money.format(r.income)}</td><td>{r.profit == null ? '—' : money.format(r.profit)}</td><td>{r.count}</td></tr>)}</tbody>
+      </table></div>
+    </div>
+  );
+}
