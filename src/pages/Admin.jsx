@@ -337,7 +337,11 @@ function Editor({ slug, kind: newKind }) {
 
   const errors = [];
   if (!form.title.trim()) errors.push('Poné un título.');
-  if (form.url && !isHttpUrl(form.url)) errors.push('El enlace tiene que empezar con https://');
+  // Una herramienta también puede ser una sección propia de BATBOX (#/pedidos).
+  const internalTool = form.kind === 'tool' && /^#\/[\w/-]+$/.test(form.url.trim());
+  if (form.url && !isHttpUrl(form.url) && !internalTool) {
+    errors.push(form.kind === 'tool' ? 'El enlace tiene que empezar con https:// (o ser una sección de BATBOX, como #/pedidos)' : 'El enlace tiene que empezar con https://');
+  }
   if (form.thumb_url && !isHttpUrl(form.thumb_url) && !/^thumbs\//.test(form.thumb_url)) errors.push('La miniatura tiene que ser un enlace https://');
 
   const onUpload = async (e) => {
@@ -417,7 +421,7 @@ function Editor({ slug, kind: newKind }) {
             <div className="pink-input"><textarea rows={3} value={form.description} onChange={(e) => set({ description: e.target.value })} /></div>
           </Field>
           <Field label={form.kind === 'tool' ? 'Enlace de la herramienta' : 'Enlace (YouTube, Instagram o página web)'}
-            hint={form.kind === 'tool' ? 'La dirección que abre el botón "Abrir herramienta".' : 'Pegá el enlace y se completan solos título, descripción y miniatura (YouTube, Instagram o cualquier página).'}>
+            hint={form.kind === 'tool' ? 'La dirección que abre el botón "Abrir herramienta": un enlace https:// o una sección de BATBOX (ej: #/pedidos).' : 'Pegá el enlace y se completan solos título, descripción y miniatura (YouTube, Instagram o cualquier página).'}>
             <div className="pink-input"><input value={form.url} onChange={(e) => onUrl(e.target.value)} onPaste={onPasteUrl} placeholder="https://…" /></div>
           </Field>
           {form.kind !== 'tool' && (form.youtube_id || form.instagram_code || isHttpUrl(form.url)) && (
