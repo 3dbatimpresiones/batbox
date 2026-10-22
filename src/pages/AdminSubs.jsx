@@ -78,7 +78,14 @@ export default function AdminSubs() {
   const sync = async () => {
     if (SIM_DB) { notify('ok', 'Simulación: 12 suscripciones y 30 cobros traídos'); return; }
     setSyncing(true);
-    try { const r = await syncMercadoPago(); notify('ok', `Listo: ${r.subs} suscripciones y ${r.pays} cobros revisados`); await load(); }
+    try {
+      const r = await syncMercadoPago();
+      if (r.subs || r.account_total == null) notify('ok', `Listo: ${r.subs} suscripciones y ${r.pays} cobros revisados`);
+      else if (!r.account_total) notify('err', 'Tu cuenta de Mercado Pago no tiene ninguna suscripción. ¿El Access Token es de la cuenta que cobra el Makers Club?');
+      else notify('err', `El plan del Makers Club no tiene suscripciones, pero tu cuenta tiene ${r.account_total} en otro plan: `
+        + r.other_plans.map((p) => `${p.reason || 'sin nombre'} (${p.count}, id ${p.plan_id})`).join(' · '));
+      await load();
+    }
     catch (e) { notify('err', e.message); }
     finally { setSyncing(false); }
   };
@@ -182,7 +189,9 @@ export default function AdminSubs() {
 
       <section className="card subs-chart">
         <div className="section-label">COBROS POR MES</div>
-        <MonthlyIncome rows={monthly} selected={month} onSelect={setMonth} unit={['cobro', 'cobros']} incomeLabel="Cobrado" />
+        {monthly.some((r) => r.income > 0)
+          ? <MonthlyIncome rows={monthly} selected={month} onSelect={setMonth} unit={['cobro', 'cobros']} incomeLabel="Cobrado" />
+          : <p className="ed-hint">Todavía no hay cobros registrados. Aparecen acá cuando llegan de Mercado Pago o cuando cargás un pago manual.</p>}
       </section>
 
       {loose.length > 0 && <LooseSubs subs={loose} members={members} payments={data.payments} busy={busy}
