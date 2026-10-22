@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { sb } from '../lib/supabase.js';
 import { currentRoute } from '../lib/router.js';
-import { OWNER_EMAILS } from '../config.js';
 
 // =====================================================================
 // AUTH DE BATBOX
@@ -38,9 +37,9 @@ function simulatedState(kind) {
   const session = { user: { id: 'sim', email: 'maker@ejemplo.com', user_metadata: { full_name: 'Maker Ejemplo' } } };
   if (kind === 'guest') return { loading: false, session: null, member: null, error: null };
   if (kind === 'none') return { loading: false, session, member: null, error: null };
-  if (kind === 'owner') { // dueño: admin con un correo de OWNER_EMAILS
-    return { loading: false, session: { user: { ...session.user, email: OWNER_EMAILS[0] } }, error: null,
-      member: { email: OWNER_EMAILS[0], first_name: '3DBAT', status: 'approved', role: 'admin', subscription_expires_at: null } };
+  if (kind === 'owner') { // dueño: admin marcado como dueño por la base
+    return { loading: false, session, error: null, owner: true,
+      member: { email: 'dueno@ejemplo.com', first_name: '3DBAT', status: 'approved', role: 'admin', subscription_expires_at: null } };
   }
   const status = ['admin', 'editor', 'member'].includes(kind) ? 'approved' : kind;
   return {
@@ -90,7 +89,14 @@ export function AuthProvider({ children }) {
       setState({ loading: false, session, member: null, error: 'No pudimos comprobar tu acceso. Probá de nuevo en unos segundos.' });
       return;
     }
-    setState({ loading: false, session, member: data?.[0] ?? null, error: null });
+    const member = data?.[0] ?? null;
+    // ¿Es la cuenta dueña? Lo decide la base (los correos de dueño no están en el código público).
+    let owner = false;
+    if (member?.role === 'admin' && member.status === 'approved') {
+      const r = await sb.rpc('bb_is_owner');
+      owner = r.data === true;
+    }
+    setState({ loading: false, session, member, error: null, owner });
   }, []);
 
   useEffect(() => {
@@ -158,8 +164,7 @@ export function AuthProvider({ children }) {
       isAdmin: access === 'member' && state.member?.role === 'admin',
       isEditor: access === 'member' && state.member?.role === 'editor',
       canEdit: access === 'member' && ['admin', 'editor'].includes(state.member?.role),
-      isOwner: access === 'member' && state.member?.role === 'admin'
-        && OWNER_EMAILS.includes((state.member?.email || user?.email || '').toLowerCase()),
+      isOwner: access === 'member' && state.member?.role === 'admin' && state.owner === true,
       displayName: state.member?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || user?.email || '',
       email: state.member?.email || user?.email || '',
       signIn,

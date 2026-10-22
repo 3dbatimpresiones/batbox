@@ -16,10 +16,8 @@ export const LINKS = {
   accessForm: 'https://forms.gle/TTJCnphD3surkyA1A',
 };
 
-// Cuentas DUEÑAS: las únicas que pueden dar o quitar permisos (Editor / Admin).
-// Tiene que coincidir con bb_owner_emails() en supabase/007_batbox_equipo.sql:
-// esta lista solo decide qué se MUESTRA; quien manda de verdad es la base.
-export const OWNER_EMAILS = ['3dbatimpresiones@gmail.com'];
+// Cuentas DUEÑAS (las únicas que dan o quitan permisos): las define la base
+// (bb_owner_emails() en supabase/007). A propósito NO están acá: este archivo es público.
 
 // Portada de 3DBAT: BATBOX también se publica dentro del dominio de la web (en /batbox/),
 // y desde ahí se puede volver a la portada (/). En GitHub Pages o en local no hay portada.

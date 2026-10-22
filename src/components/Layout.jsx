@@ -5,6 +5,7 @@ import { useContent } from '../data/ContentContext.jsx';
 import { PORTAL_URL } from '../config.js';
 import Icon from './Icon.jsx';
 import { SocialIcon } from './BrandIcon.jsx';
+import { safeUrl } from '../lib/safeUrl.js';
 
 export function Brand({ compact }) {
   return (
@@ -112,8 +113,8 @@ export function Footer() {
   return (
     <footer className="foot">
       <div className="foot-socials">
-        {SOCIALS.filter((s) => s.url).map((s) => (
-          <a key={s.id} href={s.url} target="_blank" rel="noopener noreferrer" className="icon-btn sm" aria-label={s.label}>
+        {SOCIALS.filter((s) => safeUrl(s.url)).map((s) => (
+          <a key={s.id} href={safeUrl(s.url)} target="_blank" rel="noopener noreferrer" className="icon-btn sm" aria-label={s.label}>
             <SocialIcon social={s} size={18} />
           </a>
         ))}

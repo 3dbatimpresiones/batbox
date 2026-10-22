@@ -3,7 +3,6 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
-import { OWNER_EMAILS } from '../config.js';
 
 // =====================================================================
 // MIEMBROS DE MAKERS CLUB (pestaña del panel admin)
@@ -44,7 +43,9 @@ const ROLES = [
   { value: 'editor', label: 'Editor', info: 'Crea, edita y borra contenidos, imágenes y redes, y modera comentarios. No ve los datos de los miembros.' },
   { value: 'admin', label: 'Admin', info: 'Todo lo del editor + ve y gestiona los miembros (correos, celulares, notas, aprobar y suspender) y la actividad.' },
 ];
-const isOwnerAccount = (m) => OWNER_EMAILS.includes((m.email || '').toLowerCase());
+// Cuentas dueñas: la base devuelve sus ids (solo a admins). Los correos no están en el código público.
+let OWNER_IDS = new Set();
+const isOwnerAccount = (m) => OWNER_IDS.has(m.id);
 
 function RoleChip({ m }) {
   if (isOwnerAccount(m) && m.role === 'admin') return <span className="chip club">★ Dueño</span>;
@@ -60,7 +61,7 @@ const fullName = (m) => [m.first_name, m.last_name].filter(Boolean).join(' ') ||
 // Solo `npm run dev` con ?simdb: miembros ficticios para ver la pantalla.
 const SIM = import.meta.env.DEV && new URLSearchParams(window.location.search).has('simdb');
 const SIM_MEMBERS = [
-  { id: 's1', email: '3dbatimpresiones@gmail.com', first_name: '3DBAT', last_name: 'Admin', status: 'approved', role: 'admin', created_at: '2026-06-17', approved_at: '2026-06-17', last_access_at: '2026-10-21' },
+  { id: 's1', email: 'dueno@ejemplo.com', first_name: '3DBAT', last_name: 'Admin', status: 'approved', role: 'admin', created_at: '2026-06-17', approved_at: '2026-06-17', last_access_at: '2026-10-21' },
   { id: 's5', email: 'admin.comunidad@ejemplo.com', first_name: 'Admin', last_name: 'Comunidad', status: 'approved', role: 'editor', created_at: '2026-09-01', approved_at: '2026-09-01', last_access_at: '2026-10-20' },
   { id: 's2', email: 'maker.uno@ejemplo.com', first_name: 'Maker', last_name: 'Uno', discord_username: 'makeruno', instagram_username: 'maker.uno', phone: '11 5555-0001', status: 'approved', role: 'user', created_at: '2026-07-02', approved_at: '2026-07-02', last_access_at: '2026-10-19', internal_notes: 'Pagó por transferencia.' },
   { id: 's3', email: 'maker.dos@ejemplo.com', first_name: 'Maker', last_name: 'Dos', status: 'pending', role: 'user', created_at: '2026-10-20' },
@@ -81,9 +82,10 @@ export default function AdminMembers() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    if (SIM) { setMembers(SIM_MEMBERS); setLoading(false); return; }
+    if (SIM) { OWNER_IDS = new Set(['s1']); setMembers(SIM_MEMBERS); setLoading(false); return; }
     setLoading(true);
-    const { data, error: e } = await sb.rpc('admin_get_all_members');
+    const [{ data, error: e }, own] = await Promise.all([sb.rpc('admin_get_all_members'), sb.rpc('bb_owner_member_ids')]);
+    OWNER_IDS = new Set((own.data || []).map((r) => (typeof r === 'string' ? r : r.bb_owner_member_ids ?? r.id)));
     if (e) setError(e.message); else { setMembers(data || []); setError(null); }
     setLoading(false);
   }, []);

@@ -9,6 +9,7 @@ import AccessPanel from '../components/AccessPanel.jsx';
 import { CommunityBox, PlatformActions } from '../components/Interaction.jsx';
 import { AccessChip, Empty, PageHead, SampleChip, SearchInput } from '../components/ui.jsx';
 import { ContentCard, Grid, Thumb, ToolCard } from '../components/Cards.jsx';
+import { safeUrl } from '../lib/safeUrl.js';
 
 const KIND_LABEL = { tutorial: 'BAT TUTORIALES', resource: 'BAT RECURSOS', news: 'NOVEDADES' };
 const KIND_BACK = { tutorial: '/academy', resource: '/library', news: '/' };
@@ -38,7 +39,7 @@ function Payload({ item }) {
   if (item.url) {
     const platform = PLATFORM_LABEL[item.platform] || item.platformLabel;
     const label = platform ? `Ver en ${platform}` : 'Abrir recurso';
-    return <a className="btn primary" href={item.url} target="_blank" rel="noopener noreferrer">{label} <Icon name="external" size={16} /></a>;
+    return <a className="btn primary" href={safeUrl(item.url)} target="_blank" rel="noopener noreferrer">{label} <Icon name="external" size={16} /></a>;
   }
   return (
     <div className="payload-pending">
@@ -64,7 +65,7 @@ export function Detail({ id }) {
         {hasEmbed
           ? <Embed item={item} />
           : (!locked && item.url
-            ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="thumb-link" aria-label="Ver el video"><Thumb item={item} big /></a>
+            ? <a href={safeUrl(item.url)} target="_blank" rel="noopener noreferrer" className="thumb-link" aria-label="Ver el video"><Thumb item={item} big /></a>
             : <Thumb item={item} big />)}
         <div className="detail-info">
           <div className="section-label">{KIND_LABEL[item.kind]}</div>

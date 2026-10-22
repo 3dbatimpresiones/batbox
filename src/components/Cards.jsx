@@ -8,6 +8,7 @@ import { fmtDate } from '../lib/text.js';
 import Icon from './Icon.jsx';
 import { AccessChip, SampleChip } from './ui.jsx';
 import { CardStats } from './Interaction.jsx';
+import { safeUrl } from '../lib/safeUrl.js';
 
 const KIND_ICON = { tutorial: 'graduation', video: 'play', resource: 'library', news: 'newspaper' };
 
@@ -15,7 +16,7 @@ const KIND_ICON = { tutorial: 'graduation', video: 'play', resource: 'library', 
 // (pedido del dueño). Sin enlace visible (Makers Club sin acceso) abre su ficha, que explica cómo acceder.
 const isDirect = (item) => item.kind === 'resource' && !!item.url;
 export const itemLink = (item) => (isDirect(item)
-  ? { href: item.url, target: '_blank', rel: 'noopener noreferrer' }
+  ? { href: safeUrl(item.url), target: '_blank', rel: 'noopener noreferrer' }
   : { href: '#/ver/' + item.id });
 
 // Miniatura: imagen real si existe (YouTube), si no degradé por tipo/plataforma + ícono.
@@ -117,11 +118,12 @@ function ToolAction({ tool }) {
   }
   // El enlace de una herramienta club solo llega a miembros (RLS); el resto ve cómo acceder.
   // Las herramientas propias de BATBOX (#/…) se abren en la misma pestaña.
-  const internal = tool.url?.startsWith('#/');
-  const open = !tool.url ? <button className="btn ghost" disabled>Sin enlace</button> : internal ? (
-    <a className="btn primary" href={tool.url}>Abrir herramienta <Icon name="arrowRight" size={16} /></a>
+  const url = safeUrl(tool.url);
+  const internal = url?.startsWith('#/');
+  const open = !url ? <button className="btn ghost" disabled>Sin enlace</button> : internal ? (
+    <a className="btn primary" href={url}>Abrir herramienta <Icon name="arrowRight" size={16} /></a>
   ) : (
-    <a className="btn primary" href={tool.url} target="_blank" rel="noopener">
+    <a className="btn primary" href={url} target="_blank" rel="noopener noreferrer">
       Abrir herramienta <Icon name="external" size={16} />
     </a>
   );

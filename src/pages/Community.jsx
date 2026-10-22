@@ -4,6 +4,7 @@ import { CLUB_BENEFITS } from '../data/sample.js';
 import Icon from '../components/Icon.jsx';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { PageHead, SectionHead } from '../components/ui.jsx';
+import { safeUrl } from '../lib/safeUrl.js';
 
 const STEPS = [
   { n: 1, title: 'Completá la solicitud', text: 'Usá el mismo correo de Google con el que vas a ingresar.' },
@@ -44,7 +45,7 @@ export default function Community() {
         <SectionHead label="SUMATE" title="Grupos y redes" />
         <div className="social-row">
           {SOCIALS.map((s) => (
-            <a key={s.id} className={'social-card' + (s.url ? '' : ' pending')} href={s.url || undefined}
+            <a key={s.id} className={'social-card' + (s.url ? '' : ' pending')} href={safeUrl(s.url)}
               target={s.url ? '_blank' : undefined} rel="noopener noreferrer" aria-disabled={!s.url}>
               <span className={'card-icon' + brandClass(s)}><SocialIcon social={s} /></span>
               <span className="sc-txt"><strong>{s.label}</strong><small>{s.url ? s.handle : 'Enlace pendiente'}</small></span>
@@ -70,7 +71,7 @@ export default function Community() {
         </ol>
         <div className="help-ctas">
           {SOCIALS.filter((s) => HELP_GROUPS[s.id] && s.url).map((s) => (
-            <a key={s.id} className="btn primary" href={s.url} target="_blank" rel="noopener noreferrer">
+            <a key={s.id} className="btn primary" href={safeUrl(s.url)} target="_blank" rel="noopener noreferrer">
               <SocialIcon social={s} size={16} /> {HELP_GROUPS[s.id]}
             </a>
           ))}

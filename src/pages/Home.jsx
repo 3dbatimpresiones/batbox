@@ -6,6 +6,7 @@ import Icon from '../components/Icon.jsx';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
+import { safeUrl } from '../lib/safeUrl.js';
 
 const QUICK = [
   { to: '/tools', icon: 'wrench', label: 'Herramientas' },
@@ -105,7 +106,7 @@ export default function Home() {
         <SectionHead label="COMUNIDAD" title="Seguí a 3DBAT" to="/community" linkText="Ir a la comunidad" />
         <div className="social-row">
           {SOCIALS.map((s) => (
-            <a key={s.id} className={'social-card' + (s.url ? '' : ' pending')} href={s.url || '#/community'}
+            <a key={s.id} className={'social-card' + (s.url ? '' : ' pending')} href={safeUrl(s.url) || '#/community'}
               target={s.url ? '_blank' : undefined} rel="noopener noreferrer">
               <span className={'card-icon' + brandClass(s)}><SocialIcon social={s} /></span>
               <span className="sc-txt"><strong>{s.label}</strong><small>{s.url ? s.handle : 'Enlace pendiente'}</small></span>

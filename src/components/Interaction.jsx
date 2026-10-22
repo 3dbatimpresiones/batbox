@@ -5,6 +5,7 @@ import { sb } from '../lib/supabase.js';
 import { INSTAGRAM, YOUTUBE } from '../config.js';
 import Icon from './Icon.jsx';
 import { Confirm } from './ui.jsx';
+import { safeUrl } from '../lib/safeUrl.js';
 
 // =====================================================================
 // INTERACCIÓN EN CADA CONTENIDO
@@ -28,8 +29,8 @@ export function PlatformActions({ item }) {
           <iframe className="yt-sub" title="Suscribirme a 3DBAT en YouTube" loading="lazy"
             src={`https://www.youtube.com/subscribe_embed?channelid=${YOUTUBE.channelId}&layout=full&count=default&theme=dark`} />
           <div className="pa-btns">
-            <a className="btn ghost" href={item.url || YOUTUBE.url} target="_blank" rel="noopener noreferrer"><Icon name="thumbsUp" size={16} /> Dar like en YouTube</a>
-            <a className="btn ghost" href={item.url || YOUTUBE.url} target="_blank" rel="noopener noreferrer"><Icon name="message" size={16} /> Comentar en YouTube</a>
+            <a className="btn ghost" href={safeUrl(item.url) || YOUTUBE.url} target="_blank" rel="noopener noreferrer"><Icon name="thumbsUp" size={16} /> Dar like en YouTube</a>
+            <a className="btn ghost" href={safeUrl(item.url) || YOUTUBE.url} target="_blank" rel="noopener noreferrer"><Icon name="message" size={16} /> Comentar en YouTube</a>
           </div>
         </div>
         <p className="pa-hint">Tus likes y comentarios en YouTube ayudan a que el video llegue a más makers. YouTube no deja hacerlos desde otra página, por eso se abren allá.</p>
@@ -41,7 +42,7 @@ export function PlatformActions({ item }) {
       <div className="pa-head"><Icon name="instagram" size={18} /> Apoyá a 3DBAT en Instagram</div>
       <div className="pa-btns">
         <a className="btn primary" href={INSTAGRAM.url} target="_blank" rel="noopener noreferrer"><Icon name="instagram" size={16} /> Seguir a @{INSTAGRAM.handle}</a>
-        <a className="btn ghost" href={item.url || INSTAGRAM.url} target="_blank" rel="noopener noreferrer"><Icon name="heart" size={16} /> Like y comentarios en Instagram</a>
+        <a className="btn ghost" href={safeUrl(item.url) || INSTAGRAM.url} target="_blank" rel="noopener noreferrer"><Icon name="heart" size={16} /> Like y comentarios en Instagram</a>
       </div>
       <p className="pa-hint">Instagram no deja dar like ni comentar desde otra página, por eso se abre la publicación original.</p>
     </section>

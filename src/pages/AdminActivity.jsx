@@ -45,7 +45,7 @@ const where = (r) => (r.last_app === 'cotizador' ? 'en el Cotizador PRO' : `en B
 const SIM = import.meta.env.DEV && new URLSearchParams(window.location.search).has('simdb');
 const SIM_ROWS = [
   { user_id: 'a', email: 'maker.uno@ejemplo.com', first_name: 'Maker', last_name: 'Uno', role: 'user', minutes_batbox: 95, minutes_cotizador: 742, sessions: 31, days_active: 18, last_app: 'cotizador', seconds_ago: 25, online: true },
-  { user_id: 'b', email: '3dbatimpresiones@gmail.com', first_name: '3DBAT', last_name: 'Admin', role: 'admin', minutes_batbox: 410, minutes_cotizador: 220, sessions: 40, days_active: 21, last_app: 'batbox', last_section: 'admin', seconds_ago: 5, online: true },
+  { user_id: 'b', email: 'dueno@ejemplo.com', first_name: '3DBAT', last_name: 'Admin', role: 'admin', minutes_batbox: 410, minutes_cotizador: 220, sessions: 40, days_active: 21, last_app: 'batbox', last_section: 'admin', seconds_ago: 5, online: true },
   { user_id: 'c', email: 'maker.dos@ejemplo.com', first_name: 'Maker', last_name: 'Dos', role: 'user', minutes_batbox: 160, minutes_cotizador: 205, sessions: 12, days_active: 9, last_app: 'batbox', last_section: 'academy', seconds_ago: 50, online: true },
   { user_id: 'd', email: 'maker.tres@ejemplo.com', first_name: 'Maker', last_name: 'Tres', role: 'user', minutes_batbox: 12, minutes_cotizador: 188, sessions: 6, days_active: 5, last_app: 'cotizador', seconds_ago: 7400, online: false },
   { user_id: 'e', email: 'maker.cuatro@ejemplo.com', first_name: null, last_name: null, role: 'user', minutes_batbox: 48, minutes_cotizador: 0, sessions: 3, days_active: 2, last_app: 'batbox', last_section: 'media', seconds_ago: 190000, online: false },
@@ -202,7 +202,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 const SIM_HISTORY = [
   { user_id: 'a', email: 'maker.uno@ejemplo.com', first_name: 'Maker', last_name: 'Uno', role: 'user', status: 'approved', first_seen: '2026-06-18', last_seen: new Date().toISOString(), days_active: 41, hours_active: 96 },
-  { user_id: 'b', email: '3dbatimpresiones@gmail.com', first_name: '3DBAT', last_name: 'Admin', role: 'admin', status: 'approved', first_seen: '2026-06-17', last_seen: new Date().toISOString(), days_active: 55, hours_active: 88 },
+  { user_id: 'b', email: 'dueno@ejemplo.com', first_name: '3DBAT', last_name: 'Admin', role: 'admin', status: 'approved', first_seen: '2026-06-17', last_seen: new Date().toISOString(), days_active: 55, hours_active: 88 },
   { user_id: 'd', email: 'maker.tres@ejemplo.com', first_name: 'Maker', last_name: 'Tres', role: 'user', status: 'suspended', first_seen: '2026-07-04', last_seen: '2026-09-30', days_active: 12, hours_active: 19 },
   { user_id: 'f', email: 'maker.cinco@ejemplo.com', first_name: 'Maker', last_name: 'Cinco', role: 'user', status: 'approved', first_seen: '2026-08-11', last_seen: '2026-08-11', days_active: 0, hours_active: 0 },
 ];
