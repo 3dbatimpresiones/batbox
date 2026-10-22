@@ -5,6 +5,7 @@ import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
 import { SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, NewsRow, ToolCard } from '../components/Cards.jsx';
+import ClubPitch, { Benefits } from '../components/ClubPitch.jsx';
 
 // El contenido exclusivo viene de Supabase: su enlace/video solo llega a
 // miembros aprobados (RLS). Los ítems de ejemplo siguen siendo locales.
@@ -12,7 +13,7 @@ import { ContentCard, Grid, NewsRow, ToolCard } from '../components/Cards.jsx';
 const COMING = ['Perfil', 'Favoritos', 'Proyectos guardados'];
 
 export default function Club() {
-  const { isMember, isAdmin, isEditor, member, displayName } = useAuth();
+  const { isMember, isAdmin, isEditor, member, displayName, access } = useAuth();
   const { tools: TOOLS, byKind } = useContent();
 
   if (!isMember) {
@@ -21,8 +22,15 @@ export default function Club() {
         <div className="club-locked-head">
           <div className="section-label">MAKERS CLUB</div>
           <h1>Zona exclusiva de Makers Club</h1>
+          <p>Herramientas PRO, tutoriales exclusivos y recursos del taller, por una suscripción mensual.</p>
         </div>
-        <AccessPanel intro="Contenido solo para miembros" />
+        <div className="club-join">
+          {/* Quien ya entró y todavía no es miembro ve la solicitud: los pasos ya están ahí. */}
+          <ClubPitch title="Qué incluye la membresía" steps={access === 'guest' || access === 'loading'} />
+          <div className="club-join-panel">
+            <AccessPanel intro={access === 'guest' ? 'Sumate o ingresá' : 'Contenido solo para miembros'} benefitsLink={false} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -49,7 +57,8 @@ export default function Club() {
             {isEditor && <span className="chip cat">✎ Editor</span>}
           </div>
           <small>{member.email}</small>
-          {member.subscription_expires_at && <small>Vence: {fmtDate(member.subscription_expires_at.slice(0, 10))}</small>}
+          {member.subscription_expires_at && <small>Acceso hasta: {fmtDate(member.subscription_expires_at.slice(0, 10))}</small>}
+          <a className="gate-link cw-link" href="#/acceso">Mi suscripción y mis datos</a>
         </div>
       </section>
 
@@ -78,6 +87,17 @@ export default function Club() {
           <div className="card news-list">{news.map((i) => <NewsRow key={i.id} item={i} />)}</div>
         </section>
       </div>
+
+      <section className="card club-info club-included">
+        <div className="ci-head">
+          <div className="card-icon lg pink"><Icon name="crown" size={24} /></div>
+          <div>
+            <div className="section-label">TU MEMBRESÍA</div>
+            <h2>Lo que incluye tu membresía</h2>
+          </div>
+        </div>
+        <Benefits />
+      </section>
 
       <section className="coming card">
         <Icon name="sparkles" size={18} className="c-cyan" />

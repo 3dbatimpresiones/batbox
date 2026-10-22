@@ -1,17 +1,12 @@
 import { useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useContent } from '../data/ContentContext.jsx';
-import { CLUB_BENEFITS } from '../data/sample.js';
 import Icon from '../components/Icon.jsx';
+import ClubPitch from '../components/ClubPitch.jsx';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { PageHead, SectionHead } from '../components/ui.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 
-const STEPS = [
-  { n: 1, title: 'Entrá con Google', text: 'Tocá "Quiero unirme" e ingresá con tu cuenta de Google.' },
-  { n: 2, title: 'Suscribite y completá tus datos', text: 'Plan mensual por Mercado Pago: se cobra solo y lo cancelás cuando quieras.' },
-  { n: 3, title: 'Listo', text: 'Se activa solo. Entrás a Makers Club, al Cotizador PRO y a todas las herramientas.' },
-];
 
 // Cómo pedir ayuda: todas las consultas se resuelven en la comunidad.
 const HELP_STEPS = [
@@ -63,31 +58,9 @@ export default function Community() {
         </div>
       </section>
 
-      <section className="card club-info" id="makers-club">
-        <div className="ci-head">
-          <div className="card-icon lg pink"><Icon name="crown" size={24} /></div>
-          <div>
-            <div className="section-label">MAKERS CLUB 3DBAT</div>
-            <h2>Beneficios de la membresía</h2>
-          </div>
-        </div>
-        <div className="benefits">
-          {CLUB_BENEFITS.map((b) => (
-            <div key={b.title} className="benefit">
-              <span className="benefit-ico"><Icon name={b.icon} size={18} /></span>
-              <div><strong>{b.title}</strong><small>{b.text}</small></div>
-            </div>
-          ))}
-        </div>
-
-        <div className="section-label">CÓMO SUMARTE</div>
-        <ol className="steps">
-          {STEPS.map((s) => (
-            <li key={s.n}><span className="step-n">{s.n}</span><div><strong>{s.title}</strong><small>{s.text}</small></div></li>
-          ))}
-        </ol>
+      <ClubPitch id="makers-club">
         <ClubCta />
-      </section>
+      </ClubPitch>
 
       <section className="card club-info help-info">
         <div className="ci-head">

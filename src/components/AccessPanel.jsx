@@ -47,7 +47,7 @@ function Gate({ icon, tone = 'cyan', title, text, children, email, wide }) {
 
 // Panel que explica qué tiene que hacer la persona según su estado.
 // `intro` permite personalizar el motivo (ej. "Este tutorial es exclusivo…").
-export default function AccessPanel({ intro }) {
+export default function AccessPanel({ intro, benefitsLink = true }) {
   const { access, email, signIn, signOut, recheck, error } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -65,7 +65,7 @@ export default function AccessPanel({ intro }) {
         <button className="btn club wide" onClick={() => signIn('/acceso')}>
           <Icon name="crown" size={18} /> Quiero unirme al Makers Club
         </button>
-        <a className="gate-link" href="#/community?seccion=club">¿Qué incluye? Ver beneficios</a>
+        {benefitsLink && <a className="gate-link" href="#/community?seccion=club">¿Qué incluye? Ver beneficios</a>}
       </Gate>
     );
   }
