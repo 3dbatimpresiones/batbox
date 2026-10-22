@@ -828,3 +828,4 @@
 /* Solicitud vista antes de ingresar: pasos 2 y 3 en gris */
 .af-step.off { opacity: .55; }
 .af-step.off .af-num { background: rgba(93,218,219,.25); color: #e2e8f0; }
+.gate-caption { display: block; margin: -4px 0 6px; color: var(--muted); font-size: 12.5px; line-height: 1.45; max-width: 420px; }

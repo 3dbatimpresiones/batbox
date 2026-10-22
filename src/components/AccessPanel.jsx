@@ -99,13 +99,15 @@ export default function AccessPanel({ intro, benefitsLink = true }) {
   if (access === 'guest') {
     return (
       <Gate icon="lock" title={intro || 'Contenido exclusivo de Makers Club'}
-        text="Ingresá con tu cuenta de Google. Si ya usás el Cotizador PRO, entrá con la misma cuenta: tu acceso se reconoce solo, sin registrarte de nuevo.">
+        text="Elegí qué querés hacer:">
         <button className="btn primary wide" onClick={() => signIn()}>
           <Icon name="login" size={18} /> Ingresar con Google
         </button>
+        <small className="gate-caption">Para entrar a la web con tu cuenta. Si ya sos miembro, accedés a todo (usá la misma cuenta que en el Cotizador PRO). Si no, usás lo gratis.</small>
         <button className="btn club wide" onClick={() => setJoin(true)}>
           <Icon name="crown" size={18} /> Quiero unirme al Makers Club
         </button>
+        <small className="gate-caption">Para suscribirte y ser miembro: Cotizador PRO, tutoriales exclusivos y todas las herramientas.</small>
         {benefitsLink && <a className="gate-link" href="#/community?seccion=club">¿Qué incluye? Ver beneficios</a>}
       </Gate>
     );
