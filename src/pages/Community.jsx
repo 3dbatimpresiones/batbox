@@ -22,7 +22,7 @@ function ClubCta() {
   if (access === 'guest') {
     return (
       <div className="cta-row">
-        <button className="btn club" onClick={() => signIn('/acceso')}><Icon name="crown" size={16} /> Quiero unirme al Makers Club</button>
+        <a className="btn club" href="#/acceso?unirme"><Icon name="crown" size={16} /> Quiero unirme al Makers Club</a>
         <button className="btn ghost" onClick={() => signIn('/club')}><Icon name="login" size={16} /> Ya soy miembro: ingresar</button>
       </div>
     );

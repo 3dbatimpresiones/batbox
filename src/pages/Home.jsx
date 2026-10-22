@@ -34,7 +34,7 @@ function ClubBanner() {
         {member && <a className="btn dark" href="#/club">Entrar a Makers Club <Icon name="arrowRight" size={16} /></a>}
         {access === 'guest' && <>
           <button className="btn dark" onClick={() => signIn('/club')}><Icon name="login" size={16} /> Ingresar</button>
-          <button className="btn outline-dark" onClick={() => signIn('/acceso')}><Icon name="crown" size={16} /> Quiero unirme</button>
+          <a className="btn outline-dark" href="#/acceso?unirme"><Icon name="crown" size={16} /> Quiero unirme</a>
         </>}
         {!member && access !== 'guest' && <a className="btn dark" href="#/club">Ver mi acceso <Icon name="arrowRight" size={16} /></a>}
       </div>

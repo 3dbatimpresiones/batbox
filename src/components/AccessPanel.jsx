@@ -45,14 +45,55 @@ function Gate({ icon, tone = 'cyan', title, text, children, email, wide }) {
   );
 }
 
+// Solicitud vista por alguien que todavía no ingresó: los 3 pasos, con el 1 activo.
+function JoinPreview({ onSignIn, onBack }) {
+  return (
+    <Gate icon="crown" tone="pink" title="Solicitud de acceso al Makers Club" wide
+      text="Son 3 pasos y lleva un par de minutos.">
+      <div className="access-form">
+        <div className="af-step">
+          <span className="af-num">1</span>
+          <div className="af-body">
+            <strong>Ingresá con tu cuenta de Google</strong>
+            <p>Así tu acceso queda a tu nombre y no tenés que crear otra contraseña. <b>Ingresar no da acceso:</b> se activa recién cuando se confirma tu suscripción.</p>
+            <button className="btn primary" onClick={onSignIn}><Icon name="login" size={16} /> Ingresar con Google</button>
+          </div>
+        </div>
+        <div className="af-step off">
+          <span className="af-num">2</span>
+          <div className="af-body">
+            <strong>Suscribite en Mercado Pago</strong>
+            <p>Plan mensual: se cobra solo y lo cancelás cuando quieras. Se habilita al ingresar.</p>
+          </div>
+        </div>
+        <div className="af-step off">
+          <span className="af-num">3</span>
+          <div className="af-body">
+            <strong>Completá tus datos</strong>
+            <p>Nombre, celular, Discord e Instagram. Si pagaste con este mismo correo, se activa solo.</p>
+          </div>
+        </div>
+      </div>
+      <button className="btn text wide" onClick={onBack}>Volver</button>
+    </Gate>
+  );
+}
+
 // Panel que explica qué tiene que hacer la persona según su estado.
 // `intro` permite personalizar el motivo (ej. "Este tutorial es exclusivo…").
 export default function AccessPanel({ intro, benefitsLink = true }) {
   const { access, email, signIn, signOut, recheck, error } = useAuth();
   const [open, setOpen] = useState(false);
+  // "Quiero unirme": primero se muestra la solicitud (paso 1 = ingresar con Google).
+  // También se abre sola con #/acceso?unirme (botones de Inicio y Comunidad).
+  const [join, setJoin] = useState(() => /[?&]unirme\b/.test(window.location.hash));
 
   if (access === 'loading') {
     return <Gate icon="clock" title="Verificando acceso…"><div className="spinner" /></Gate>;
+  }
+
+  if (access === 'guest' && join) {
+    return <JoinPreview onSignIn={() => signIn('/acceso')} onBack={() => setJoin(false)} />;
   }
 
   if (access === 'guest') {
@@ -62,7 +103,7 @@ export default function AccessPanel({ intro, benefitsLink = true }) {
         <button className="btn primary wide" onClick={() => signIn()}>
           <Icon name="login" size={18} /> Ingresar con Google
         </button>
-        <button className="btn club wide" onClick={() => signIn('/acceso')}>
+        <button className="btn club wide" onClick={() => setJoin(true)}>
           <Icon name="crown" size={18} /> Quiero unirme al Makers Club
         </button>
         {benefitsLink && <a className="gate-link" href="#/community?seccion=club">¿Qué incluye? Ver beneficios</a>}

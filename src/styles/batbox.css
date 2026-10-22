@@ -824,3 +824,7 @@
 @media (max-width: 560px) { .club-join .benefits { grid-template-columns: minmax(0, 1fr); } }
 .club-info .benefits:last-child { margin-bottom: 0; }
 @media (max-width: 980px) { .club-join-panel { order: -1; } }
+
+/* Solicitud vista antes de ingresar: pasos 2 y 3 en gris */
+.af-step.off { opacity: .55; }
+.af-step.off .af-num { background: rgba(93,218,219,.25); color: #e2e8f0; }
