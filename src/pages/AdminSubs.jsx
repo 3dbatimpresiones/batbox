@@ -289,7 +289,7 @@ function SubRow({ r, onOpen }) {
     <button className="member-row sub-row" onClick={onOpen}>
       <span className="avatar">{(r.m.first_name?.[0] || r.m.email?.[0] || '?').toUpperCase()}</span>
       <span className="mr-main">
-        <strong>{fullName(r.m)}</strong>
+        <strong>{fullName(r.m)}{!r.m.first_name && !r.m.last_name && <span className="chip-btn name-hint">✎ Ponerle nombre</span>}</strong>
         <small>{r.m.email}{r.sub?.payer_email && r.sub.payer_email.toLowerCase() !== r.m.email.toLowerCase() && <> · MP: {r.sub.payer_email}</>}</small>
         <small className="mr-social">
           {sub ? <span>Mercado Pago: {sub.label}</span> : r.pays.length ? <span>Pagos manuales</span> : null}
@@ -336,10 +336,11 @@ function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink, onSaveData 
           <div><h2>{fullName(r.m)}</h2><small>{r.m.email}</small></div>
           <span className={'chip ' + STATES[r.state].cls}>{STATES[r.state].label}</span>
         </div>
-        <dl className="md-rows">{rowsInfo.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
-
-        <div className="section-label">DATOS DEL MIEMBRO</div>
+        <div className="section-label">NOMBRE Y DATOS (EDITABLES)</div>
         <MemberDataForm member={r.m} busy={busy} onSave={onSaveData} />
+
+        <div className="section-label">SUSCRIPCIÓN</div>
+        <dl className="md-rows">{rowsInfo.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
 
         {r.subs.length > 0 && <>
           <div className="section-label">SUSCRIPCIONES DE MERCADO PAGO UNIDAS</div>

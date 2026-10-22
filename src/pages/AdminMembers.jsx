@@ -192,7 +192,7 @@ export default function AdminMembers() {
               <button key={m.id} className="member-row" onClick={() => setSelectedId(m.id)}>
                 <span className="avatar">{(m.first_name?.[0] || m.email?.[0] || '?').toUpperCase()}</span>
                 <span className="mr-main">
-                  <strong>{fullName(m)} <RoleChip m={m} /></strong>
+                  <strong>{fullName(m)} <RoleChip m={m} />{!m.first_name && !m.last_name && <span className="chip-btn name-hint">✎ Ponerle nombre</span>}</strong>
                   <small>{m.email}</small>
                   {(m.discord_username || m.instagram_username) && (
                     <small className="mr-social">
@@ -301,7 +301,7 @@ function MemberDetail({ m, busy, canManageRoles, onClose, onRole, onAction, onSa
         </dl>
 
         {!(owner && !canManageRoles) && <>
-          <div className="section-label">DATOS</div>
+          <div className="section-label">NOMBRE Y DATOS (EDITABLES)</div>
           <MemberDataForm member={m} busy={busy} onSave={onSaveData} />
         </>}
 

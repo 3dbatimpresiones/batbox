@@ -797,3 +797,4 @@
 .md-data { margin-bottom: 8px; }
 .md-data .pink-input input { font-size: 14px; padding: 9px 12px; }
 .md-data-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; }
+.name-hint { margin-left: 8px; font-size: 10.5px; padding: 3px 8px; vertical-align: middle; }
