@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { DEFAULTS } from '../lib/keychain/engine.js';
 import { BEDS, arrange, build3MF, fileSafe, parseNames, placeOf, plateFileName, plateNames, toBinarySTL, zipFiles } from '../lib/keychain/exporters.js';
@@ -242,6 +242,15 @@ export default function Keychains() {
   const [view, setView] = useState(null);
   const [exporting, setExporting] = useState(false);
   const fileRef = useRef(null);
+  // Mide dónde empiezan los paneles para que llenen justo el resto de la pantalla.
+  const layoutRef = useRef(null);
+  useLayoutEffect(() => {
+    const el = layoutRef.current; if (!el) return undefined;
+    const measure = () => el.style.setProperty('--kc-top', `${Math.round(el.getBoundingClientRect().top + window.scrollY)}px`);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
   const set = (k) => (v) => setP((o) => ({ ...o, [k]: v }));
 
   // Nombres: lista, repetidos y límite gratis.
@@ -362,14 +371,12 @@ export default function Keychains() {
   return (
     <div className="kc">
       <header className="kc-head">
-        <div>
-          <div className="section-label">HERRAMIENTA · BATBOX</div>
-          <h1>Creador de Llaveros</h1>
-          <p>Pegá todos los nombres y armá el mismo llavero para cada uno, listo para tu impresora.</p>
-        </div>
+        <div className="section-label">HERRAMIENTA · BATBOX</div>
+        <h1>Creador de Llaveros</h1>
+        <p>Pegá todos los nombres y armá el mismo llavero para cada uno, listo para tu impresora.</p>
       </header>
 
-      <div className="kc-layout">
+      <div className="kc-layout" ref={layoutRef}>
         {/* ---------- Panel de ajustes ---------- */}
         <aside className="card kc-panel">
           <Sec title="Nombres" icon="📝">

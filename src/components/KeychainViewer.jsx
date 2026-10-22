@@ -113,7 +113,7 @@ export default function KeychainViewer({ plates, show, bed, colors, view }) {
     const w = maxX - minX, h = maxY - minY;
     const c = new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, 0);
     const fit = Math.max(w / Math.max(0.6, s.camera.aspect), h);
-    const d = fit * (s.area.maxX - s.area.minX > bed.w * 1.5 ? 2.05 : 1.75); // con varias camas, un poco más lejos
+    const d = fit * (s.area.maxX - s.area.minX > bed.w * 1.5 ? 1.8 : 1.45); // con varias camas, un poco más lejos
     if (mode === 'top') s.camera.position.set(c.x, c.y - 0.001, d * 1.02);
     else s.camera.position.set(c.x, c.y - d * 0.8, d * 0.68);
     s.controls.target.copy(c); s.controls.update();

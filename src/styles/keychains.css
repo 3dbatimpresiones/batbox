@@ -2,13 +2,18 @@
    CREADOR DE LLAVEROS (pages/Keychains.jsx + components/KeychainViewer.jsx)
    Tres columnas tipo slicer: ajustes · vista 3D · descargas.
    ===================================================================== */
-.kc-head { margin: 10px 0 16px; }
-.kc-head h1 { margin: 4px 0 6px; font-size: clamp(26px, 3.6vw, 36px); color: #fff; }
-.kc-head p { margin: 0; color: #cbd5e1; }
+/* Pantalla completa (como un slicer): la página de BATBOX deja de estar centrada en 1240 px. */
+.page:has(> .kc) { max-width: none; padding: 6px 16px 16px; }
+.kc-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin: 4px 2px 10px; }
+.kc-head .section-label { margin: 0; }
+.kc-head h1 { margin: 0; font-size: clamp(20px, 2.2vw, 26px); color: #fff; }
+.kc-head p { margin: 0; color: var(--muted); font-size: 13.5px; }
 
-.kc-layout { display: grid; grid-template-columns: 320px minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
-.kc-panel { padding: 8px 14px 14px; max-height: calc(100vh - 120px); overflow-y: auto; position: sticky; top: 92px; }
-.kc-out { padding: 18px; display: flex; flex-direction: column; gap: 10px; position: sticky; top: 92px; }
+/* Los 3 paneles llenan el alto que queda de la pantalla (--kc-top lo mide la página). */
+.kc-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr) 300px; gap: 14px; align-items: stretch;
+  height: calc(100dvh - var(--kc-top, 190px) - 14px); min-height: 560px; }
+.kc-panel { padding: 8px 14px 14px; overflow-y: auto; min-height: 0; }
+.kc-out { padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
 .kc-out h3 { margin: 0 0 4px; font-size: 16px; color: #fff; }
 
 /* Secciones plegables */
@@ -72,7 +77,7 @@
 .kc-upload.locked { border-color: rgba(247,142,182,.45); background: rgba(247,142,182,.06); color: var(--pink); }
 
 /* Vista */
-.kc-stage { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.kc-stage { padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
 .kc-stage-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 34px; }
 .kc-plates { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; min-width: 0; }
 .kc-plates button { flex: none; padding: 6px 11px; border-radius: 10px; border: 1px solid var(--line); background: rgba(19,29,71,.5); color: #cbd5e1; font-weight: 700; font-size: 12.5px; }
@@ -81,7 +86,7 @@
 .kc-plates button.on small { color: var(--dark); }
 .kc-views { display: flex; gap: 6px; flex: none; }
 .kc-views .mini-btn { width: 34px; font-weight: 800; }
-.kc-canvas { position: relative; height: min(68vh, 640px); min-height: 380px; border-radius: 16px; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #2b3360, #141b3f 75%); }
+.kc-canvas { position: relative; flex: 1; min-height: 300px; border-radius: 16px; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #2b3360, #141b3f 75%); }
 .kc-viewer { position: absolute; inset: 0; }
 .kc-viewer canvas { display: block; width: 100% !important; height: 100% !important; cursor: grab; }
 .kc-viewer canvas:active { cursor: grabbing; }
@@ -103,18 +108,20 @@
 .kc-tip b { color: #fff; }
 
 @media (max-width: 1280px) {
-  .kc-layout { grid-template-columns: 300px minmax(0, 1fr); }
-  .kc-out { grid-column: 1 / -1; position: static; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: start; }
+  .kc-layout { grid-template-columns: 320px minmax(0, 1fr); height: auto; }
+  .kc-panel { max-height: calc(100dvh - var(--kc-top, 190px) - 14px); }
+  .kc-stage { height: calc(100dvh - var(--kc-top, 190px) - 14px); min-height: 520px; }
+  .kc-out { grid-column: 1 / -1; position: static; overflow: visible; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: start; }
   .kc-out h3, .kc-out .kc-names, .kc-out .kc-tip, .kc-out > small { grid-column: 1 / -1; }
 }
 @media (max-width: 860px) {
   .kc-layout { grid-template-columns: minmax(0, 1fr); }
-  .kc-panel { position: static; max-height: none; order: 2; }
-  .kc-stage { order: 1; }
+  .kc-panel { position: static; max-height: none; order: 2; overflow: visible; }
+  .kc-stage { order: 1; height: auto; min-height: 0; }
   .kc-out { order: 3; }
-  .kc-canvas { height: 52vh; min-height: 300px; }
+  .kc-canvas { flex: none; height: 56vh; min-height: 300px; }
 }
-.kc-names { max-height: 420px; overflow-y: auto; }
+.kc-names { overflow: visible; }
 .kc-names ul { max-height: none; }
 .kc-names-plate + .kc-names-plate { margin-top: 10px; }
 .kc-names-head { display: block; width: 100%; text-align: left; margin-bottom: 4px; padding: 4px 6px; border-radius: 8px; border: 0; background: rgba(93,218,219,.08); color: var(--cyan); font-weight: 800; font-size: 12.5px; cursor: pointer; }
