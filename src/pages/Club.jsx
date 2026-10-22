@@ -8,6 +8,7 @@ import { TRIAL_DAYS } from '../config.js';
 import { SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, NewsRow, ToolCard } from '../components/Cards.jsx';
 import ClubPitch, { Benefits } from '../components/ClubPitch.jsx';
+import GroupCard from '../components/GroupCard.jsx';
 
 // El contenido exclusivo viene de Supabase: su enlace/video solo llega a
 // miembros aprobados (RLS). Los ítems de ejemplo siguen siendo locales.
@@ -66,6 +67,8 @@ export default function Club() {
           <a className="gate-link cw-link" href="#/acceso">{isTrial ? 'Suscribirme para seguir después de la prueba' : 'Mi suscripción y mis datos'}</a>
         </div>
       </section>
+
+      <GroupCard />
 
       <section className="block">
         <SectionHead label="HERRAMIENTAS EXCLUSIVAS" title="Tus herramientas PRO" />

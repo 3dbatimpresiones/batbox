@@ -936,3 +936,38 @@
 @media (max-width: 560px) { .sub-side .benefits { grid-template-columns: minmax(0, 1fr); } }
 .sub-paypal.card { padding: 16px 22px; border-radius: 20px; }
 .sub-side .benefits { margin-bottom: 0; }
+
+/* Grupo de WhatsApp del Makers Club */
+.group-card { display: flex; align-items: center; gap: 16px; padding: 18px 20px; margin-top: 22px; border-radius: 20px; border-color: rgba(37,211,102,.4); }
+.group-card.locked { border-color: rgba(247,142,182,.4); }
+.gc-ico { flex: none; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: #25d366; background: rgba(37,211,102,.12); }
+.group-card.locked .gc-ico { color: var(--pink); background: rgba(247,142,182,.12); }
+.gc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.gc-body .section-label { margin: 0; }
+.gc-body strong { color: #fff; font-size: 16px; }
+.gc-body p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+.gc-body p b { color: #fff; } .gc-body a { color: var(--cyan); font-weight: 700; }
+.gc-btn { flex: none; background: #25d366; color: #06301a; box-shadow: 0 8px 18px rgba(37,211,102,.25); }
+@media (max-width: 700px) { .group-card { flex-wrap: wrap; } .group-card > .btn { width: 100%; } }
+
+.group-admin { display: flex; flex-direction: column; gap: 16px; }
+.ga-card { padding: 18px 20px; border-radius: 20px; display: flex; flex-direction: column; gap: 8px; }
+.ga-card h3 { margin: 0; color: #fff; font-size: 17px; }
+.ga-card .section-label { margin: 0; }
+.ga-card textarea { font-size: 15px; }
+.ga-actions { display: flex; gap: 8px; }
+.ga-results { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.ga-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(19,29,71,.45); border: 1px solid var(--line); }
+.ga-row.t-ok { border-color: rgba(52,211,153,.5); } .ga-row.t-warn { border-color: rgba(251,191,36,.45); }
+.ga-row.t-err, .ga-row.t-orange { border-color: rgba(239,68,68,.45); }
+.ga-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ga-num { color: #fff; font-weight: 800; font-size: 15px; }
+.ga-verdict { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: #e2e8f0; }
+.ga-main small { color: var(--muted); font-size: 12.5px; }
+.ga-line { display: block; color: #cbd5e1; font-size: 13px; padding: 3px 0; }
+.ga-link { display: flex; gap: 8px; align-items: center; }
+.ga-link .pink-input { flex: 1; }
+.ga-link .pink-input input { font-size: 14px; padding: 10px 14px; }
+.ga-two { margin: 0; }
+@media (max-width: 700px) { .ga-row { flex-wrap: wrap; } .ga-link { flex-direction: column; align-items: stretch; } }
+.btn.primary.gc-btn { background: #25d366; color: #06301a; box-shadow: 0 8px 18px rgba(37,211,102,.25); }

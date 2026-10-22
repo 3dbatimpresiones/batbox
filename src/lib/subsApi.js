@@ -47,6 +47,42 @@ export async function adminTrials() {
   return error ? null : data;
 }
 
+// ---- Grupo de WhatsApp del Makers Club (migración 025) ----
+const need025 = (error) => (/bb_whatsapp_group|bb_admin_group|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 025 en Supabase.' : error.message);
+export async function whatsappGroup() {
+  const { data, error } = await sb.rpc('bb_whatsapp_group');
+  if (error) throw new Error(need025(error));
+  return data;
+}
+export async function adminGroupCheck(text) {
+  if (SIM_DB) {
+    return [
+      { input: '+54 9 11 5555-0001', exact: true, members: [{ id: 'm1', name: 'Maker Uno', email: 'maker.uno@ejemplo.com', verdict: 'ok', expires_at: new Date(Date.now() + 20 * 864e5).toISOString(), clicked_at: new Date().toISOString() }] },
+      { input: '+54 9 11 5555-0006', exact: true, members: [{ id: 'm6', name: 'Maker Seis', email: 'maker.seis@ejemplo.com', verdict: 'pending' }] },
+      { input: '+54 9 351 555-0003', exact: false, members: [{ id: 'm3', name: 'Maker Tres', email: 'maker.tres@ejemplo.com', verdict: 'expired', expires_at: new Date(Date.now() - 3 * 864e5).toISOString() }] },
+      { input: '+54 9 11 9999-0000', exact: false, members: [] },
+    ];
+  }
+  const { data, error } = await sb.rpc('bb_admin_group_check', { p_numbers: text });
+  if (error) throw new Error(need025(error));
+  return data;
+}
+export async function adminGroupOverview() {
+  if (SIM_DB) {
+    return { link: 'https://chat.whatsapp.com/ABCD1234efgh5678',
+      removals: [{ id: 'm3', name: 'Maker Tres', email: 'maker.tres@ejemplo.com', phone: '351 555-0003', status: 'expired', expires_at: new Date(Date.now() - 3 * 864e5).toISOString() }],
+      no_phone: [{ id: 'm4', name: 'Maker Cuatro', email: 'maker.cuatro@ejemplo.com' }],
+      recent_clicks: [{ name: 'Maker Uno', email: 'maker.uno@ejemplo.com', phone: '11 5555-0001', clicked_at: new Date().toISOString(), verdict: 'ok' }] };
+  }
+  const { data, error } = await sb.rpc('bb_admin_group_overview');
+  if (error) throw new Error(need025(error));
+  return data;
+}
+export async function setGroupLink(url) {
+  const { error } = await sb.rpc('bb_admin_set_group_link', { p_url: url });
+  if (error) throw new Error(need025(error));
+}
+
 export async function adminSubscriptions() {
   const { data, error } = await sb.rpc('bb_admin_subscriptions');
   if (error) throw new Error(msg(error));
