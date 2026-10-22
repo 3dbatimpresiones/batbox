@@ -164,3 +164,5 @@
 @media (max-width: 1280px) { .kc-head { grid-template-columns: 320px minmax(0, 1fr); } }
 @media (max-width: 860px) { .kc-head { grid-template-columns: minmax(0, 1fr); gap: 6px; } .kc-head p { text-align: left; } }
 @media (min-width: 1500px) { .kc-head h1 { white-space: nowrap; } }
+.kc-hint { padding: 9px 11px; border-radius: 10px; background: rgba(93,218,219,.08); border: 1px solid rgba(93,218,219,.3); color: #cbd5e1; font-size: 12.5px; line-height: 1.5; }
+.kc-hint b { color: #fff; } .kc-hint i { color: var(--pink); font-style: normal; font-weight: 700; }

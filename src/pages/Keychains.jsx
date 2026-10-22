@@ -405,8 +405,12 @@ export default function Keychains() {
         {/* ---------- Panel de ajustes ---------- */}
         <aside className="card kc-panel">
           <Sec title="Nombres" icon="📝">
+            <div className="kc-hint" id="kc-names-hint">
+              💡 Escribí <b>un nombre por renglón</b> o separalos con <b>comas</b>: <i>Sofi, Mateo, Valentina</i>.
+              Si van todos en un renglón con espacios, cada palabra es un nombre.
+            </div>
             <div className="pink-input"><textarea rows={5} value={namesRaw} onChange={(e) => setNamesRaw(e.target.value)}
-              placeholder={'Uno abajo del otro, o separados por comas:\nSofi, Mateo, Valentina'} aria-label="Nombres" /></div>
+              placeholder="Sofi, Mateo, Valentina…" aria-label="Nombres" aria-describedby="kc-names-hint" /></div>
             <div className="kc-row">
               <span className="kc-count"><b>{unique.length}</b> {unique.length === 1 ? 'nombre' : 'nombres'}{dupCount > 0 && !dedupe ? ` · ${dupCount} repetidos` : ''}</span>
               <span className="kc-links">
