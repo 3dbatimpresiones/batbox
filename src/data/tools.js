@@ -38,6 +38,17 @@ export const TOOLS = [
     featured: true,
   },
   {
+    id: 'creador-de-llaveros',
+    name: 'Creador de Llaveros',
+    description: 'Pegá todos los nombres (un jardín, un cumpleaños) y armá el mismo llavero para cada uno, acomodados en la cama. Todas las fuentes de Google, 3MF bicolor y STL.',
+    icon: 'sparkles',
+    category: 'Modelado',
+    status: 'available',
+    access: 'free', // 1 nombre gratis · varios nombres y fuente propia: Makers Club
+    url: '#/llaveros', // se abre dentro de BATBOX
+    featured: true,
+  },
+  {
     id: 'peso-de-carretes-vacios',
     name: 'Peso de Carretes Vacíos',
     description: 'Base de datos comunitaria de bobinas vacías: buscá tu marca y calculá cuánto filamento te queda.',

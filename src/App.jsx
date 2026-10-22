@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
 import { useRoute } from './lib/router.js';
 import { useActivityPing } from './lib/activity.js';
 import { useAuth } from './auth/AuthContext.jsx';
@@ -9,6 +9,9 @@ import Community from './pages/Community.jsx';
 import Wiki from './pages/Wiki.jsx';
 import Club from './pages/Club.jsx';
 import Orders from './pages/Orders.jsx';
+// El Creador de Llaveros trae el motor 3D: se descarga solo al abrirlo.
+const Keychains = lazy(() => import('./pages/Keychains.jsx'));
+const Loading = () => <div className="empty"><div className="spinner" /></div>;
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
 import { Detail, NotFound, Search } from './pages/Detail.jsx';
@@ -24,6 +27,7 @@ function Page({ route }) {
     case 'community': return <Community />;
     case 'club': return <Club />;
     case 'pedidos': return <Orders />;
+    case 'llaveros': return <Suspense fallback={<Loading />}><Keychains /></Suspense>;
     case 'acceso': return <Account />;
     case 'admin': return <Admin route={route} />;
     case 'buscar': return <Search q={query.q ?? ''} />;
