@@ -29,6 +29,19 @@ const ago = (d) => {
   return `hace ${Math.round(min / 1440)} días`;
 };
 
+// Cobros aprobados de los últimos 12 meses (para el gráfico).
+function monthlyOf(payments) {
+  const now = new Date();
+  const months = Array.from({ length: 12 }, (_, i) => ym(new Date(now.getFullYear(), now.getMonth() - 11 + i, 15)));
+  const by = Object.fromEntries(months.map((k) => [k, { month: k, income: 0, count: 0 }]));
+  for (const p of payments) {
+    if (p.status !== 'approved' || !p.paid_at) continue;
+    const k = ym(p.paid_at);
+    if (by[k]) { by[k].income += Number(p.amount || 0); by[k].count++; }
+  }
+  return months.map((k) => by[k]);
+}
+
 // Estado de pago de cada miembro (para filtrar y para el chip).
 function payState(r) {
   if (!r.pays.length && !r.sub) return 'none';
@@ -56,6 +69,7 @@ export default function AdminSubs() {
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [confirm, setConfirm] = useState(null);
+  const [view, setView] = useState('club'); // club · ads (Espacio publicitario vendedores)
 
   const load = useCallback(async () => {
     if (SIM_DB) { setData(SIM_SUBS); setMembers(SIM_MEMBERS); return; }
@@ -80,7 +94,7 @@ export default function AdminSubs() {
     setSyncing(true);
     try {
       const r = await syncMercadoPago();
-      if (r.subs || r.account_total == null) notify('ok', `Listo: ${r.subs} suscripciones y ${r.pays} cobros revisados`);
+      if (r.subs || r.ads || r.account_total == null) notify('ok', `Listo: ${r.subs} del Makers Club${r.ads ? `, ${r.ads} de publicidad` : ''} y ${r.pays} cobros revisados`);
       else if (!r.account_total) notify('err', 'Tu cuenta de Mercado Pago no tiene ninguna suscripción. ¿El Access Token es de la cuenta que cobra el Makers Club?');
       else notify('err', `El plan del Makers Club no tiene suscripciones, pero tu cuenta tiene ${r.account_total} en otro plan: `
         + r.other_plans.map((p) => `${p.reason || 'sin nombre'} (${p.count}, id ${p.plan_id})`).join(' · '));
@@ -90,12 +104,20 @@ export default function AdminSubs() {
     finally { setSyncing(false); }
   };
 
+  // Makers Club y Espacio publicitario por separado (la publicidad nunca da acceso: migración 016).
+  const [club, ads] = useMemo(() => {
+    const isAd = (x) => x.product === 'publicidad';
+    const subs = data?.subscriptions || [], pays = data?.payments || [];
+    return [{ subscriptions: subs.filter((x) => !isAd(x)), payments: pays.filter((x) => !isAd(x)) },
+      { subscriptions: subs.filter(isAd), payments: pays.filter(isAd) }];
+  }, [data]);
+
   // Une cada miembro con su suscripción y sus pagos.
   const rows = useMemo(() => {
     if (!data) return [];
     const subsBy = {}, paysBy = {};
-    for (const s of data.subscriptions) if (s.member_id) (subsBy[s.member_id] ||= []).push(s);
-    for (const p of data.payments) if (p.member_id) (paysBy[p.member_id] ||= []).push(p);
+    for (const s of club.subscriptions) if (s.member_id) (subsBy[s.member_id] ||= []).push(s);
+    for (const p of club.payments) if (p.member_id) (paysBy[p.member_id] ||= []).push(p);
     return members.map((m) => {
       const subs = subsBy[m.id] || [];
       const pays = paysBy[m.id] || [];
@@ -104,29 +126,19 @@ export default function AdminSubs() {
       r.state = payState(r);
       return r;
     });
-  }, [data, members]);
+  }, [data, club, members]);
 
-  const loose = useMemo(() => (data?.subscriptions || []).filter((s) => !s.member_id), [data]);
+  const loose = useMemo(() => club.subscriptions.filter((s) => !s.member_id), [club]);
   const counts = useMemo(() => {
     const c = { ok: 0, soon: 0, late: 0, none: 0 };
     for (const r of rows) if (r.m.status === 'approved' || r.state !== 'none') c[r.state]++;
     return c;
   }, [rows]);
 
-  const monthly = useMemo(() => {
-    const now = new Date();
-    const months = Array.from({ length: 12 }, (_, i) => ym(new Date(now.getFullYear(), now.getMonth() - 11 + i, 15)));
-    const by = Object.fromEntries(months.map((k) => [k, { month: k, income: 0, count: 0 }]));
-    for (const p of data?.payments || []) {
-      if (p.status !== 'approved' || !p.paid_at) continue;
-      const k = ym(p.paid_at);
-      if (by[k]) { by[k].income += Number(p.amount || 0); by[k].count++; }
-    }
-    return months.map((k) => by[k]);
-  }, [data]);
+  const monthly = useMemo(() => monthlyOf(club.payments), [club]);
   const [month, setMonth] = useState(() => ym(new Date()));
   const thisMonth = monthly.find((r) => r.month === month) || { income: 0, count: 0 };
-  const activeSubs = (data?.subscriptions || []).filter((s) => s.status === 'authorized').length;
+  const activeSubs = club.subscriptions.filter((s) => s.status === 'authorized').length;
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -150,7 +162,7 @@ export default function AdminSubs() {
   const exportPayments = () => {
     const byId = Object.fromEntries(members.map((m) => [m.id, m]));
     downloadCsv(['Fecha', 'Número de operación', 'Miembro', 'Correo', 'Monto', 'Estado', 'Origen', 'Meses', 'Nota'],
-      (data?.payments || []).map((p) => [p.paid_at?.slice(0, 10), p.source === 'manual' ? '' : p.id, byId[p.member_id] ? fullName(byId[p.member_id]) : 'Sin unir',
+      club.payments.map((p) => [p.paid_at?.slice(0, 10), p.source === 'manual' ? '' : p.id, byId[p.member_id] ? fullName(byId[p.member_id]) : 'Sin unir',
         byId[p.member_id]?.email || p.payer_email, p.amount, PAY_STATUS[p.status]?.label || p.status, p.source === 'manual' ? 'Manual' : 'Mercado Pago', p.months, p.notes]),
       `makers-club-pagos-${today()}.csv`);
   };
@@ -172,10 +184,20 @@ export default function AdminSubs() {
         </div>
         <div className="sb-actions">
           <button className="btn ghost" onClick={sync} disabled={syncing}><Icon name="refresh" size={16} /> {syncing ? 'Trayendo…' : 'Traer de Mercado Pago'}</button>
-          <button className="btn ghost" onClick={exportMembers}><Icon name="clipboard" size={16} /> Exportar suscriptores</button>
-          <button className="btn ghost" onClick={exportPayments}><Icon name="clipboard" size={16} /> Exportar pagos</button>
+          {view === 'club' && <>
+            <button className="btn ghost" onClick={exportMembers}><Icon name="clipboard" size={16} /> Exportar suscriptores</button>
+            <button className="btn ghost" onClick={exportPayments}><Icon name="clipboard" size={16} /> Exportar pagos</button>
+          </>}
         </div>
       </div>
+
+      <div className="view-toggle subs-views">
+        <button className={'seg' + (view === 'club' ? ' active' : '')} onClick={() => setView('club')}>Makers Club · {club.subscriptions.length}</button>
+        <button className={'seg' + (view === 'ads' ? ' active' : '')} onClick={() => setView('ads')}>Espacio publicitario · {ads.subscriptions.length}</button>
+      </div>
+
+      {view === 'ads' && <AdsView subs={ads.subscriptions} payments={ads.payments} />}
+      {view === 'club' && <>
 
       <div className="member-stats subs-stats">
         <div className="mstat static"><b className="c-cyan">{activeSubs}</b><span>Suscripciones activas</span></div>
@@ -194,7 +216,7 @@ export default function AdminSubs() {
           : <p className="ed-hint">Todavía no hay cobros registrados. Aparecen acá cuando llegan de Mercado Pago o cuando cargás un pago manual.</p>}
       </section>
 
-      {loose.length > 0 && <LooseSubs subs={loose} members={members} payments={data.payments} busy={busy}
+      {loose.length > 0 && <LooseSubs subs={loose} members={members} payments={club.payments} busy={busy}
         onLink={(s, mid) => run(() => linkSubscription(s.id, mid), 'Suscripción unida')} />}
 
       {lateApproved.length > 0 && (filter === 'late' || filter === 'paying') && (
@@ -222,6 +244,8 @@ export default function AdminSubs() {
             {list.map((r) => <SubRow key={r.m.id} r={r} onOpen={() => setSel(r.m.id)} />)}
           </div>
         )}
+
+      </>}
 
       {selRow && <SubDetail r={selRow} busy={busy} onClose={() => setSel(null)}
         onManual={(f) => run(() => manualPayment(selRow.m.id, f), 'Pago registrado')}
@@ -371,5 +395,89 @@ function LooseSubs({ subs, members, payments, busy, onLink }) {
         );
       })}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------
+// ESPACIO PUBLICITARIO VENDEDORES: solo estadística (no da acceso a nada).
+// ---------------------------------------------------------------------
+function AdsView({ subs, payments }) {
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState('authorized');
+  const monthly = useMemo(() => monthlyOf(payments), [payments]);
+  const [month, setMonth] = useState(() => ym(new Date()));
+  const sel = monthly.find((r) => r.month === month) || { income: 0, count: 0 };
+  const total12 = monthly.reduce((a, r) => a + r.income, 0);
+  const rows = useMemo(() => subs.map((s) => {
+    const mine = payments.filter((p) => p.subscription_id === s.id && p.status === 'approved');
+    return { s, last: mine[0] || null, count: mine.length, total: mine.reduce((a, p) => a + Number(p.amount || 0), 0) };
+  }), [subs, payments]);
+  const needle = q.trim().toLowerCase();
+  const list = rows.filter((r) => (status === 'all' || (status === 'authorized' ? r.s.status === 'authorized' : r.s.status !== 'authorized'))
+    && (!needle || [r.s.payer_email, r.s.reason, ...payments.filter((p) => p.subscription_id === r.s.id).map((p) => p.id)].some((v) => v?.toLowerCase().includes(needle))));
+  const active = subs.filter((s) => s.status === 'authorized').length;
+
+  const exportAds = () => downloadCsv(
+    ['Correo de Mercado Pago', 'Plan', 'Estado', 'Desde', 'Monto mensual', 'Próximo cobro', 'Último cobro', 'Cobros', 'Total cobrado'],
+    rows.map((r) => [r.s.payer_email, r.s.reason, SUB_STATUS[r.s.status]?.label || r.s.status, r.s.date_created?.slice(0, 10), r.s.amount,
+      r.s.status === 'authorized' ? r.s.next_payment_date?.slice(0, 10) : '', r.last?.paid_at?.slice(0, 10), r.count, r.total]),
+    `espacio-publicitario-${today()}.csv`,
+  );
+
+  return (
+    <div>
+      <div className="member-stats ads-stats">
+        <div className="mstat static"><b className="c-cyan">{active}</b><span>Activas</span></div>
+        <div className="mstat static t-muted"><b>{subs.length - active}</b><span>Canceladas o pausadas</span></div>
+        <div className="mstat static"><b className="c-ok">{money(sel.income)}</b><span>Cobrado en {month === ym(new Date()) ? 'este mes' : 'el mes elegido'}</span></div>
+        <div className="mstat static"><b className="c-ok">{money(total12)}</b><span>Últimos 12 meses</span></div>
+      </div>
+
+      <section className="card subs-chart">
+        <div className="section-label">COBROS POR MES · ESPACIO PUBLICITARIO</div>
+        {monthly.some((r) => r.income > 0)
+          ? <MonthlyIncome rows={monthly} selected={month} onSelect={setMonth} unit={['cobro', 'cobros']} incomeLabel="Cobrado" />
+          : <p className="ed-hint">Todavía no hay cobros registrados de Espacio publicitario.</p>}
+      </section>
+
+      <div className="filters card">
+        <div className="filter-row">
+          <SearchInput value={q} onChange={setQ} placeholder="Buscar por correo de Mercado Pago o número de operación…" />
+          <div className="view-toggle">
+            {[['authorized', 'Activas'], ['other', 'Canceladas'], ['all', 'Todas']].map(([v, l]) => (
+              <button key={v} className={'seg' + (status === v ? ' active' : '')} onClick={() => setStatus(v)}>{l}</button>
+            ))}
+          </div>
+          <button className="btn ghost" onClick={exportAds}><Icon name="clipboard" size={16} /> Exportar</button>
+        </div>
+        <p className="ed-hint">Suscripciones de los vendedores que pagan su espacio publicitario. Solo se registran acá: no dan acceso al Makers Club.</p>
+      </div>
+
+      {!list.length ? <Empty icon="star" title="Nadie en esta lista" text={q ? 'Probá con otra búsqueda.' : 'Cuando traigas los datos de Mercado Pago, aparecen acá.'} />
+        : (
+          <div className="admin-list">
+            {list.map(({ s, last, count, total }) => {
+              const st = SUB_STATUS[s.status] || { label: s.status, cls: 'muted' };
+              return (
+                <div key={s.id} className="member-row sub-row">
+                  <span className="avatar">{(s.payer_email?.[0] || '?').toUpperCase()}</span>
+                  <span className="mr-main">
+                    <strong>{s.payer_email || 'Correo no informado por Mercado Pago'}</strong>
+                    <small>Desde {fmtDate(s.date_created)} · {money(s.amount)} por mes</small>
+                    <small className="mr-social">
+                      {last && <span>Último cobro {fmtDate(last.paid_at)} · {money(last.amount)}</span>}
+                      {count > 0 && <span>{count} {count === 1 ? 'cobro' : 'cobros'} · {money(total)}</span>}
+                    </small>
+                  </span>
+                  <span className="mr-side">
+                    <span className={'chip ' + st.cls}>{st.label}</span>
+                    {s.status === 'authorized' && s.next_payment_date && <small>Próximo cobro {fmtDate(s.next_payment_date)}</small>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+    </div>
   );
 }

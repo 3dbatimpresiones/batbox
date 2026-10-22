@@ -120,6 +120,8 @@ if (SIM_DB) {
   simPays.push({ id: '90000000301', subscription_id: 's3', member_id: 'm3', source: 'mp', status: 'approved', amount: 5000, paid_at: d(-43), months: 1, notes: '' });
   simPays.push({ id: 'manual-1', member_id: 'm5', source: 'manual', status: 'approved', amount: 14000, paid_at: d(-10), months: 3, notes: 'Transferencia' });
   simPays.push({ id: '90000000401', subscription_id: 's4', member_id: null, source: 'mp', status: 'approved', amount: 5000, paid_at: d(-1), months: 1, notes: '' });
+  for (let i = 0; i < 5; i++) simPays.push({ id: String(90000000500 + i), subscription_id: 'a1', member_id: null, product: 'publicidad', source: 'mp', status: 'approved', amount: 9000, paid_at: d(-2 - 30 * i), months: 1, notes: '' });
+  simPays.push({ id: '90000000601', subscription_id: 'a2', member_id: null, product: 'publicidad', source: 'mp', status: 'approved', amount: 9000, paid_at: d(-70), months: 1, notes: '' });
   simPays.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
 }
 export const SIM_SUBS = SIM_DB ? {
@@ -127,6 +129,8 @@ export const SIM_SUBS = SIM_DB ? {
     { id: 's4', status: 'authorized', payer_email: 'cuenta.mp@hotmail.com', amount: 5000, date_created: d(-1), next_payment_date: d(29), member_id: null },
     { id: 's1', status: 'authorized', payer_email: 'maker.uno@ejemplo.com', amount: 5000, date_created: d(-240), next_payment_date: d(23), member_id: 'm1', linked_by: 'email' },
     { id: 's2', status: 'authorized', payer_email: 'otro.correo@yahoo.com', amount: 5000, date_created: d(-120), next_payment_date: d(-6), member_id: 'm2', linked_by: 'operacion' },
+    { id: 'a1', product: 'publicidad', status: 'authorized', payer_email: 'tienda.filamentos@ejemplo.com', amount: 9000, date_created: d(-150), next_payment_date: d(28), member_id: null },
+    { id: 'a2', product: 'publicidad', status: 'cancelled', payer_email: 'repuestos3d@ejemplo.com', amount: 9000, date_created: d(-100), next_payment_date: null, member_id: null },
     { id: 's3', status: 'cancelled', payer_email: 'maker.tres@ejemplo.com', amount: 5000, date_created: d(-43), next_payment_date: null, member_id: 'm3', linked_by: 'email' },
   ],
   payments: simPays,

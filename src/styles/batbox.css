@@ -781,3 +781,6 @@
   .loose-row { flex-direction: column; align-items: stretch; }
   .lr-main { min-width: 0; }
 }
+.subs-views { margin: 0 0 16px; }
+.ads-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 760px) { .ads-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .subs-views { display: flex; } .subs-views .seg { flex: 1; } }
