@@ -10,6 +10,7 @@ import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
 import { MonthlyIncome } from '../components/OrderCharts.jsx';
 import { suggest } from '../lib/match.js';
+import { TRIAL_DAYS } from '../config.js';
 import MemberDataForm, { memberData } from '../components/MemberDataForm.jsx';
 import '../styles/orders.css';
 
@@ -609,7 +610,7 @@ function AdsView({ subs, payments }) {
 }
 
 // ---------------------------------------------------------------------
-// PRUEBAS GRATIS de 14 días (cuentas nuevas): cuántas hay y quién se suscribió.
+// PRUEBAS GRATIS (cuentas nuevas): cuántas hay y quién se suscribió.
 // ---------------------------------------------------------------------
 function TrialsCard({ trials }) {
   const [open, setOpen] = useState(false);
@@ -623,7 +624,7 @@ function TrialsCard({ trials }) {
     <section className="card trials-card">
       <div className="tc-head">
         <div>
-          <div className="section-label">PRUEBAS GRATIS · 14 DÍAS</div>
+          <div className="section-label">PRUEBAS GRATIS · {TRIAL_DAYS} DÍAS</div>
           <h3>Cuentas nuevas probando el Makers Club</h3>
         </div>
         <div className="tc-stats">

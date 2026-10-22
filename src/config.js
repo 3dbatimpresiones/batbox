@@ -11,6 +11,8 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_du93qodYkSZRevJ-BgXUGw_B
 // Precio de la suscripción mensual al Makers Club (se muestra en la web; el cobro real lo define el plan de Mercado Pago).
 export const CLUB_PRICE = 5000;
 export const CLUB_PRICE_TEXT = '$' + CLUB_PRICE.toLocaleString('es-AR');
+// Días de prueba gratis para cuentas nuevas (lo que manda es bb_trial_days() en la base, migración 022).
+export const TRIAL_DAYS = 7;
 
 export const LINKS = {
   cotizadorPro: 'https://3dbatimpresiones.github.io/cotizador-3dbat-pro/',

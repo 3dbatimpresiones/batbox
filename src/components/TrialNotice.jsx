@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { CLUB_PRICE_TEXT } from '../config.js';
+import { CLUB_PRICE_TEXT, TRIAL_DAYS } from '../config.js';
 import Icon from './Icon.jsx';
 
-// Aviso flotante en el Inicio sobre la prueba gratis de 14 días (migración 022):
+// Aviso flotante en el Inicio sobre la prueba gratis (migración 022):
 //   · durante la prueba: cuántos días quedan (se oculta por esta visita al cerrarlo)
-//   · al terminar: recordatorio para suscribirse (al cerrarlo vuelve a aparecer en 3 días)
-const LATER_DAYS = 3;
+//   · al terminar: recordatorio para suscribirse, UNA sola vez (si toca "Ahora no" no vuelve)
 const keyOf = (uid, kind) => `bb_trial_notice_${kind}_${uid}`;
 export const daysLeftOf = (end) => Math.max(0, Math.ceil((new Date(end) - Date.now()) / 864e5));
 
@@ -22,7 +21,7 @@ export default function TrialNotice({ route }) {
     let h = false;
     try {
       if (kind === 'active') h = sessionStorage.getItem(keyOf(uid, kind)) === '1';
-      else h = Date.now() < Number(localStorage.getItem(keyOf(uid, kind)) || 0);
+      else h = localStorage.getItem(keyOf(uid, kind)) === '1';
     } catch { /* sin storage: se muestra */ }
     setHidden(h);
   }, [kind, uid]);
@@ -31,7 +30,7 @@ export default function TrialNotice({ route }) {
   const close = () => {
     try {
       if (kind === 'active') sessionStorage.setItem(keyOf(uid, kind), '1');
-      else localStorage.setItem(keyOf(uid, kind), String(Date.now() + LATER_DAYS * 864e5));
+      else localStorage.setItem(keyOf(uid, kind), '1');
     } catch { /* nada */ }
     setHidden(true);
   };
@@ -54,7 +53,7 @@ export default function TrialNotice({ route }) {
     <aside className="trial-notice ended" role="status">
       <span className="tn-ico"><Icon name="crown" size={18} /></span>
       <div className="tn-body">
-        <strong>Terminó tu prueba gratis de 14 días</strong>
+        <strong>Terminó tu prueba gratis de {TRIAL_DAYS} días</strong>
         <small>¿Te gustaron las funciones PRO? Para seguir usándolas suscribite al Makers Club por <b>{CLUB_PRICE_TEXT} por mes</b>. Se cobra solo y lo cancelás cuando quieras.</small>
         <div className="tn-actions">
           <a className="btn club small" href="#/acceso"><Icon name="crown" size={14} /> Quiero suscribirme</a>
