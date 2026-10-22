@@ -19,7 +19,7 @@ export default function WelcomeChoice({ route }) {
   useEffect(() => {
     // Si ya tuvo la prueba y terminó, alcanza con el recordatorio del Inicio (TrialNotice).
     const show = (access === 'none' && !trial) || isTrial;
-    if (!show || !uid || route.parts[0] === 'acceso') { setOpen(false); return; }
+    if (!show || !uid || ['acceso', 'suscribirme'].includes(route.parts[0])) { setOpen(false); return; }
     let seen = false;
     try { seen = localStorage.getItem(KEY(uid)) === '1'; } catch { /* sin storage: se muestra */ }
     setOpen(!seen);

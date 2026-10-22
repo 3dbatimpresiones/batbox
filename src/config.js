@@ -21,6 +21,8 @@ export const LINKS = {
   // Suscripción mensual al Makers Club (plan de Mercado Pago) y dónde la gestiona cada persona.
   mpSubscribe: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=2c9380848b8b1e59018b8ba9505d0065',
   mpManage: 'https://www.mercadopago.com.ar/subscriptions',
+  // Para quien está fuera de Argentina (se aprueba a mano al ver el pago).
+  paypalSubscribe: 'https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3YW5408561955474SNAH7JZI',
 };
 
 // Cuentas DUEÑAS (las únicas que dan o quitan permisos): las define la base

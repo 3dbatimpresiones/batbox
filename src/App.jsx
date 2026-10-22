@@ -9,6 +9,7 @@ import Community from './pages/Community.jsx';
 import Wiki from './pages/Wiki.jsx';
 import Club from './pages/Club.jsx';
 import Orders from './pages/Orders.jsx';
+import Subscribe from './pages/Subscribe.jsx';
 // El Creador de Llaveros trae el motor 3D: se descarga solo al abrirlo.
 const Keychains = lazy(() => import('./pages/Keychains.jsx'));
 const Loading = () => <div className="empty"><div className="spinner" /></div>;
@@ -31,6 +32,7 @@ function Page({ route }) {
     case 'pedidos': return <Orders />;
     case 'llaveros': return <Suspense fallback={<Loading />}><Keychains /></Suspense>;
     case 'acceso': return <Account />;
+    case 'suscribirme': return <Subscribe />; // página oculta de pago directo (no está en ningún menú)
     case 'admin': return <Admin route={route} />;
     case 'buscar': return <Search q={query.q ?? ''} />;
     case 'ver': return <Detail id={parts[1]} />;
