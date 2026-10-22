@@ -44,6 +44,11 @@ export async function linkSubscription(subId, memberId) {
   if (error) throw new Error(msg(error));
 }
 
+export async function memberFromSubscription(subId) {
+  const { error } = await sb.rpc('bb_admin_member_from_subscription', { p_sub: subId });
+  if (error) throw new Error(/bb_admin_member_from_subscription|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 018 en Supabase.' : error.message);
+}
+
 export async function unlinkSubscription(subId) {
   const { error } = await sb.rpc('bb_admin_unlink_subscription', { p_sub: subId });
   if (error) throw new Error(/bb_admin_unlink_subscription|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 017 en Supabase.' : error.message);

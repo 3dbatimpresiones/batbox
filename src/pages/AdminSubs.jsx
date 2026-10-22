@@ -3,7 +3,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
 import {
   PAY_STATUS, SUB_STATUS, adminSubscriptions, daysLeft, deleteManualPayment, downloadCsv, fmtDate, linkSubscription,
-  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago, unlinkSubscription,
+  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago, unlinkSubscription, memberFromSubscription,
 } from '../lib/subsApi.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
@@ -220,7 +220,9 @@ export default function AdminSubs() {
       {loose.length > 0 && <LooseSubs subs={loose} members={members} payments={club.payments} busy={busy}
         onLink={(s, mid) => run(() => linkSubscription(s.id, mid), 'Suscripción unida')}
         onLinkMany={(pairs) => run(async () => { for (const [sid, mid] of pairs) await linkSubscription(sid, mid); },
-          `${pairs.length} suscripciones unidas`)} />}
+          `${pairs.length} suscripciones unidas`)}
+        onAddMany={(ids) => run(async () => { for (const id of ids) await memberFromSubscription(id); },
+          ids.length === 1 ? 'Miembro agregado y unido' : `${ids.length} miembros agregados y unidos`)} />}
 
       {lateApproved.length > 0 && (filter === 'late' || filter === 'paying') && (
         <div className="admin-warn">
@@ -391,10 +393,11 @@ function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink }) {
 
 // Suscripciones que no se pudieron unir solas (pagó con un correo que no está en la lista
 // y todavía no puso su número de operación). BATBOX sugiere quién es (lib/match.js).
-function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany }) {
+function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany, onAddMany }) {
   const [pick, setPick] = useState({});
   const [showOld, setShowOld] = useState(false);
   const [bulk, setBulk] = useState(null);
+  const [toAdd, setToAdd] = useState(null);
   const sorted = useMemo(() => [...members].sort((a, b) => fullName(a).localeCompare(fullName(b), 'es')), [members]);
   const rows = useMemo(() => subs
     .map((s) => ({ s, sug: suggest(s, members), active: s.status === 'authorized' }))
@@ -403,6 +406,8 @@ function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany }) {
   const active = rows.filter((r) => r.active);
   const shown = showOld ? rows : active;
   const safe = rows.filter((r) => r.sug?.safe);
+  // Activas, con correo y sin ningún parecido en la lista: casi seguro no están cargadas como miembros.
+  const missing = active.filter((r) => !r.sug && r.s.payer_email);
 
   return (
     <section className="card loose-subs">
@@ -416,6 +421,11 @@ function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany }) {
         {safe.length > 0 && (
           <button className="btn primary small" disabled={busy} onClick={() => setBulk(safe)}>
             <Icon name="check" size={15} /> Unir las {safe.length} sugerencias seguras
+          </button>
+        )}
+        {missing.length > 0 && (
+          <button className="btn ghost small" disabled={busy} onClick={() => setToAdd(missing.map((r) => r.s))}>
+            <Icon name="user" size={15} /> {missing.length === 1 ? 'Agregar como miembro la que no está en la lista' : `Agregar como miembros las ${missing.length} que no están en la lista`}
           </button>
         )}
         {rows.length > active.length && (
@@ -450,9 +460,18 @@ function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany }) {
               </select></div>
               <button className="btn primary small" disabled={busy || !value} onClick={() => onLink(s, value)}>Unir</button>
             </div>
+            {s.payer_email && !value && (
+              <button className="chip-btn lr-add" disabled={busy} onClick={() => setToAdd([s])}>No está en la lista: agregar como miembro</button>
+            )}
           </div>
         );
       })}
+      <Confirm open={!!toAdd} title={toAdd?.length === 1 ? 'Agregar como miembro' : `Agregar ${toAdd?.length || 0} miembros`}
+        text={toAdd ? `Se agrega${toAdd.length === 1 ? '' : 'n'} a la lista de Miembros con el correo de Mercado Pago, unido${toAdd.length === 1 ? '' : 's'} a su suscripción y aprobado${toAdd.length === 1 ? '' : 's'} si está${toAdd.length === 1 ? '' : 'n'} al día: `
+          + toAdd.map((x) => x.payer_email).join(' · ')
+          + '. Si entran con ese mismo correo de Google, entran directo. Si usan otra cuenta, ponen su número de operación y se pasa solo.' : ''}
+        yes="Agregar" onNo={() => setToAdd(null)}
+        onYes={() => { const t = toAdd; setToAdd(null); onAddMany(t.map((x) => x.id)); }} />
       <Confirm open={!!bulk} title={`Unir ${bulk?.length || 0} suscripciones`}
         text={bulk ? bulk.map((r) => `${r.s.payer_name || r.s.payer_email || r.s.id} → ${fullName(r.sug.member)}`).join(' · ') : ''}
         yes="Unir todas" onNo={() => setBulk(null)}
