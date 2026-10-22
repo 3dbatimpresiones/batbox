@@ -6,6 +6,7 @@ import {
 } from '../lib/ordersApi.js';
 import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
+import { TrialChip } from '../components/TrialBadge.jsx';
 import OrderEditor from '../components/OrderEditor.jsx';
 import { MonthlyIncome, ProductsDonut, monthLabel } from '../components/OrderCharts.jsx';
 import { Confirm, Empty } from '../components/ui.jsx';
@@ -155,7 +156,7 @@ function OrdersApp() {
         <header className="ob-head">
           <div>
             <h1 className="ob-title">CONTROL DE PEDIDOS</h1>
-            <div className="ob-sub">3DBAT · MAKERS CLUB · {monthLabel(month, true).toUpperCase()}</div>
+            <div className="ob-sub">3DBAT · MAKERS CLUB · {monthLabel(month, true).toUpperCase()} <TrialChip /></div>
           </div>
           <button type="button" className="btn primary ob-new" onClick={newOrder}>+ Registrar Pedido</button>
         </header>

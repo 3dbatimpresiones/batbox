@@ -1,6 +1,9 @@
 import Icon from './Icon.jsx';
+import { TrialChip, useTrialLeft } from './TrialBadge.jsx';
 
 export function AccessChip({ access }) {
+  const left = useTrialLeft();
+  if (access === 'club' && left != null) return <TrialChip />;
   return access === 'club'
     ? <span className="chip club"><Icon name="lock" size={11} /> Makers Club</span>
     : <span className="chip free">Gratis</span>;

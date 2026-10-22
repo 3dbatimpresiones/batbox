@@ -3,6 +3,7 @@ import { newest, useContent } from '../data/ContentContext.jsx';
 import { fmtDate } from '../lib/text.js';
 import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
+import { TrialChip } from '../components/TrialBadge.jsx';
 import { SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, NewsRow, ToolCard } from '../components/Cards.jsx';
 import ClubPitch, { Benefits } from '../components/ClubPitch.jsx';
@@ -53,7 +54,7 @@ export default function Club() {
           <div className="section-label">TU MEMBRESÍA</div>
           <div className="chips">
             {isTrial
-              ? <span className="chip club"><Icon name="crown" size={12} /> Prueba gratis</span>
+              ? <TrialChip />
               : <span className="chip ok"><Icon name="check" size={12} /> Miembro activo</span>}
             {isAdmin && <span className="chip club">✦ Admin</span>}
             {isEditor && <span className="chip cat">✎ Editor</span>}

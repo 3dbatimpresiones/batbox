@@ -888,3 +888,16 @@
 .tc-stats b { font-size: 17px; color: #fff; margin-right: 3px; }
 .tc-list { margin-top: 12px; }
 @media (max-width: 1280px) { .trial-notice { bottom: 84px; } }
+
+/* Prueba gratis: franja del Inicio y etiqueta en lo premium */
+.trial-bar { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; padding: 10px 14px 10px 16px; border-radius: 16px;
+  background: rgba(247,142,182,.1); border: 1px solid rgba(247,142,182,.4); color: #e2e8f0; font-size: 13.5px; line-height: 1.45; }
+.trial-bar > svg { flex: none; color: var(--pink); }
+.trial-bar > span { flex: 1; min-width: 0; }
+.trial-bar b { color: var(--pink); }
+.trial-bar .btn { flex: none; }
+.trial-chip { white-space: nowrap; }
+.ob-sub .trial-chip, .kc-head-title .trial-chip { margin-left: 8px; vertical-align: middle; letter-spacing: 0; }
+.kc-head-title .trial-chip { display: inline-flex; margin: 6px 0 0; }
+@media (max-width: 640px) { .trial-bar { flex-wrap: wrap; } .trial-bar .tb-after { display: none; } }
+.kc-head-title .trial-chip { width: fit-content; align-self: flex-start; }

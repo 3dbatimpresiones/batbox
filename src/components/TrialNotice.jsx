@@ -13,7 +13,8 @@ export default function TrialNotice({ route }) {
   const { access, isTrial, trialEndsAt, trial, user } = useAuth();
   const uid = user?.id;
   const ended = access === 'none' && trial && !trial.active;
-  const kind = isTrial ? 'active' : ended ? 'ended' : null;
+  // Durante la prueba no flota nada: se ve en la franja del Inicio y en cada cosa premium (TrialBadge).
+  const kind = ended ? 'ended' : null;
   const [hidden, setHidden] = useState(true);
 
   useEffect(() => {

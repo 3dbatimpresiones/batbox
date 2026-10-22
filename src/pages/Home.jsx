@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { navigate } from '../lib/router.js';
 import { newest, useContent } from '../data/ContentContext.jsx';
 import Icon from '../components/Icon.jsx';
+import { TrialBar } from '../components/TrialBadge.jsx';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
@@ -53,6 +54,7 @@ export default function Home() {
 
   return (
     <div className="home">
+      <TrialBar />
       <section className="hero">
         <div className="hero-orb o1" /><div className="hero-orb o2" /><div className="hero-orb o3" />
         <div className="hero-in">

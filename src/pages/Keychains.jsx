@@ -5,6 +5,7 @@ import { BEDS, arrange, build3MF, fileSafe, parseNames, placeOf, plateFileName, 
 import { CATEGORIES, POPULAR, defaultWeight, fetchFont, loadFontList, showFontInPage } from '../lib/keychain/fonts.js';
 import { norm } from '../lib/text.js';
 import Icon from '../components/Icon.jsx';
+import { TrialChip } from '../components/TrialBadge.jsx';
 import KeychainViewer from '../components/KeychainViewer.jsx';
 import '../styles/keychains.css';
 
@@ -397,6 +398,7 @@ export default function Keychains() {
         <div className="kc-head-title">
           <div className="section-label">HERRAMIENTAS · BATBOX</div>
           <h1>Creador de Llaveros Múltiples Nombres</h1>
+          <TrialChip />
         </div>
         <p>Pegá todos los nombres y armá el mismo llavero para cada uno, listo para tu impresora.</p>
       </header>
