@@ -14,6 +14,13 @@ export const STATUSES = [
   { id: 'entregado', label: 'Entregado', cls: 'ok' },
 ];
 export const statusOf = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
+
+// Vista simple (como la de una planilla): dos tildes, "Hecho" y "Entregado".
+// Hecho = listo o entregado · Entregado = entregado. 'produccion' cuenta como "sin hacer".
+export const isMade = (o) => o.status === 'listo' || o.status === 'entregado';
+export const isDelivered = (o) => o.status === 'entregado';
+export const toggleMade = (o) => (isMade(o) ? 'pendiente' : 'listo');
+export const toggleDelivered = (o) => (isDelivered(o) ? 'listo' : 'entregado');
 export const nextStatus = (id) => STATUSES[Math.min(STATUSES.findIndex((s) => s.id === id) + 1, STATUSES.length - 1)].id;
 
 const BUCKET = 'bb-pedidos';
