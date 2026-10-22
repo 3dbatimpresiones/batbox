@@ -45,8 +45,18 @@ export async function linkSubscription(subId, memberId) {
 }
 
 export async function memberFromSubscription(subId) {
-  const { error } = await sb.rpc('bb_admin_member_from_subscription', { p_sub: subId });
+  const { data, error } = await sb.rpc('bb_admin_member_from_subscription', { p_sub: subId });
   if (error) throw new Error(/bb_admin_member_from_subscription|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 018 en Supabase.' : error.message);
+  return data; // id del miembro
+}
+
+// Editar nombre, apellido, celular, Discord e Instagram de un miembro (migración 019).
+export async function updateMember(memberId, f) {
+  const { error } = await sb.rpc('bb_admin_update_member', {
+    p_member: memberId, p_first_name: f.first_name.trim(), p_last_name: f.last_name.trim(),
+    p_phone: f.phone.trim(), p_discord: f.discord.trim(), p_instagram: f.instagram.trim(),
+  });
+  if (error) throw new Error(/bb_admin_update_member|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 019 en Supabase.' : error.message);
 }
 
 export async function unlinkSubscription(subId) {

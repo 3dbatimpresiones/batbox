@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
 import {
   PAY_STATUS, SUB_STATUS, adminSubscriptions, daysLeft, deleteManualPayment, downloadCsv, fmtDate, linkSubscription,
-  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago, unlinkSubscription, memberFromSubscription,
+  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago, unlinkSubscription, memberFromSubscription, updateMember,
 } from '../lib/subsApi.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
 import { MonthlyIncome } from '../components/OrderCharts.jsx';
 import { suggest } from '../lib/match.js';
+import MemberDataForm, { memberData } from '../components/MemberDataForm.jsx';
 import '../styles/orders.css';
 
 // =====================================================================
@@ -222,7 +224,12 @@ export default function AdminSubs() {
         onLinkMany={(pairs) => run(async () => { for (const [sid, mid] of pairs) await linkSubscription(sid, mid); },
           `${pairs.length} suscripciones unidas`)}
         onAddMany={(ids) => run(async () => { for (const id of ids) await memberFromSubscription(id); },
-          ids.length === 1 ? 'Miembro agregado y unido' : `${ids.length} miembros agregados y unidos`)} />}
+          ids.length === 1 ? 'Miembro agregado y unido' : `${ids.length} miembros agregados y unidos`)}
+        onAddOne={(subId, names) => run(async () => {
+          const id = await memberFromSubscription(subId);
+          // Si ya existía alguien con ese correo, se conservan sus otros datos.
+          if (id && (names.first_name.trim() || names.last_name.trim())) await updateMember(id, { ...memberData(members.find((m) => m.id === id)), ...names });
+        }, 'Miembro agregado y unido')} />}
 
       {lateApproved.length > 0 && (filter === 'late' || filter === 'paying') && (
         <div className="admin-warn">
@@ -255,7 +262,8 @@ export default function AdminSubs() {
       {selRow && <SubDetail r={selRow} busy={busy} onClose={() => setSel(null)}
         onManual={(f) => run(() => manualPayment(selRow.m.id, f), 'Pago registrado')}
         onDelete={(p) => run(() => deleteManualPayment(p.id), 'Pago manual borrado')}
-        onUnlink={(s) => run(() => unlinkSubscription(s.id), 'Suscripción desunida: volvió a "Sin unir"')} />}
+        onUnlink={(s) => run(() => unlinkSubscription(s.id), 'Suscripción desunida: volvió a "Sin unir"')}
+        onSaveData={(f) => run(() => updateMember(selRow.m.id, f), 'Datos guardados')} />}
 
       <Confirm open={!!confirm} danger title="Marcar como vencidos"
         text={confirm ? `Dejan de entrar a Makers Club y al Cotizador PRO hasta que vuelvan a pagar: ${confirm.map((r) => fullName(r.m)).join(', ')}.` : ''}
@@ -300,14 +308,13 @@ function SubRow({ r, onOpen }) {
   );
 }
 
-function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink }) {
+function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink, onSaveData }) {
   const [f, setF] = useState({ amount: r.sub?.amount || r.last?.amount || '', date: today(), months: 1, notes: '' });
   const [toDel, setToDel] = useState(null);
   const [toUnlink, setToUnlink] = useState(null);
   const sub = r.sub;
   const how = { email: 'sola, por el correo', operacion: 'con el número de operación', admin: 'a mano (admin)' };
   const rowsInfo = [
-    ['Celular', r.m.phone],
     ['Suscripción de Mercado Pago', sub ? (SUB_STATUS[sub.status]?.label || sub.status) : 'No tiene'],
     ['Correo de Mercado Pago', sub?.payer_email],
     ['Suscripto desde', sub && fmtDate(sub.date_created)],
@@ -330,6 +337,9 @@ function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink }) {
           <span className={'chip ' + STATES[r.state].cls}>{STATES[r.state].label}</span>
         </div>
         <dl className="md-rows">{rowsInfo.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+
+        <div className="section-label">DATOS DEL MIEMBRO</div>
+        <MemberDataForm member={r.m} busy={busy} onSave={onSaveData} />
 
         {r.subs.length > 0 && <>
           <div className="section-label">SUSCRIPCIONES DE MERCADO PAGO UNIDAS</div>
@@ -393,11 +403,16 @@ function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink }) {
 
 // Suscripciones que no se pudieron unir solas (pagó con un correo que no está en la lista
 // y todavía no puso su número de operación). BATBOX sugiere quién es (lib/match.js).
-function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany, onAddMany }) {
+function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany, onAddMany, onAddOne }) {
   const [pick, setPick] = useState({});
   const [showOld, setShowOld] = useState(false);
   const [bulk, setBulk] = useState(null);
   const [toAdd, setToAdd] = useState(null);
+  const [addOne, setAddOne] = useState(null); // { s, first_name, last_name }
+  const openAddOne = (s) => {
+    const parts = (s.payer_name || '').trim().split(/\s+/).filter(Boolean);
+    setAddOne({ s, first_name: parts[0] || '', last_name: parts.slice(1).join(' ') });
+  };
   const sorted = useMemo(() => [...members].sort((a, b) => fullName(a).localeCompare(fullName(b), 'es')), [members]);
   const rows = useMemo(() => subs
     .map((s) => ({ s, sug: suggest(s, members), active: s.status === 'authorized' }))
@@ -461,11 +476,36 @@ function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany, onAddMan
               <button className="btn primary small" disabled={busy || !value} onClick={() => onLink(s, value)}>Unir</button>
             </div>
             {s.payer_email && !value && (
-              <button className="chip-btn lr-add" disabled={busy} onClick={() => setToAdd([s])}>No está en la lista: agregar como miembro</button>
+              <button className="chip-btn lr-add" disabled={busy} onClick={() => openAddOne(s)}>No está en la lista: agregar como miembro</button>
             )}
           </div>
         );
       })}
+      {createPortal(<>
+      {addOne && (
+        <div className="modal-back" onClick={() => setAddOne(null)}>
+          <div className="modal wide" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <h2>Agregar como miembro</h2>
+            <p>Se agrega a la lista de Miembros con el correo <b>{addOne.s.payer_email}</b>, unido a esta suscripción y aprobado si está al día.
+              Si sabés quién es, poné su nombre (lo podés cambiar después en su ficha).</p>
+            <div className="member-form">
+              {[['first_name', 'Nombre'], ['last_name', 'Apellido']].map(([k, label]) => (
+                <label key={k} className="ed-field">
+                  <span className="ed-label">{label}</span>
+                  <div className="pink-input"><input maxLength={60} value={addOne[k]} autoFocus={k === 'first_name'}
+                    onChange={(e) => setAddOne((x) => ({ ...x, [k]: e.target.value }))} /></div>
+                </label>
+              ))}
+            </div>
+            <p className="ed-hint">Si entra con ese mismo correo de Google, entra directo. Si usa otra cuenta, pone su número de operación y se pasa solo.</p>
+            <div className="modal-actions">
+              <button className="btn ghost" onClick={() => setAddOne(null)}>Cancelar</button>
+              <button className="btn primary" disabled={busy} onClick={() => { const a = addOne; setAddOne(null);
+                onAddOne(a.s.id, { first_name: a.first_name, last_name: a.last_name }); }}>Agregar y unir</button>
+            </div>
+          </div>
+        </div>
+      )}
       <Confirm open={!!toAdd} title={toAdd?.length === 1 ? 'Agregar como miembro' : `Agregar ${toAdd?.length || 0} miembros`}
         text={toAdd ? `Se agrega${toAdd.length === 1 ? '' : 'n'} a la lista de Miembros con el correo de Mercado Pago, unido${toAdd.length === 1 ? '' : 's'} a su suscripción y aprobado${toAdd.length === 1 ? '' : 's'} si está${toAdd.length === 1 ? '' : 'n'} al día: `
           + toAdd.map((x) => x.payer_email).join(' · ')
@@ -476,6 +516,7 @@ function LooseSubs({ subs, members, payments, busy, onLink, onLinkMany, onAddMan
         text={bulk ? bulk.map((r) => `${r.s.payer_name || r.s.payer_email || r.s.id} → ${fullName(r.sug.member)}`).join(' · ') : ''}
         yes="Unir todas" onNo={() => setBulk(null)}
         onYes={() => { const b = bulk; setBulk(null); onLinkMany(b.map((r) => [r.s.id, r.sug.member.id])); }} />
+      </>, document.body)}
     </section>
   );
 }

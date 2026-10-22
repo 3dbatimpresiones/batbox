@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
+import MemberDataForm from '../components/MemberDataForm.jsx';
 
 // =====================================================================
 // MIEMBROS DE MAKERS CLUB (pestaña del panel admin)
@@ -214,7 +215,9 @@ export default function AdminMembers() {
           onRole={(role) => setRoleChange({ member: selected, role })}
           onAction={(a) => setConfirm({ ...ACTIONS[a], member: selected })}
           onSaveNotes={(notes) => rpc('admin_update_notes', { p_member_id: selected.id, p_notes: notes }, 'Notas guardadas')}
-          onSaveExpiry={(date) => rpc('admin_update_expiration', { p_member_id: selected.id, p_expires_at: date ? date + 'T23:59:59-03:00' : null }, date ? 'Vencimiento guardado' : 'Vencimiento quitado')} />
+          onSaveExpiry={(date) => rpc('admin_update_expiration', { p_member_id: selected.id, p_expires_at: date ? date + 'T23:59:59-03:00' : null }, date ? 'Vencimiento guardado' : 'Vencimiento quitado')}
+          onSaveData={(f) => rpc('bb_admin_update_member', { p_member: selected.id, p_first_name: f.first_name.trim(), p_last_name: f.last_name.trim(),
+            p_phone: f.phone.trim(), p_discord: f.discord.trim(), p_instagram: f.instagram.trim() }, 'Datos guardados')} />
       )}
 
       <Confirm open={!!confirm} danger={confirm?.cls === 'err'} title={confirm ? `${confirm.label} a ${fullName(confirm.member)}` : ''}
@@ -269,16 +272,13 @@ export default function AdminMembers() {
   );
 }
 
-function MemberDetail({ m, busy, canManageRoles, onClose, onRole, onAction, onSaveNotes, onSaveExpiry }) {
+function MemberDetail({ m, busy, canManageRoles, onClose, onRole, onAction, onSaveNotes, onSaveExpiry, onSaveData }) {
   const owner = isOwnerAccount(m);
   const roleInfo = ROLES.find((r) => r.value === m.role) || ROLES[0];
   const [notes, setNotes] = useState(m.internal_notes || '');
   const [expiry, setExpiry] = useState(m.subscription_expires_at ? m.subscription_expires_at.slice(0, 10) : '');
   useEffect(() => { setNotes(m.internal_notes || ''); setExpiry(m.subscription_expires_at ? m.subscription_expires_at.slice(0, 10) : ''); }, [m]);
   const rows = [
-    ['Discord', m.discord_username && '@' + m.discord_username],
-    ['Instagram', m.instagram_username && '@' + m.instagram_username],
-    ['Celular', m.phone],
     ['Registrado', fmt(m.created_at)],
     ['Aprobado', m.approved_at && fmt(m.approved_at)],
     ['Último acceso', fmt(m.last_access_at)],
@@ -299,6 +299,11 @@ function MemberDetail({ m, busy, canManageRoles, onClose, onRole, onAction, onSa
         <dl className="md-rows">
           {rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}
         </dl>
+
+        {!(owner && !canManageRoles) && <>
+          <div className="section-label">DATOS</div>
+          <MemberDataForm member={m} busy={busy} onSave={onSaveData} />
+        </>}
 
         <div className="section-label">PERMISOS EN BATBOX</div>
         {owner ? (
