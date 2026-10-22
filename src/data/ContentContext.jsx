@@ -78,13 +78,15 @@ export function ContentProvider({ children }) {
   }, [statsVersion]);
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
+  const CONTENT_COLS = 'id, slug, kind, title, description, category, access, status, featured, sort_order, platform, thumb_url, icon, tool_status, published_at, created_at, updated_at';
 
   useEffect(() => {
     if (access === 'loading') return undefined;
     let cancelled = false;
     (async () => {
       const [c, s] = await Promise.all([
-        sb.from('bb_content').select('*, bb_content_body(*)')
+        // Columnas explícitas: los visitantes no pueden leer quién creó/editó cada contenido (migración 013).
+        sb.from('bb_content').select(`${CONTENT_COLS}, bb_content_body(*)`)
           .order('sort_order', { ascending: true }).order('published_at', { ascending: false, nullsFirst: false }),
         sb.from('bb_settings').select('key, value'),
       ]);
