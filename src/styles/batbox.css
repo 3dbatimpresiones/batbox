@@ -829,3 +829,9 @@
 .af-step.off { opacity: .55; }
 .af-step.off .af-num { background: rgba(93,218,219,.25); color: #e2e8f0; }
 .gate-caption { display: block; margin: -4px 0 6px; color: var(--muted); font-size: 12.5px; line-height: 1.45; max-width: 420px; }
+
+.af-step.done { background: rgba(52,211,153,.07); border-color: rgba(52,211,153,.35); }
+.af-step.done .af-num { background: var(--ok); color: var(--dark); }
+.af-step.done .af-body > p { color: #cbd5e1; }
+.af-step.af-sub { margin-top: -6px; padding-left: 58px; }
+@media (max-width: 760px) { .af-step.af-sub { padding-left: 50px; } }

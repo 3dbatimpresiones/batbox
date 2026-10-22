@@ -69,11 +69,21 @@ export default function AccessForm({ mode = 'new', me: given, onSaved }) {
   return (
     <form className="access-form" onSubmit={submit} noValidate>
       {!edit && (
+        <div className="af-step done">
+          <span className="af-num"><Icon name="check" size={15} /></span>
+          <div className="af-body">
+            <strong>Ingresaste con Google</strong>
+            <p>{user?.email}</p>
+          </div>
+        </div>
+      )}
+
+      {!edit && (
         <div className="af-step">
-          <span className="af-num">1</span>
+          <span className="af-num">2</span>
           <div className="af-body">
             <strong>{mode === 'renew' ? 'Renová tu suscripción' : 'Suscribite en Mercado Pago'}</strong>
-            <p>Plan mensual. Se cobra solo cada mes y lo podés cancelar cuando quieras. {mode === 'pending' && 'Si ya te suscribiste, seguí con el paso 2.'}</p>
+            <p>Plan mensual. Se cobra solo cada mes y lo podés cancelar cuando quieras. {mode === 'pending' && 'Si ya te suscribiste, seguí con el paso 3.'}</p>
             <a className="btn primary" href={LINKS.mpSubscribe} target="_blank" rel="noopener noreferrer">
               <Icon name="crown" size={16} /> {mode === 'renew' ? 'Renovar en Mercado Pago' : 'Suscribirme al Makers Club'} <Icon name="external" size={14} />
             </a>
@@ -82,7 +92,7 @@ export default function AccessForm({ mode = 'new', me: given, onSaved }) {
       )}
 
       <div className={edit ? '' : 'af-step'}>
-        {!edit && <span className="af-num">2</span>}
+        {!edit && <span className="af-num">3</span>}
         <div className="af-body">
           {!edit && <strong>Completá tus datos</strong>}
           <div className="member-form af-fields">
@@ -96,8 +106,7 @@ export default function AccessForm({ mode = 'new', me: given, onSaved }) {
       </div>
 
       {!edit && (
-        <div className="af-step">
-          <span className="af-num">3</span>
+        <div className="af-step af-sub">
           <div className="af-body">
             <strong>Número de operación <span className="af-opt">(si hace falta)</span></strong>
             <p>

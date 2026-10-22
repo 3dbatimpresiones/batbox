@@ -55,16 +55,19 @@ function readUrlAuthError() {
 
 // Después de volver de Google: saca ?code / ?error de la URL y vuelve a la
 // sección desde donde la persona tocó "Ingresar".
-function cleanAuthParams() {
+function cleanAuthParams(signedIn) {
   const url = new URL(window.location.href);
   const hadParams = ['code', 'error', 'error_description', 'error_code'].some((k) => url.searchParams.has(k));
-  if (!hadParams) return;
+  // supabase-js ya puede haber sacado el ?code de la URL antes de este aviso: si hay sesión
+  // y quedó guardada una sección de vuelta, se usa igual.
   let ret = null;
   try {
     ret = sessionStorage.getItem(RETURN_KEY);
-    sessionStorage.removeItem(RETURN_KEY);
+    if (hadParams || (signedIn && ret)) sessionStorage.removeItem(RETURN_KEY);
   } catch { /* storage bloqueado: se queda en la página actual */ }
-  window.history.replaceState(null, '', url.pathname + (ret ? '#' + ret : url.hash));
+  if (!hadParams && !(signedIn && ret)) return;
+  ['code', 'error', 'error_description', 'error_code'].forEach((k) => url.searchParams.delete(k));
+  window.history.replaceState(null, '', url.pathname + url.search + (ret ? '#' + ret : url.hash));
   window.dispatchEvent(new HashChangeEvent('hashchange'));
 }
 
@@ -108,7 +111,7 @@ export function AuthProvider({ children }) {
         return;
       }
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-        cleanAuthParams();
+        cleanAuthParams(!!session);
         const uid = session?.user?.id ?? null;
         // Supabase vuelve a emitir SIGNED_IN al volver a la pestaña: si es la
         // misma persona no se vuelve a consultar (mismo fix que el cotizador).

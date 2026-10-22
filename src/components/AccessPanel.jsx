@@ -125,8 +125,7 @@ export default function AccessPanel({ intro, benefitsLink = true }) {
   if (access === 'none') {
     return (
       <Gate icon="crown" tone="pink" title="Solicitud de acceso al Makers Club" wide
-        text="Suscribite, completá tus datos y listo: no hace falta mandar nada más por otro lado."
-        email={email}>
+        text="Ya ingresaste: seguí con el paso 2. No hace falta mandar nada más por otro lado.">
         <AccessForm mode="new" />
         <FreeHint />
         <button className="btn text wide" onClick={signOut}>Usar otra cuenta de Google</button>
