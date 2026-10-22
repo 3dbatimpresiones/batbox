@@ -202,8 +202,10 @@ export default function Subscribe() {
           <div className="section-label">QUÉ INCLUYE</div>
           <Benefits />
           <div className="sub-paypal">
-            <strong>¿Sos de otro país?</strong>
-            <p>Pagá con PayPal. Completá igual tus datos acá y te activamos a mano apenas veamos el pago.</p>
+            <div>
+              <strong>¿Sos de otro país?</strong>
+              <p>Pagá con PayPal. Completá igual tus datos acá y te activamos a mano apenas veamos el pago.</p>
+            </div>
             <a className="btn ghost small" href={LINKS.paypalSubscribe} target="_blank" rel="noopener noreferrer">Suscribirme con PayPal <Icon name="external" size={13} /></a>
           </div>
         </aside>
