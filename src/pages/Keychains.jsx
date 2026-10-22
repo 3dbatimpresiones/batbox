@@ -111,8 +111,64 @@ function Sec({ title, icon, children, open: open0 = true }) {
   );
 }
 
+// ---------- Colores (pelotitas, como los filamentos) ----------
+const FILAMENT_COLORS = [
+  ['#FFFFFF', 'Blanco'], ['#161616', 'Negro'], ['#8E9089', 'Gris'], ['#C8C8C8', 'Plata'],
+  ['#E4002B', 'Rojo'], ['#FF6A13', 'Naranja'], ['#F4EE2A', 'Amarillo'], ['#E4BD68', 'Dorado'],
+  ['#00AE42', 'Verde'], ['#A3D8A1', 'Verde agua'], ['#0A2989', 'Azul'], ['#56B7E6', 'Celeste'],
+  ['#5E43B7', 'Violeta'], ['#B39DDB', 'Lila'], ['#F78EB6', 'Rosa'], ['#EC008C', 'Magenta'],
+  ['#9D432C', 'Marrón'], ['#F7E6DE', 'Beige'],
+];
+function Swatches({ label, value, onChange }) {
+  const name = FILAMENT_COLORS.find(([c]) => c.toLowerCase() === String(value).toLowerCase())?.[1] || 'Personalizado';
+  return (
+    <div className="kc-field">
+      <span className="kc-label">{label}: <b>{name}</b></span>
+      <div className="kc-swatches" role="radiogroup" aria-label={`Color de ${label.toLowerCase()}`}>
+        {FILAMENT_COLORS.map(([c, n]) => (
+          <button key={c} type="button" role="radio" aria-checked={c === value} aria-label={n} title={n}
+            className={'kc-swatch' + (c === value ? ' on' : '')} style={{ background: c }} onClick={() => onChange(c)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ---------- Selector de fuentes ----------
-function FontPicker({ font, onPick, canUpload, onUpload }) {
+// Cada fuente de la lista muestra el nombre escrito con esa letra. La letra se
+// descarga recién cuando la fila aparece en pantalla (WOFF2 liviano, solo para ver).
+const previewLoaded = new Map(); // id → Promise
+function loadPreview(f) {
+  if (!previewLoaded.has(f.id)) {
+    const w = defaultWeight(f);
+    const face = new FontFace(`kcp-${f.id}`, `url(https://cdn.jsdelivr.net/fontsource/fonts/${f.id}@latest/latin-${w}-normal.woff2)`);
+    previewLoaded.set(f.id, face.load().then((ff) => { document.fonts.add(ff); return true; }).catch(() => false));
+  }
+  return previewLoaded.get(f.id);
+}
+function FontRow({ f, sample, active, onPick, root }) {
+  const ref = useRef(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return undefined;
+    let alive = true;
+    const io = new IntersectionObserver((ents) => {
+      if (ents.some((e) => e.isIntersecting)) { io.disconnect(); loadPreview(f).then((ok) => alive && setReady(ok)); }
+    }, { root: root.current, rootMargin: '120px' });
+    io.observe(el);
+    return () => { alive = false; io.disconnect(); };
+  }, [f, root]);
+  return (
+    <button ref={ref} type="button" role="option" aria-selected={active} className={'kc-font-row' + (active ? ' on' : '')}
+      onClick={() => onPick({ id: f.id, family: f.family, weight: defaultWeight(f) })}>
+      <span className={'kc-font-prev' + (ready ? ' ready' : '')} style={ready ? { fontFamily: `"kcp-${f.id}", sans-serif` } : undefined}>{sample}</span>
+      <small>{f.family}</small>
+    </button>
+  );
+}
+
+function FontPicker({ font, onPick, canUpload, onUpload, sample }) {
+  const listRef = useRef(null);
   const [list, setList] = useState(null);
   const [err, setErr] = useState('');
   const [cat, setCat] = useState('popular');
@@ -134,7 +190,10 @@ function FontPicker({ font, onPick, canUpload, onUpload }) {
   return (
     <div className="kc-fonts">
       <div className="kc-font-now">
-        <span className="kc-font-sample" style={{ fontFamily: `"${font.family}", sans-serif` }}>{font.family}</span>
+        <span className="kc-font-now-txt">
+          <span className="kc-font-sample" style={{ fontFamily: `"${font.family}", sans-serif` }}>{sample}</span>
+          <small>{font.family}</small>
+        </span>
         {font.custom ? <span className="chip club">Tu fuente</span> : current && current.weights.length > 1 && (
           <select value={font.weight} onChange={(e) => onPick({ ...font, weight: Number(e.target.value) })} aria-label="Grosor de la fuente">
             {current.weights.map((w) => <option key={w} value={w}>{w === 400 ? 'Normal' : w >= 700 ? `Gruesa ${w}` : `Fina ${w}`}</option>)}
@@ -147,12 +206,9 @@ function FontPicker({ font, onPick, canUpload, onUpload }) {
           {CATEGORIES.map((c) => <button key={c.id} type="button" className={cat === c.id ? 'on' : ''} onClick={() => setCat(c.id)}>{c.label}</button>)}
         </div>
       )}
-      <div className="kc-font-list" role="listbox" aria-label="Fuentes">
+      <div className="kc-font-list" role="listbox" aria-label="Fuentes" ref={listRef}>
         {err ? <p className="kc-muted">{err}</p> : !list ? <p className="kc-muted">Cargando fuentes…</p> : !shown.length ? <p className="kc-muted">No hay fuentes con ese nombre.</p>
-          : shown.map((f) => (
-            <button key={f.id} type="button" role="option" aria-selected={f.id === font.id} className={f.id === font.id ? 'on' : ''}
-              onClick={() => onPick({ id: f.id, family: f.family, weight: defaultWeight(f) })}>{f.family}</button>
-          ))}
+          : shown.map((f) => <FontRow key={f.id} f={f} sample={sample} active={f.id === font.id} onPick={onPick} root={listRef} />)}
       </div>
       <button type="button" className={'kc-upload' + (canUpload ? '' : ' locked')} onClick={() => (canUpload ? fileRef.current?.click() : onUpload(null))}>
         {canUpload ? <><Icon name="sparkles" size={14} /> Subir mi fuente (TTF, OTF o WOFF)</> : <><Icon name="lock" size={14} /> Subir tu fuente: Makers Club</>}
@@ -340,7 +396,7 @@ export default function Keychains() {
           </Sec>
 
           <Sec title="Fuente" icon="🔤">
-            <FontPicker font={font} onPick={(f) => setFont(f)} canUpload={isMember} onUpload={(f) => (f ? onUpload(f) : notify('err', 'Subir tu propia fuente es de Makers Club.'))} />
+            <FontPicker font={font} sample={(names[0] || 'Anna').slice(0, 18)} onPick={(f) => setFont(f)} canUpload={isMember} onUpload={(f) => (f ? onUpload(f) : notify('err', 'Subir tu propia fuente es de Makers Club.'))} />
           </Sec>
 
           <Sec title="Texto" icon="✍️">
@@ -372,10 +428,8 @@ export default function Keychains() {
           </Sec>
 
           <Sec title="Colores" icon="🎨">
-            <div className="kc-colors">
-              <label><input type="color" value={colors.base} onChange={(e) => setColors((c) => ({ ...c, base: e.target.value }))} /> Base</label>
-              <label><input type="color" value={colors.letters} onChange={(e) => setColors((c) => ({ ...c, letters: e.target.value }))} /> Letras</label>
-            </div>
+            <Swatches label="Base" value={colors.base} onChange={(v) => setColors((c) => ({ ...c, base: v }))} />
+            <Swatches label="Letras" value={colors.letters} onChange={(v) => setColors((c) => ({ ...c, letters: v }))} />
             <small className="kc-muted">En el 3MF la base va con el filamento 1 y las letras con el 2 (con estos colores).</small>
           </Sec>
 

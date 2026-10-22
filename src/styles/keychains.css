@@ -123,3 +123,21 @@
 .kc-names-head.on small { color: var(--dark); }
 .kc-note { padding: 10px 12px; border-radius: 12px; background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.4); color: #fde68a; font-size: 12.5px; line-height: 1.5; }
 .kc-note b { color: #fff; }
+
+/* Vista previa de fuentes en la lista */
+.kc-font-list { max-height: 300px; }
+.kc-font-row { display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 6px 10px !important; }
+.kc-font-prev { font-size: 22px; line-height: 1.25; color: #fff; opacity: .35; transition: opacity .2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.kc-font-prev.ready { opacity: 1; }
+.kc-font-row small { font-size: 11px; color: var(--muted); font-family: Outfit, sans-serif; }
+.kc-font-row.on .kc-font-prev { color: var(--dark); }
+.kc-font-row.on small { color: var(--dark); opacity: .75; }
+.kc-font-now-txt { display: flex; flex-direction: column; min-width: 0; }
+.kc-font-now-txt small { font-size: 11px; color: var(--muted); }
+
+/* Colores: pelotitas */
+.kc-label b { color: #fff; }
+.kc-swatches { display: grid; grid-template-columns: repeat(9, 1fr); gap: 7px; }
+.kc-swatch { aspect-ratio: 1; width: 100%; border-radius: 50%; border: 2px solid rgba(255,255,255,.25); cursor: pointer; padding: 0; box-shadow: inset 0 -2px 4px rgba(0,0,0,.25); transition: transform .12s; }
+.kc-swatch:hover { transform: scale(1.12); }
+.kc-swatch.on { outline: 3px solid var(--cyan); outline-offset: 2px; border-color: #fff; }

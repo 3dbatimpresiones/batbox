@@ -147,10 +147,10 @@ export default function KeychainViewer({ plates, show, bed, colors, view }) {
     const s = st.current; if (!s) return;
     s.content.traverse((o) => { o.geometry?.dispose(); });
     s.content.clear();
-    s.mats?.forEach((m) => m.dispose());
-    const mBase = new THREE.MeshStandardMaterial({ color: colors.base, roughness: 0.55, metalness: 0.02 });
-    const mLet = new THREE.MeshStandardMaterial({ color: colors.letters, roughness: 0.5, metalness: 0.02 });
-    s.mats = [mBase, mLet];
+    // Dos materiales para todo (cambiar el color solo los repinta, ver abajo).
+    if (!s.mats) s.mats = [new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.02 }), new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.02 })];
+    const [mBase, mLet] = s.mats;
+    mBase.color.set(colors.base); mLet.color.set(colors.letters);
     for (const { pl, off } of visible) {
       for (const it of pl.items) {
         const place = { ...placeOf(it) };
@@ -159,7 +159,13 @@ export default function KeychainViewer({ plates, show, bed, colors, view }) {
         s.content.add(new THREE.Mesh(geometryFrom(it.letters, place), mLet));
       }
     }
-  }, [plates, show, all, colors.base, colors.letters, bed.w, bed.h]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [plates, show, all, bed.w, bed.h]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cambiar de color: solo se repintan los materiales (no se rearman las piezas).
+  useEffect(() => {
+    const s = st.current; if (!s?.mats) return;
+    s.mats[0].color.set(colors.base); s.mats[1].color.set(colors.letters);
+  }, [colors.base, colors.letters]);
 
   return <div className="kc-viewer" ref={box} />;
 }
