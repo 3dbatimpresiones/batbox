@@ -39,7 +39,7 @@ export const TOOLS = [
   },
   {
     id: 'creador-de-llaveros',
-    name: 'Creador de Llaveros',
+    name: 'Creador de Llaveros Múltiples Nombres',
     description: 'Pegá todos los nombres (un jardín, un cumpleaños) y armá el mismo llavero para cada uno, acomodados en la cama. Todas las fuentes de Google, 3MF bicolor y STL.',
     icon: 'sparkles',
     category: 'Modelado',

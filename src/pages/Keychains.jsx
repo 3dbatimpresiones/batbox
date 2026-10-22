@@ -167,14 +167,26 @@ function FontRow({ f, sample, active, onPick, root }) {
   );
 }
 
+// Desplegable de fuentes: cerrado muestra solo la elegida; abierto, buscador + lista.
+// Al elegir una se cierra solo (también tocando afuera o con Esc).
 function FontPicker({ font, onPick, canUpload, onUpload, sample }) {
   const listRef = useRef(null);
+  const boxRef = useRef(null);
+  const [open, setOpen] = useState(false);
   const [list, setList] = useState(null);
   const [err, setErr] = useState('');
   const [cat, setCat] = useState('popular');
   const [q, setQ] = useState('');
   const fileRef = useRef(null);
   useEffect(() => { loadFontList().then(setList).catch((e) => setErr(e.message)); }, []);
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (e) => { if (!boxRef.current?.contains(e.target)) setOpen(false); };
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', away);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc); };
+  }, [open]);
   const shown = useMemo(() => {
     if (!list) return [];
     const words = norm(q.trim());
@@ -187,33 +199,42 @@ function FontPicker({ font, onPick, canUpload, onUpload, sample }) {
     return l.slice(0, 400);
   }, [list, cat, q]);
   const current = list?.find((f) => f.id === font.id);
+  const pick = (f) => { onPick(f); setOpen(false); setQ(''); };
   return (
-    <div className="kc-fonts">
-      <div className="kc-font-now">
-        <span className="kc-font-now-txt">
-          <span className="kc-font-sample" style={{ fontFamily: `"${font.family}", sans-serif` }}>{sample}</span>
-          <small>{font.family}</small>
-        </span>
+    <div className="kc-fonts" ref={boxRef}>
+      <div className={'kc-font-now' + (open ? ' open' : '')}>
+        <button type="button" className="kc-font-toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={`Fuente: ${font.family}. Tocá para cambiarla`}>
+          <span className="kc-font-now-txt">
+            <span className="kc-font-sample" style={{ fontFamily: `"${font.family}", sans-serif` }}>{sample}</span>
+            <small>{font.family}</small>
+          </span>
+          <span className={'kc-caret' + (open ? ' open' : '')} aria-hidden="true">▼</span>
+        </button>
         {font.custom ? <span className="chip club">Tu fuente</span> : current && current.weights.length > 1 && (
           <select value={font.weight} onChange={(e) => onPick({ ...font, weight: Number(e.target.value) })} aria-label="Grosor de la fuente">
             {current.weights.map((w) => <option key={w} value={w}>{w === 400 ? 'Normal' : w >= 700 ? `Gruesa ${w}` : `Fina ${w}`}</option>)}
           </select>
         )}
       </div>
-      <div className="pink-input kc-font-search"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Buscar entre ${list ? list.length.toLocaleString('es-AR') : '+1.900'} fuentes…`} /></div>
-      {!q && (
-        <div className="kc-cats">
-          {CATEGORIES.map((c) => <button key={c.id} type="button" className={cat === c.id ? 'on' : ''} onClick={() => setCat(c.id)}>{c.label}</button>)}
+      {!open && <button type="button" className="kc-font-change" onClick={() => setOpen(true)}>Cambiar fuente ({list ? list.length.toLocaleString('es-AR') : '+1.900'} para elegir)</button>}
+      {open && (
+        <div className="kc-font-drop">
+          <div className="pink-input kc-font-search"><input value={q} onChange={(e) => setQ(e.target.value)} autoFocus placeholder={`Buscar entre ${list ? list.length.toLocaleString('es-AR') : '+1.900'} fuentes…`} /></div>
+          {!q && (
+            <div className="kc-cats">
+              {CATEGORIES.map((c) => <button key={c.id} type="button" className={cat === c.id ? 'on' : ''} onClick={() => setCat(c.id)}>{c.label}</button>)}
+            </div>
+          )}
+          <div className="kc-font-list" role="listbox" aria-label="Fuentes" ref={listRef}>
+            {err ? <p className="kc-muted">{err}</p> : !list ? <p className="kc-muted">Cargando fuentes…</p> : !shown.length ? <p className="kc-muted">No hay fuentes con ese nombre.</p>
+              : shown.map((f) => <FontRow key={f.id} f={f} sample={sample} active={f.id === font.id} onPick={pick} root={listRef} />)}
+          </div>
+          <button type="button" className={'kc-upload' + (canUpload ? '' : ' locked')} onClick={() => (canUpload ? fileRef.current?.click() : onUpload(null))}>
+            {canUpload ? <><Icon name="sparkles" size={14} /> Subir mi fuente (TTF, OTF o WOFF)</> : <><Icon name="lock" size={14} /> Subir tu fuente: Makers Club</>}
+          </button>
         </div>
       )}
-      <div className="kc-font-list" role="listbox" aria-label="Fuentes" ref={listRef}>
-        {err ? <p className="kc-muted">{err}</p> : !list ? <p className="kc-muted">Cargando fuentes…</p> : !shown.length ? <p className="kc-muted">No hay fuentes con ese nombre.</p>
-          : shown.map((f) => <FontRow key={f.id} f={f} sample={sample} active={f.id === font.id} onPick={onPick} root={listRef} />)}
-      </div>
-      <button type="button" className={'kc-upload' + (canUpload ? '' : ' locked')} onClick={() => (canUpload ? fileRef.current?.click() : onUpload(null))}>
-        {canUpload ? <><Icon name="sparkles" size={14} /> Subir mi fuente (TTF, OTF o WOFF)</> : <><Icon name="lock" size={14} /> Subir tu fuente: Makers Club</>}
-      </button>
-      <input ref={fileRef} type="file" accept=".ttf,.otf,.woff" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onUpload(f); }} />
+      <input ref={fileRef} type="file" accept=".ttf,.otf,.woff" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { onUpload(f); setOpen(false); } }} />
     </div>
   );
 }
@@ -370,9 +391,12 @@ export default function Keychains() {
 
   return (
     <div className="kc">
+      {/* Mismas columnas que los paneles: título sobre los ajustes, frase centrada sobre la cama */}
       <header className="kc-head">
-        <div className="section-label">HERRAMIENTA · BATBOX</div>
-        <h1>Creador de Llaveros</h1>
+        <div className="kc-head-title">
+          <div className="section-label">HERRAMIENTAS · BATBOX</div>
+          <h1>Creador de Llaveros Múltiples Nombres</h1>
+        </div>
         <p>Pegá todos los nombres y armá el mismo llavero para cada uno, listo para tu impresora.</p>
       </header>
 
