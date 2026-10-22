@@ -12,8 +12,9 @@ export const LINKS = {
   cotizadorPro: 'https://3dbatimpresiones.github.io/cotizador-3dbat-pro/',
   cotizadorFree: 'https://3dbatimpresiones.github.io/cotizador-3dbat-free/',
   carretesVacios: 'https://3dbatimpresiones.github.io/dbcarretesvacios/',
-  // Formulario actual de solicitud de acceso (el mismo que usa el cotizador).
-  accessForm: 'https://forms.gle/TTJCnphD3surkyA1A',
+  // Suscripción mensual al Makers Club (plan de Mercado Pago) y dónde la gestiona cada persona.
+  mpSubscribe: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=2c9380848b8b1e59018b8ba9505d0065',
+  mpManage: 'https://www.mercadopago.com.ar/subscriptions',
 };
 
 // Cuentas DUEÑAS (las únicas que dan o quitan permisos): las define la base

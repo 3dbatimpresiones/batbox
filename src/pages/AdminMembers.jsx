@@ -343,7 +343,7 @@ function MemberDetail({ m, busy, canManageRoles, onClose, onRole, onAction, onSa
           <button className="chip-btn" disabled={busy || expiry === (m.subscription_expires_at?.slice(0, 10) || '')} onClick={() => onSaveExpiry(expiry)}>Guardar</button>
           {m.subscription_expires_at && <button className="chip-btn" disabled={busy} onClick={() => { setExpiry(''); onSaveExpiry(''); }}>Quitar</button>}
         </div>
-        <p className="ed-hint">Por ahora es informativo: ni BATBOX ni el cotizador bloquean el acceso cuando vence.</p>
+        <p className="ed-hint">Se calcula solo con los pagos (Mercado Pago o manuales) + 10 días de margen; el próximo pago lo vuelve a calcular. No corta el acceso por sí solo: en Suscripciones → Vencidos podés marcarlos como vencidos.</p>
 
         <div className="modal-actions"><button className="btn ghost" onClick={onClose}>Cerrar</button></div>
       </div>

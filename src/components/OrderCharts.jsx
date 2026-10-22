@@ -98,7 +98,7 @@ export function ProductsDonut({ rows }) {
 }
 
 // Ingresos de los últimos meses. Tocar una barra abre ese mes.
-export function MonthlyIncome({ rows, selected, onSelect }) {
+export function MonthlyIncome({ rows, selected, onSelect, unit = ['pedido', 'pedidos'], incomeLabel = 'Ingresos' }) {
   const [hover, setHover] = useState(null);
   const max = niceMax(Math.max(0, ...rows.map((r) => r.income)));
   const ticks = [max, (max * 2) / 3, max / 3, 0];
@@ -122,9 +122,9 @@ export function MonthlyIncome({ rows, selected, onSelect }) {
               {hover === i && (
                 <span className={'oc-tip' + (i > rows.length - 4 ? ' left' : '')} role="tooltip">
                   <b>{monthLabel(r.month, true)}</b>
-                  <span>Ingresos: {money.format(r.income)}</span>
+                  <span>{incomeLabel}: {money.format(r.income)}</span>
                   {r.profit != null && <span>Ganancia: {money.format(r.profit)}</span>}
-                  <span>{r.count} {r.count === 1 ? 'pedido' : 'pedidos'}</span>
+                  <span>{r.count} {r.count === 1 ? unit[0] : unit[1]}</span>
                 </span>
               )}
             </button>
@@ -132,8 +132,8 @@ export function MonthlyIncome({ rows, selected, onSelect }) {
         </div>
       </div>
       <div className="sr-only"><table>
-        <caption>Ingresos por mes</caption>
-        <thead><tr><th>Mes</th><th>Ingresos</th><th>Ganancia</th><th>Pedidos</th></tr></thead>
+        <caption>{incomeLabel} por mes</caption>
+        <thead><tr><th>Mes</th><th>{incomeLabel}</th><th>Ganancia</th><th>{unit[1].replace(/^./, (c) => c.toUpperCase())}</th></tr></thead>
         <tbody>{rows.map((r) => <tr key={r.month}><td>{monthLabel(r.month, true)}</td><td>{money.format(r.income)}</td><td>{r.profit == null ? '—' : money.format(r.profit)}</td><td>{r.count}</td></tr>)}</tbody>
       </table></div>
     </div>
