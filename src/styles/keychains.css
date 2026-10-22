@@ -114,3 +114,12 @@
   .kc-out { order: 3; }
   .kc-canvas { height: 52vh; min-height: 300px; }
 }
+.kc-names { max-height: 420px; overflow-y: auto; }
+.kc-names ul { max-height: none; }
+.kc-names-plate + .kc-names-plate { margin-top: 10px; }
+.kc-names-head { display: block; width: 100%; text-align: left; margin-bottom: 4px; padding: 4px 6px; border-radius: 8px; border: 0; background: rgba(93,218,219,.08); color: var(--cyan); font-weight: 800; font-size: 12.5px; cursor: pointer; }
+.kc-names-head small { color: var(--muted); font-weight: 600; }
+.kc-names-head.on { background: var(--cyan); color: var(--dark); }
+.kc-names-head.on small { color: var(--dark); }
+.kc-note { padding: 10px 12px; border-radius: 12px; background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.4); color: #fde68a; font-size: 12.5px; line-height: 1.5; }
+.kc-note b { color: #fff; }

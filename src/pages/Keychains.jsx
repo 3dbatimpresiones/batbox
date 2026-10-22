@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { DEFAULTS } from '../lib/keychain/engine.js';
-import { BEDS, arrange, build3MF, fileSafe, parseNames, placeOf, toBinarySTL, zipFiles } from '../lib/keychain/exporters.js';
+import { BEDS, arrange, build3MF, fileSafe, parseNames, placeOf, plateFileName, plateNames, toBinarySTL, zipFiles } from '../lib/keychain/exporters.js';
 import { CATEGORIES, POPULAR, defaultWeight, fetchFont, loadFontList, showFontInPage } from '../lib/keychain/fonts.js';
 import { norm } from '../lib/text.js';
 import Icon from '../components/Icon.jsx';
@@ -182,7 +182,7 @@ export default function Keychains() {
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null);
-  const [plateIdx, setPlateIdx] = useState(0);
+  const [plateSel, setPlateSel] = useState('all'); // 'all' = todas las camas · número = una cama
   const [view, setView] = useState(null);
   const [exporting, setExporting] = useState(false);
   const fileRef = useRef(null);
@@ -249,24 +249,32 @@ export default function Keychains() {
   const good = useMemo(() => items.filter((i) => !i.error).map((i) => ({ ...i, name: i.name.replace('\n', ' '), w: i.size.x, h: i.size.y })), [items]);
   const plates = useMemo(() => arrange(good, bed, gap), [good, bed, gap]);
   const tooBig = plates[0]?.tooBig;
-  useEffect(() => { if (plateIdx >= plates.length) setPlateIdx(0); }, [plates.length, plateIdx]);
+  useEffect(() => { if (plateSel !== 'all' && plateSel >= plates.length) setPlateSel('all'); }, [plates.length, plateSel]);
+  const multi = plates.length > 1 && !tooBig;
+  const show = multi ? plateSel : 0;                                   // qué se ve
+  const onePlate = multi && plateSel !== 'all' ? plateSel : null;      // cama elegida (para bajar solo esa)
   const maxSize = good.reduce((a, i) => ({ x: Math.max(a.x, i.size.x), y: Math.max(a.y, i.size.y), z: Math.max(a.z, i.size.z) }), { x: 0, y: 0, z: 0 });
 
   // ---------- Descargas ----------
   const canExport = good.length > 0 && !tooBig && !busy && !exporting;
-  const base = good.length === 1 ? fileSafe(good[0].name) : `llaveros-${good.length}`;
-  const dl3mf = () => download(build3MF(plates, bed, colors), `${base}.3mf`, 'model/3mf');
+  // Los archivos llevan los nombres de los llaveros ("Llaveros - Lola, Pedro y 18 más").
+  const base = good.length === 1 ? fileSafe(good[0].name) : `Llaveros - ${plateNames({ items: good }, 60)}`.replace(/ñ/g, 'n').replace(/Ñ/g, 'N');
+  const dl3mf = (only = null) => {
+    const sel = only == null ? plates : [plates[only]];
+    download(build3MF(sel, bed, colors), only == null ? `${base}.3mf` : `${plateFileName(plates[only], only)}.3mf`, 'model/3mf');
+  };
   // STL de cada cama: cada llavero como UNA pieza sólida (base y letras unidas).
-  const dlPlates = async () => {
+  const dlPlates = async (only = null) => {
     setExporting(true);
     try {
       const stls = [];
-      for (const pl of plates) {
+      for (const pl of only == null ? plates : [plates[only]]) {
         const { items: merged } = await merge(pl.items);
         stls.push(toBinarySTL(pl.items.map((it, i) => ({ manifold: merged[i], place: placeOf(it) }))));
       }
-      if (stls.length === 1) download(stls[0], `${base}.stl`, 'model/stl');
-      else download(zipFiles(Object.fromEntries(stls.map((s, i) => [`cama-${i + 1}.stl`, s]))), `${base}-camas-stl.zip`, 'application/zip');
+      if (only != null) download(stls[0], `${plateFileName(plates[only], only)}.stl`, 'model/stl');
+      else if (stls.length === 1) download(stls[0], `${base}.stl`, 'model/stl');
+      else download(zipFiles(Object.fromEntries(stls.map((s, i) => [`${plateFileName(plates[i], i)}.stl`, s]))), `${base} (STL por cama).zip`, 'application/zip');
     } finally { setExporting(false); }
   };
   // ZIP: por cada nombre, el llavero entero + base y letras por separado (para 2 colores).
@@ -284,7 +292,7 @@ export default function Keychains() {
         files[`${n}/${n} - base.stl`] = toBinarySTL([{ manifold: it.base, place }]);
         files[`${n}/${n} - letras.stl`] = toBinarySTL([{ manifold: it.letters, place }]);
       });
-      download(zipFiles(files), `${base}-por-nombre-stl.zip`, 'application/zip');
+      download(zipFiles(files), `${base} (STL por nombre).zip`, 'application/zip');
     } finally { setExporting(false); }
   };
 
@@ -380,6 +388,11 @@ export default function Keychains() {
               <Num label="Fondo de cama" value={custom.h} onChange={(v) => setCustom((c) => ({ ...c, h: v }))} min={80} max={500} step={1} />
             </div>}
             <Num label="Separación entre llaveros" value={gap} onChange={setGap} min={1} max={20} step={0.5} />
+            <div className="kc-note">
+              <b>⚠️ Importante:</b> la impresora de acá es solo para acomodar los llaveros en una cama de ese tamaño.
+              Cuando abras el archivo en el slicer, <b>cambiala por la impresora que tengas vos</b> (y tu boquilla y filamento):
+              si no, puede dar errores de compatibilidad y no te deja laminar.
+            </div>
           </Sec>
 
           <button type="button" className="btn text kc-reset" onClick={() => setP({ ...DEFAULTS })}>Volver a los valores de fábrica</button>
@@ -389,8 +402,13 @@ export default function Keychains() {
         <section className="card kc-stage">
           <div className="kc-stage-top">
             <div className="kc-plates" role="tablist" aria-label="Camas">
+              {multi && (
+                <button type="button" role="tab" aria-selected={plateSel === 'all'} className={plateSel === 'all' ? 'on' : ''} onClick={() => setPlateSel('all')}>
+                  Todas <small>({plates.length})</small>
+                </button>
+              )}
               {plates.length > 0 && !tooBig && plates.map((pl, i) => (
-                <button key={i} type="button" role="tab" aria-selected={i === plateIdx} className={i === plateIdx ? 'on' : ''} onClick={() => setPlateIdx(i)}>
+                <button key={i} type="button" role="tab" aria-selected={show === i} className={show === i ? 'on' : ''} onClick={() => setPlateSel(i)}>
                   Cama {i + 1} <small>({pl.items.length})</small>
                 </button>
               ))}
@@ -401,7 +419,7 @@ export default function Keychains() {
             </div>
           </div>
           <div className="kc-canvas">
-            <KeychainViewer plate={tooBig ? null : plates[plateIdx]} bed={bed} colors={colors} view={view} />
+            <KeychainViewer plates={tooBig ? [] : plates} show={show} bed={bed} colors={colors} view={view} />
             {(busy || progress) && <div className="kc-busy">{progress ? `Armando ${progress.done} de ${progress.total}…` : 'Armando…'}</div>}
             {tooBig && <div className="kc-warn">El llavero es más grande que la cama. Bajá el alto de las letras o elegí otra impresora.</div>}
             {!texts.length && <div className="kc-warn soft">Escribí al menos un nombre.</div>}
@@ -418,13 +436,25 @@ export default function Keychains() {
         {/* ---------- Descargas ---------- */}
         <aside className="card kc-out">
           <h3>Descargar</h3>
-          <button type="button" className="btn primary kc-dl" disabled={!canExport} onClick={dl3mf}>
-            <Icon name="box" size={16} /> 3MF {plates.length > 1 ? `(${plates.length} camas)` : ''}
+          {multi && onePlate == null && <small className="kc-muted">Para bajar una sola cama, elegila arriba de la vista (Cama 1, Cama 2…).</small>}
+          <button type="button" className="btn primary kc-dl" disabled={!canExport} onClick={() => dl3mf()}>
+            <Icon name="box" size={16} /> 3MF {multi ? `· todas las camas (${plates.length})` : ''}
           </button>
-          <small className="kc-muted">Para Bambu Studio u OrcaSlicer. Cada llavero es un objeto con 2 piezas (base y letras): lo movés entero y le cambiás el color a cada parte.</small>
-          <button type="button" className="btn ghost kc-dl" disabled={!canExport} onClick={dlPlates}>
-            <Icon name="grid" size={16} /> STL de {plates.length > 1 ? 'cada cama (ZIP)' : 'la cama'}
+          {onePlate != null && (
+            <button type="button" className="btn ghost kc-dl" disabled={!canExport} onClick={() => dl3mf(onePlate)}>
+              <Icon name="box" size={16} /> 3MF · solo la Cama {onePlate + 1}
+            </button>
+          )}
+          <small className="kc-muted">Para Bambu Studio u OrcaSlicer: cada cama del archivo es una placa del proyecto. Cada llavero es un objeto con 2 piezas (base y letras): lo movés entero y le cambiás el color a cada parte.</small>
+          <div className="kc-note">⚠️ Al abrir el 3MF, <b>elegí tu impresora en el slicer</b> antes de laminar (la de acá es de ejemplo).</div>
+          <button type="button" className="btn ghost kc-dl" disabled={!canExport} onClick={() => dlPlates()}>
+            <Icon name="grid" size={16} /> STL {multi ? `· todas las camas (ZIP)` : 'de la cama'}
           </button>
+          {onePlate != null && (
+            <button type="button" className="btn ghost kc-dl" disabled={!canExport} onClick={() => dlPlates(onePlate)}>
+              <Icon name="grid" size={16} /> STL · solo la Cama {onePlate + 1}
+            </button>
+          )}
           <button type="button" className="btn ghost kc-dl" disabled={!canExport} onClick={dlEach}>
             <Icon name="library" size={16} /> Un STL por nombre (ZIP)
           </button>
@@ -434,7 +464,12 @@ export default function Keychains() {
           {good.length > 1 && (
             <div className="kc-names">
               <h4>Llaveros ({good.length})</h4>
-              <ul>{good.map((it, i) => <li key={i}><span>{it.name}</span><small>{it.size.x.toFixed(0)}×{it.size.y.toFixed(0)}</small></li>)}</ul>
+              {(multi ? plates : [{ items: good }]).map((pl, pi) => (
+                <div key={pi} className="kc-names-plate">
+                  {multi && <button type="button" className={'kc-names-head' + (show === pi ? ' on' : '')} onClick={() => setPlateSel(pi)}>Cama {pi + 1} <small>({pl.items.length})</small></button>}
+                  <ul>{pl.items.map((it, i) => <li key={i}><span>{it.name}</span><small>{it.size.x.toFixed(0)}×{it.size.y.toFixed(0)}</small></li>)}</ul>
+                </div>
+              ))}
             </div>
           )}
           <div className="kc-tip">

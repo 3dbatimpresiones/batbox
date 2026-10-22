@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { placeOf } from '../lib/keychain/exporters.js';
 
-// Vista tipo slicer: la cama de la impresora con los llaveros de la cama elegida.
+// Vista tipo slicer: la cama elegida o todas las camas juntas (en grilla, como Bambu Studio).
 // Eje Z hacia arriba (como en el slicer). La cámara solo se mueve sola al cambiar
 // de impresora o al tocar "Ver de frente" / "Desde arriba".
 
@@ -23,7 +23,18 @@ function geometryFrom(mesh, place) {
   return g;
 }
 
-function bedGroup(bed) {
+// Número de la cama dibujado en el piso, delante de la cama (como en Bambu Studio).
+function plateLabel(n, size) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = '#5ddadb'; x.font = 'bold 84px Outfit, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(String(n).padStart(2, '0'), 64, 68);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  return m;
+}
+
+function bedGroup(bed, label) {
   const g = new THREE.Group();
   const plate = new THREE.Mesh(new THREE.BoxGeometry(bed.w, bed.h, 1.2), new THREE.MeshStandardMaterial({ color: 0x2a2f45, roughness: 0.9 }));
   plate.position.set(bed.w / 2, bed.h / 2, -0.61);
@@ -37,10 +48,22 @@ function bedGroup(bed) {
   const edge = new THREE.LineLoop(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.03, bed.w, 0, 0.03, bed.w, bed.h, 0.03, 0, bed.h, 0.03], 3)),
     new THREE.LineBasicMaterial({ color: 0x5ddadb }));
   g.add(edge);
+  if (label) {
+    const l = plateLabel(label, Math.min(28, bed.w * 0.12));
+    l.position.set(bed.w + Math.min(28, bed.w * 0.12) * 0.55, Math.min(28, bed.w * 0.12) * 0.5, 0.05);
+    g.add(l);
+  }
   return g;
 }
 
-export default function KeychainViewer({ plate, bed, colors, view, onReady }) {
+// Dónde va cada cama en la vista "Todas": grilla de ⌈√n⌉ columnas (igual que Bambu Studio).
+export function plateOffset(i, n, bed) {
+  const v = Math.sqrt(n), r = Math.round(v);
+  const cols = v > r ? r + 1 : r;
+  return [(i % cols) * bed.w * 1.2, -Math.floor(i / cols) * bed.h * 1.2];
+}
+
+export default function KeychainViewer({ plates, show, bed, colors, view }) {
   const box = useRef(null);
   const st = useRef(null);
 
@@ -51,15 +74,15 @@ export default function KeychainViewer({ plate, bed, colors, view, onReady }) {
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     el.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(35, 1, 1, 5000);
+    const camera = new THREE.PerspectiveCamera(35, 1, 1, 20000);
     camera.up.set(0, 0, 1);
     scene.add(new THREE.HemisphereLight(0xffffff, 0x3a3f5a, 1.6));
     const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(-120, -200, 300); scene.add(sun);
     const fill = new THREE.DirectionalLight(0xbfd8ff, 0.5); fill.position.set(200, 150, 120); scene.add(fill);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.dampingFactor = 0.12; controls.screenSpacePanning = true;
+    const beds = new THREE.Group(); scene.add(beds);
     const content = new THREE.Group(); scene.add(content);
-    let bedObj = null;
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight;
       if (!w || !h) return;
@@ -69,36 +92,57 @@ export default function KeychainViewer({ plate, bed, colors, view, onReady }) {
     let raf = 0;
     const loop = () => { raf = requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); };
     loop();
-    st.current = { renderer, scene, camera, controls, content, bedKey: null, setBed: (b) => { if (bedObj) scene.remove(bedObj); bedObj = bedGroup(b); scene.add(bedObj); } };
-    onReady?.(renderer.domElement);
+    st.current = { renderer, scene, camera, controls, content, beds, area: null, layoutKey: null };
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose();
-      content.traverse((o) => { o.geometry?.dispose(); });
+      const free = (o) => { o.geometry?.dispose(); if (o.material?.map) o.material.map.dispose(); };
+      content.traverse(free); beds.traverse(free);
       renderer.dispose(); el.removeChild(renderer.domElement);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Cámara: de frente en ángulo (como al abrir el slicer) o desde arriba.
+  // Qué camas se dibujan y dónde: todas (en grilla) o solo la elegida.
+  const all = show === 'all' && plates.length > 1;
+  const visible = all ? plates.map((pl, i) => ({ pl, i, off: plateOffset(i, plates.length, bed) }))
+    : plates[show] ? [{ pl: plates[show], i: show, off: [0, 0] }] : [];
+
+  // Cámara: encuadra todas las camas visibles. De frente en ángulo o desde arriba.
   const aim = (mode) => {
-    const s = st.current; if (!s) return;
-    const c = new THREE.Vector3(bed.w / 2, bed.h / 2, 0);
-    // Distancia según el lado más largo de la cama y la forma del recuadro (que entre entera).
-    const fit = Math.max(bed.w / Math.max(0.6, s.camera.aspect), bed.h);
-    const d = fit * 1.75;
+    const s = st.current; if (!s || !s.area) return;
+    const { minX, maxX, minY, maxY } = s.area;
+    const w = maxX - minX, h = maxY - minY;
+    const c = new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, 0);
+    const fit = Math.max(w / Math.max(0.6, s.camera.aspect), h);
+    const d = fit * (s.area.maxX - s.area.minX > bed.w * 1.5 ? 2.05 : 1.75); // con varias camas, un poco más lejos
     if (mode === 'top') s.camera.position.set(c.x, c.y - 0.001, d * 1.02);
     else s.camera.position.set(c.x, c.y - d * 0.8, d * 0.68);
     s.controls.target.copy(c); s.controls.update();
   };
 
+  // Camas (se rehacen si cambia la impresora, la cantidad o la vista).
+  const layoutKey = `${bed.w}x${bed.h}|${all ? 'all' : 'one'}|${all ? plates.length : 1}`;
   useEffect(() => {
     const s = st.current; if (!s) return;
-    const key = `${bed.w}x${bed.h}`;
-    if (s.bedKey !== key) { s.setBed(bed); s.bedKey = key; aim('front'); }
-  }, [bed.w, bed.h]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (s.layoutKey === layoutKey) return;
+    s.beds.traverse((o) => { o.geometry?.dispose(); if (o.material?.map) o.material.map.dispose(); });
+    s.beds.clear();
+    const n = all ? plates.length : 1;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const [ox, oy] = all ? plateOffset(i, n, bed) : [0, 0];
+      const g = bedGroup(bed, all ? i + 1 : null);
+      g.position.set(ox, oy, 0);
+      s.beds.add(g);
+      minX = Math.min(minX, ox); minY = Math.min(minY, oy); maxX = Math.max(maxX, ox + bed.w); maxY = Math.max(maxY, oy + bed.h);
+    }
+    s.area = { minX, minY, maxX, maxY };
+    s.layoutKey = layoutKey;
+    aim(view?.mode === 'top' ? 'top' : 'front');
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (view?.mode) aim(view.mode); }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Llaveros de la cama elegida.
+  // Llaveros de las camas visibles.
   useEffect(() => {
     const s = st.current; if (!s) return;
     s.content.traverse((o) => { o.geometry?.dispose(); });
@@ -107,12 +151,15 @@ export default function KeychainViewer({ plate, bed, colors, view, onReady }) {
     const mBase = new THREE.MeshStandardMaterial({ color: colors.base, roughness: 0.55, metalness: 0.02 });
     const mLet = new THREE.MeshStandardMaterial({ color: colors.letters, roughness: 0.5, metalness: 0.02 });
     s.mats = [mBase, mLet];
-    for (const it of plate?.items || []) {
-      const place = placeOf(it);
-      s.content.add(new THREE.Mesh(geometryFrom(it.base, place), mBase));
-      s.content.add(new THREE.Mesh(geometryFrom(it.letters, place), mLet));
+    for (const { pl, off } of visible) {
+      for (const it of pl.items) {
+        const place = { ...placeOf(it) };
+        place.x += off[0]; place.y += off[1];
+        s.content.add(new THREE.Mesh(geometryFrom(it.base, place), mBase));
+        s.content.add(new THREE.Mesh(geometryFrom(it.letters, place), mLet));
+      }
     }
-  }, [plate, colors.base, colors.letters]);
+  }, [plates, show, all, colors.base, colors.letters, bed.w, bed.h]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <div className="kc-viewer" ref={box} />;
 }

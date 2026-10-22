@@ -174,7 +174,7 @@ export function build3MF(plates, bed, colors = {}) {
       build.push(`  <item objectid="${objId}" p:UUID="${uuid()}" transform="1 0 0 0 1 0 0 0 1 ${f(ox + it.x)} ${f(oy + it.y)} 0" printable="1"/>\n`);
       instances.push(`    <model_instance>\n      <metadata key="object_id" value="${objId}"/>\n      <metadata key="instance_id" value="0"/>\n      <metadata key="identify_id" value="${objId * 10}"/>\n    </model_instance>\n`);
     });
-    platesXML.push(`  <plate>\n    <metadata key="plater_id" value="${pi + 1}"/>\n    <metadata key="plater_name" value=""/>\n    <metadata key="locked" value="false"/>\n${instances.join('')}  </plate>\n`);
+    platesXML.push(`  <plate>\n    <metadata key="plater_id" value="${pi + 1}"/>\n    <metadata key="plater_name" value="${esc(plateNames(pl, 60))}"/>\n    <metadata key="locked" value="false"/>\n${instances.join('')}  </plate>\n`);
   });
 
   const today = new Date().toISOString().slice(0, 10);
@@ -205,6 +205,22 @@ export function build3MF(plates, bed, colors = {}) {
 
 // ZIP de varios archivos { 'nombre.stl': Uint8Array }.
 export const zipFiles = (files) => zipSync(files, { level: 6 });
+
+// Lista legible de los nombres de una cama, cortada si es muy larga:
+// "Lola, Pedro, Ana y 7 más". Sin tildes ni signos raros (sirve para nombres de archivo).
+export function plateNames(pl, max = 70) {
+  const names = pl.items.map((it) => String(it.name).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w ñÑ-]+/g, '').trim()).filter(Boolean);
+  let out = '';
+  let used = 0;
+  for (const n of names) {
+    const next = out ? `${out}, ${n}` : n;
+    if (next.length > max && used > 0) break;
+    out = next; used++;
+  }
+  const rest = names.length - used;
+  return rest > 0 ? `${out} y ${rest} más` : out;
+}
+export const plateFileName = (pl, i) => `Cama ${i + 1} - ${plateNames(pl)}`.replace(/ñ/g, 'n').replace(/Ñ/g, 'N');
 
 // Nombre de archivo seguro ("Sofía González" → "Sofia_Gonzalez").
 export const fileSafe = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'llavero';
