@@ -39,9 +39,11 @@ export const SAMPLE_ITEMS = [
 // Beneficios de Makers Club (página Comunidad). Texto provisorio para revisar.
 
 export const CLUB_BENEFITS = [
-  { icon: 'calculator', title: 'Cotizador 3DBAT PRO 2.0', text: 'La herramienta completa para cotizar, con pedidos y presupuestos.' },
+  { icon: 'calculator', title: 'Cotizador 3DBAT PRO 2.0', text: 'Cotizá con todos tus costos (material, luz, máquina, mano de obra) y armá presupuestos con márgenes para revendedores.' },
+  { icon: 'clipboard', title: 'Control de Pedidos', text: 'Tus pedidos, clientes, señas, entregas y ganancias del mes, todo en un solo lugar.' },
+  { icon: 'sparkles', title: 'Creador de Llaveros Múltiples Nombres', text: 'Muchos nombres de una vez, tu propia tipografía y las camas listas en 3MF o STL para tu slicer.' },
   { icon: 'graduation', title: 'Tutoriales exclusivos', text: 'Contenido avanzado que no se publica en redes.' },
   { icon: 'library', title: 'Recursos especiales', text: 'Perfiles, archivos y listas que usamos en el taller.' },
-  { icon: 'sparkles', title: 'Novedades primero', text: 'Enterate antes que nadie de herramientas y lanzamientos.' },
-];
+  { icon: 'star', title: 'Novedades primero', text: 'Herramientas nuevas y lanzamientos antes que nadie.' },
+]
 

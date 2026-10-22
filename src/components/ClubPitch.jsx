@@ -1,4 +1,5 @@
 import { CLUB_BENEFITS } from '../data/sample.js';
+import { CLUB_PRICE_TEXT } from '../config.js';
 import Icon from './Icon.jsx';
 
 // Qué incluye el Makers Club y cómo sumarse. Lo usan la página Makers Club
@@ -34,7 +35,7 @@ export function JoinSteps() {
 }
 
 // Tarjeta completa: título, beneficios, cómo sumarte y (opcional) un botón al final.
-export default function ClubPitch({ id, title = 'Beneficios de la membresía', steps = true, children }) {
+export default function ClubPitch({ id, title = 'Beneficios de la membresía', steps = true, price = true, children }) {
   return (
     <section className="card club-info" id={id}>
       <div className="ci-head">
@@ -44,6 +45,7 @@ export default function ClubPitch({ id, title = 'Beneficios de la membresía', s
           <h2>{title}</h2>
         </div>
       </div>
+      {price && <p className="ci-price"><b>{CLUB_PRICE_TEXT} por mes</b> · suscripción automática por Mercado Pago · la cancelás cuando quieras</p>}
       <Benefits />
       {steps && <>
         <div className="section-label">CÓMO SUMARTE</div>

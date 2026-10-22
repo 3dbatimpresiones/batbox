@@ -26,7 +26,7 @@ export default function Club() {
         </div>
         <div className="club-join">
           {/* Quien ya entró y todavía no es miembro ve la solicitud: los pasos ya están ahí. */}
-          <ClubPitch title="Qué incluye la membresía" steps={access === 'guest' || access === 'loading'} />
+          <ClubPitch title="Qué incluye la membresía" steps={['guest', 'loading', 'none'].includes(access)} />
           <div className="club-join-panel">
             <AccessPanel intro={access === 'guest' ? 'Sumate o ingresá' : 'Contenido solo para miembros'} benefitsLink={false} />
           </div>

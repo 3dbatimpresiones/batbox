@@ -19,7 +19,7 @@ export function Account() {
   if (!isMember) {
     return (
       <div className="narrow">
-        <AccessPanel intro={access === 'guest' ? 'Ingresá a BATBOX' : undefined} />
+        <AccessPanel full intro={access === 'guest' ? 'Ingresá a BATBOX' : undefined} />
       </div>
     );
   }

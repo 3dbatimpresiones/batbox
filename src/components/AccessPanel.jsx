@@ -1,5 +1,5 @@
 import { useAuth } from '../auth/AuthContext.jsx';
-import { LINKS } from '../config.js';
+import { CLUB_PRICE_TEXT, LINKS } from '../config.js';
 import Icon from './Icon.jsx';
 import AccessForm from './AccessForm.jsx';
 import { useState } from 'react';
@@ -81,7 +81,7 @@ function JoinPreview({ onSignIn, onBack }) {
 
 // Panel que explica qué tiene que hacer la persona según su estado.
 // `intro` permite personalizar el motivo (ej. "Este tutorial es exclusivo…").
-export default function AccessPanel({ intro, benefitsLink = true }) {
+export default function AccessPanel({ intro, benefitsLink = true, full = false }) {
   const { access, email, signIn, signOut, recheck, error } = useAuth();
   const [open, setOpen] = useState(false);
   // "Quiero unirme": primero se muestra la solicitud (paso 1 = ingresar con Google).
@@ -118,6 +118,17 @@ export default function AccessPanel({ intro, benefitsLink = true }) {
       <Gate icon="alert" tone="err" title="No pudimos comprobar tu acceso" text={error} email={email}>
         <button className="btn primary wide" onClick={recheck}><Icon name="refresh" size={18} /> Volver a intentar</button>
         <button className="btn ghost wide" onClick={signOut}><Icon name="logout" size={18} /> Cerrar sesión</button>
+      </Gate>
+    );
+  }
+
+  if (access === 'none' && !full) {
+    return (
+      <Gate icon="crown" tone="pink" title={intro || 'Esto es del Makers Club'}
+        text={`Se desbloquea con la membresía mensual de ${CLUB_PRICE_TEXT}, automática por Mercado Pago. Mientras tanto podés seguir usando todo lo gratis.`}>
+        <a className="btn club wide" href="#/acceso"><Icon name="crown" size={18} /> Quiero unirme al Makers Club</a>
+        <a className="btn ghost wide" href="#/">Seguir explorando gratis</a>
+        {benefitsLink && <a className="gate-link" href="#/community?seccion=club">¿Qué incluye? Ver beneficios</a>}
       </Gate>
     );
   }

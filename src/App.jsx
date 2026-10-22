@@ -15,6 +15,7 @@ const Loading = () => <div className="empty"><div className="spinner" /></div>;
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
 import { Detail, NotFound, Search } from './pages/Detail.jsx';
+import WelcomeChoice from './components/WelcomeChoice.jsx';
 
 function Page({ route }) {
   const { parts, query } = route;
@@ -54,6 +55,7 @@ export default function App() {
       <Footer />
       <BottomNav route={route} />
       <Toast />
+      <WelcomeChoice route={route} />
     </div>
   );
 }

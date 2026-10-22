@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { LINKS } from '../config.js';
+import { CLUB_PRICE_TEXT, LINKS } from '../config.js';
 import { mySubscription, requestAccess } from '../lib/subsApi.js';
 import Icon from './Icon.jsx';
 
@@ -83,7 +83,7 @@ export default function AccessForm({ mode = 'new', me: given, onSaved }) {
           <span className="af-num">2</span>
           <div className="af-body">
             <strong>{mode === 'renew' ? 'Renová tu suscripción' : 'Suscribite en Mercado Pago'}</strong>
-            <p>Plan mensual. Se cobra solo cada mes y lo podés cancelar cuando quieras. {mode === 'pending' && 'Si ya te suscribiste, seguí con el paso 3.'}</p>
+            <p><b>{CLUB_PRICE_TEXT} por mes.</b> Se cobra solo cada mes y lo podés cancelar cuando quieras. {mode === 'pending' && 'Si ya te suscribiste, seguí con el paso 3.'}</p>
             <a className="btn primary" href={LINKS.mpSubscribe} target="_blank" rel="noopener noreferrer">
               <Icon name="crown" size={16} /> {mode === 'renew' ? 'Renovar en Mercado Pago' : 'Suscribirme al Makers Club'} <Icon name="external" size={14} />
             </a>
