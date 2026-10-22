@@ -1,42 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import {
-  addTask, balanceOf, daysUntil, deleteTask, exportCsv, isDelivered, isMade, loadNote, monthOf, monthStats,
+  addTask, balanceOf, daysUntil, deleteOrder, deleteTask, exportCsv, isDelivered, isMade, loadNote, monthOf, monthStats,
   patchOrder, patchTask, productKey, saveNote, todayISO, toggleDelivered, toggleMade, useOrders,
 } from '../lib/ordersApi.js';
-import { norm } from '../lib/text.js';
 import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
 import OrderEditor from '../components/OrderEditor.jsx';
-import { MonthlyIncome, TopProducts, monthLabel } from '../components/OrderCharts.jsx';
-import { Empty, Options, PageHead, SearchInput } from '../components/ui.jsx';
+import { MonthlyIncome, ProductsDonut, monthLabel } from '../components/OrderCharts.jsx';
+import { Confirm, Empty } from '../components/ui.jsx';
 import '../styles/orders.css';
 
 // =====================================================================
-// CONTROL DE PEDIDOS (Makers Club). Simple, como una planilla: cargás qué te
-// pidieron, cuánto y para cuándo, y tildás "Hecho" y "Entregado".
-// Extras opcionales: seña, costo, cliente, notas. Todo en la cuenta (migración 009).
+// CONTROL DE PEDIDOS (Makers Club). Misma idea y orden que una planilla de pedidos:
+// barra lateral con meses y vistas; arriba ingresos, pedidos y unidades; la tabla
+// de pedidos (con seña, tildes de producción y entrega); compras y diseños
+// pendientes; productos más pedidos y anotaciones. Todo en la cuenta (migración 009).
 // =====================================================================
 
 const money = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
 const shiftMonth = (ym, k) => { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + k, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
-const fmtDay = (iso) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) : '—');
-const FILTERS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'hacer', label: 'Sin hacer' },
-  { value: 'entregar', label: 'Sin entregar' },
-  { value: 'deben', label: 'Me deben' },
+const fmtDate = (iso) => (iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
+const VIEWS = [
+  { id: 'panel', label: '📊 Panel de Control' },
+  { id: 'galeria', label: '🖼️ Galería del Mes' },
+  { id: 'meses', label: '📈 Comparar meses' },
 ];
-
-// Aviso de entrega de un pedido que todavía no se entregó.
-function dueInfo(o) {
-  if (isDelivered(o) || !o.delivery_date) return null;
-  const d = daysUntil(o.delivery_date);
-  if (d < 0) return { cls: 'err', text: d === -1 ? 'Atrasado 1 día' : `Atrasado ${-d} días` };
-  if (d === 0) return { cls: 'warn', text: 'Es para hoy' };
-  if (d <= 3) return { cls: 'warn', text: d === 1 ? 'Es para mañana' : `Faltan ${d} días` };
-  return null;
-}
 
 export default function Orders() {
   const { isMember, access } = useAuth();
@@ -47,7 +36,7 @@ export default function Orders() {
         <div className="club-locked-head">
           <div className="section-label">MAKERS CLUB · HERRAMIENTA</div>
           <h1>Control de Pedidos</h1>
-          <p className="ol-lead">Anotá tus pedidos, tildá lo que ya hiciste y lo que ya entregaste, y mirá cuánto vendiste en el mes. Es una herramienta de Makers Club.</p>
+          <p className="ol-lead">Registrá tus pedidos con su seña, tildá lo que ya produjiste y entregaste, y mirá cuánto vendiste en el mes. Es una herramienta de Makers Club.</p>
         </div>
         <AccessPanel intro="Herramienta solo para miembros" />
       </div>
@@ -56,30 +45,42 @@ export default function Orders() {
   return <OrdersApp />;
 }
 
+// Bloque con título que se pliega (▼ / ▶), como en la planilla.
+function Fold({ title, open, onToggle, action, children, className = '' }) {
+  return (
+    <section className={'card ob-fold ' + className}>
+      <div className="ob-fold-head">
+        <button type="button" className="ob-fold-btn" onClick={onToggle} aria-expanded={open}>
+          <span className="ob-fold-title">{title}</span>
+          <span className={'ob-caret' + (open ? ' open' : '')} aria-hidden="true">▼</span>
+        </button>
+        {action}
+      </div>
+      {open && <div className="ob-fold-body">{children}</div>}
+    </section>
+  );
+}
+
 function OrdersApp() {
   const { notify } = useAuth();
   const { orders, tasks, loading, missing, error, reload } = useOrders();
   const [month, setMonth] = useState(monthOf());
-  const [filter, setFilter] = useState('all');
-  const [q, setQ] = useState('');
+  const [view, setView] = useState('panel');
   const [editing, setEditing] = useState(null);
+  const [toDelete, setToDelete] = useState(null);
+  const [open, setOpen] = useState({ pedidos: true, compras: true, disenos: true, productos: true, notas: true });
+  const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
+
+  // Meses del selector: los que tienen pedidos + los últimos 12 + el actual.
+  const months = useMemo(() => {
+    const set = new Set(orders.map((o) => monthOf(o.order_date)));
+    for (let i = 0; i < 12; i++) set.add(shiftMonth(monthOf(), -i));
+    set.add(month);
+    return [...set].sort().reverse();
+  }, [orders, month]);
 
   const monthOrders = useMemo(() => orders.filter((o) => monthOf(o.order_date) === month), [orders, month]);
   const stats = useMemo(() => monthStats(monthOrders), [monthOrders]);
-  const pendingDelivery = monthOrders.filter((o) => !isDelivered(o)).length;
-
-  // "Ojo con estos": sin entregar y atrasados o para dentro de 3 días (de cualquier mes).
-  const alerts = useMemo(() => orders.map((o) => ({ o, due: dueInfo(o) })).filter((x) => x.due)
-    .sort((a, b) => a.o.delivery_date.localeCompare(b.o.delivery_date)), [orders]);
-
-  const searching = !!q.trim();
-  const list = useMemo(() => {
-    const words = norm(q.trim()).split(/\s+/).filter(Boolean);
-    // Al buscar, busca en todos los meses.
-    return (words.length ? orders : monthOrders)
-      .filter((o) => (filter === 'hacer' ? !isMade(o) : filter === 'entregar' ? !isDelivered(o) : filter === 'deben' ? balanceOf(o) > 0 : true))
-      .filter((o) => words.every((w) => norm([o.product, o.client_name, o.client_contact, o.notes].join(' ')).includes(w)));
-  }, [orders, monthOrders, filter, q]);
 
   const top = useMemo(() => {
     const m = new Map();
@@ -89,10 +90,7 @@ function OrdersApp() {
       r.units += Number(o.quantity) || 0; r.income += Number(o.price) || 0; r.count += 1;
       m.set(k, r);
     }
-    const rows = [...m.values()].sort((a, b) => b.units - a.units);
-    if (rows.length <= 7) return rows;
-    const rest = rows.slice(6).reduce((a, r) => ({ key: 'Otros', units: a.units + r.units, income: a.income + r.income, count: a.count + r.count }), { key: 'Otros', units: 0, income: 0, count: 0 });
-    return [...rows.slice(0, 6), rest];
+    return [...m.values()].sort((a, b) => b.units - a.units);
   }, [monthOrders]);
 
   const monthly = useMemo(() => {
@@ -110,208 +108,211 @@ function OrdersApp() {
   const quick = async (id, patch, okText) => {
     try { await patchOrder(id, patch); if (okText) notify('ok', okText); reload(); } catch (e) { notify('err', e.message); }
   };
+  const remove = async () => {
+    const o = toDelete; setToDelete(null);
+    try { await deleteOrder(o); notify('ok', 'Pedido eliminado'); reload(); } catch (e) { notify('err', e.message); }
+  };
 
   if (loading) return <div className="empty"><div className="spinner" /></div>;
   if (missing) return <Empty icon="alert" title="Falta activar el Control de Pedidos" text="El administrador tiene que correr la migración supabase/009_batbox_pedidos.sql en Supabase." />;
   if (error) return <Empty icon="alert" title="No pudimos cargar tus pedidos" text="Revisá tu conexión y recargá la página." />;
 
   return (
-    <div className="orders">
-      <PageHead icon="clipboard" label="MAKERS CLUB · HERRAMIENTA" title="Control de Pedidos"
-        text="Anotá tus pedidos y tildá lo que ya hiciste y entregaste. Solo vos ves tus datos." />
+    <div className="ob">
+      <aside className="card ob-side">
+        <div className="ob-logo"><Icon name="clipboard" size={30} /></div>
 
-      <div className="card ord-bar">
-        <div className="ord-month" role="group" aria-label="Mes">
-          <button className="mini-btn" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label="Mes anterior"><Icon name="arrowLeft" size={16} /></button>
-          <strong>📅 {monthLabel(month, true)}</strong>
-          <button className="mini-btn" onClick={() => setMonth((m) => shiftMonth(m, 1))} aria-label="Mes siguiente"><Icon name="arrowRight" size={16} /></button>
-          {month !== monthOf() && <button className="chip-btn" onClick={() => setMonth(monthOf())}>Volver a este mes</button>}
+        <div className="ob-side-sec">
+          <h3 className="ob-sec-title">GESTIÓN DE MESES</h3>
+          <div className="ob-month">
+            <button type="button" className="mini-btn" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label="Mes anterior"><Icon name="arrowLeft" size={14} /></button>
+            <select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Mes">
+              {months.map((m) => <option key={m} value={m}>{monthLabel(m, true).replace(" de ", " ")}</option>)}
+            </select>
+            <button type="button" className="mini-btn" onClick={() => setMonth((m) => shiftMonth(m, 1))} aria-label="Mes siguiente"><Icon name="arrowRight" size={14} /></button>
+          </div>
+          <small className="ob-hint">Cada pedido va al mes de su fecha. No hace falta crear meses.</small>
         </div>
-        <button className="btn primary ord-new" onClick={newOrder}>+ Anotar pedido</button>
-      </div>
 
-      {alerts.length > 0 && (
-        <section className="ord-alerts card" aria-label="Pedidos para revisar">
-          <div className="oa-head">⚠️ <b>Ojo con {alerts.length === 1 ? 'este pedido' : `estos ${alerts.length} pedidos`}</b></div>
-          <div className="oa-list">
-            {alerts.slice(0, 6).map(({ o, due }) => (
-              <button key={o.id} className="oa-item" onClick={() => setEditing(o)}>
-                <span className={'chip ' + due.cls}>{due.text}</span>
-                <span className="oa-txt">{o.product}{o.client_name ? ` · ${o.client_name}` : ''}</span>
-              </button>
+        <div className="ob-side-sec">
+          <h3 className="ob-sec-title">VISTAS</h3>
+          <div className="ob-views">
+            {VIEWS.map((v) => (
+              <button key={v.id} type="button" className={'ob-view' + (view === v.id ? ' active' : '')} onClick={() => setView(v.id)}>{v.label}</button>
             ))}
           </div>
-        </section>
-      )}
-
-      <section className="ord-stats" aria-label="Resumen del mes">
-        <Stat label="Vendiste este mes" value={money.format(stats.income)} emoji="💰" />
-        <Stat label="Pedidos" value={stats.count} emoji="📦" />
-        <Stat label="Unidades" value={stats.units.toLocaleString('es-AR')} emoji="🔢" />
-        <Stat label="Falta entregar" value={pendingDelivery} emoji="🚚" warn={pendingDelivery > 0} />
-        {stats.toCollect > 0 && <Stat label="Te deben" value={money.format(stats.toCollect)} emoji="💸" warn />}
-        {stats.profit != null && <Stat label="Ganancia" value={money.format(stats.profit)} emoji="📈" hint={stats.profitPartial ? 'De los pedidos con costo' : null} />}
-      </section>
-
-      <section className="card ord-card ord-orders">
-        <div className="ord-head">
-          <h3 className="oc-title">📋 {searching ? 'Resultados de la búsqueda' : `Pedidos de ${monthLabel(month, true).toLowerCase()}`}</h3>
-          <div className="ord-tools">
-            <SearchInput value={q} onChange={setQ} placeholder="Buscar un pedido…" />
-            <Options value={filter} onChange={setFilter} options={FILTERS} />
-          </div>
         </div>
 
-        {!list.length ? (
-          <Empty icon="clipboard" title={!orders.length ? 'Todavía no anotaste pedidos' : searching ? 'No encontramos ese pedido' : filter !== 'all' ? 'No hay pedidos así' : 'No hay pedidos este mes'}
-            text={!orders.length ? 'Tocá "+ Anotar pedido" para cargar el primero.' : searching ? 'Probá con otra palabra.' : filter !== 'all' ? 'Probá con "Todos".' : 'Cambiá de mes con las flechas o anotá uno nuevo.'} />
-        ) : (
+        <div className="ob-side-foot">
+          <button type="button" className="ob-view small" onClick={() => exportCsv(orders, `pedidos-respaldo-${todayISO()}.csv`)} disabled={!orders.length}>
+            💾 Descargar Respaldo
+          </button>
+          <small className="ob-hint">Se abre con Excel. Tus pedidos ya quedan guardados en tu cuenta.</small>
+        </div>
+      </aside>
+
+      <div className="ob-main">
+        <header className="ob-head">
+          <div>
+            <h1 className="ob-title">CONTROL DE PEDIDOS</h1>
+            <div className="ob-sub">3DBAT · MAKERS CLUB · {monthLabel(month, true).toUpperCase()}</div>
+          </div>
+          <button type="button" className="btn primary ob-new" onClick={newOrder}>+ Registrar Pedido</button>
+        </header>
+
+        <section className="ob-stats" aria-label="Resumen del mes">
+          <div className="card ob-stat"><span>INGRESOS DEL MES</span><b className="c-ok">{money.format(stats.income)}</b></div>
+          <div className="card ob-stat"><span>PEDIDOS</span><b>{stats.count}</b></div>
+          <div className="card ob-stat"><span>UNIDADES</span><b>{stats.units.toLocaleString('es-AR')}</b></div>
+          {stats.toCollect > 0 && <div className="card ob-stat"><span>RESTA COBRAR</span><b className="c-warn">{money.format(stats.toCollect)}</b></div>}
+        </section>
+
+        {view === 'panel' && (
           <>
-            <div className="ord-cols" aria-hidden="true">
-              <span /><span>Pedido</span><span>Cant.</span><span>Precio</span><span>Entrega</span><span>Hecho</span><span>Entregado</span><span />
+            <Fold title="📋 CONTROL DE PEDIDOS" open={open.pedidos} onToggle={() => toggle('pedidos')}>
+              {!monthOrders.length ? (
+                <p className="ob-empty">No hay pedidos en {monthLabel(month, true).toLowerCase()}. Tocá "+ Registrar Pedido" para anotar uno.</p>
+              ) : (
+                <div className="ob-table-wrap">
+                  <table className="ob-table">
+                    <thead>
+                      <tr><th>IMAGEN</th><th>PRODUCTO</th><th>CANT.</th><th>PRECIO</th><th>SEÑA</th><th>PRODUCCIÓN</th><th>ENTREGA</th><th aria-label="Acciones" /></tr>
+                    </thead>
+                    <tbody>
+                      {monthOrders.map((o) => (
+                        <OrderRow key={o.id} o={o} onEdit={() => setEditing(o)} onDelete={() => setToDelete(o)} onPatch={quick} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Fold>
+
+            <div className="ob-two">
+              <TaskFold kind="compra" title="🛒 COMPRAS PENDIENTES" empty="No hay compras pendientes" placeholder="Ej: PLA negro 1 kg"
+                open={open.compras} onToggle={() => toggle('compras')} tasks={tasks} reload={reload} />
+              <TaskFold kind="diseno" title="🎨 DISEÑOS PENDIENTES" empty="No hay diseños pendientes" placeholder="Ej: Logo de un cliente"
+                open={open.disenos} onToggle={() => toggle('disenos')} tasks={tasks} reload={reload} />
             </div>
-            <div className="ord-list">
-              {list.map((o) => <OrderRow key={o.id} o={o} onEdit={() => setEditing(o)} onPatch={quick} showDate={searching} />)}
+
+            <div className="ob-two">
+              <Fold title="PRODUCTOS MÁS PEDIDOS" open={open.productos} onToggle={() => toggle('productos')}>
+                <ProductsDonut rows={top} />
+              </Fold>
+              <Fold title="ANOTACIONES DEL MES" open={open.notas} onToggle={() => toggle('notas')}>
+                <MonthNotes month={month} />
+              </Fold>
             </div>
           </>
         )}
-        {monthOrders.length > 0 && !searching && (
-          <button className="btn text ord-export" onClick={() => exportCsv(monthOrders, `pedidos-${month}.csv`)}>
-            <Icon name="newspaper" size={15} /> Bajar este mes en Excel
-          </button>
+
+        {view === 'galeria' && (
+          <section className="ob-gallery-wrap">
+            <h2 className="ob-view-title">📸 GALERÍA DEL MES</h2>
+            {!gallery.length ? <p className="ob-empty">No hay pedidos con imagen en {monthLabel(month, true).toLowerCase()}.</p> : (
+              <div className="ord-gallery">
+                {gallery.map((o) => (
+                  <button key={o.id} className="og-item" onClick={() => setEditing(o)}>
+                    <img src={o.imageUrl} alt={o.product} loading="lazy" />
+                    <span>{o.product}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
         )}
-      </section>
 
-      <div className="ord-two">
-        <TaskList kind="compra" title="🛒 Compras pendientes" placeholder="Ej: PLA negro 1 kg" tasks={tasks} reload={reload} />
-        <TaskList kind="diseno" title="🎨 Diseños pendientes" placeholder="Ej: Logo de un cliente" tasks={tasks} reload={reload} />
+        {view === 'meses' && (
+          <section className="card ob-fold">
+            <h2 className="ob-view-title">📈 CUÁNTO VENDISTE POR MES</h2>
+            <p className="ob-hint">Pasá el mouse por una barra para ver el detalle. Tocala para abrir ese mes.</p>
+            <MonthlyIncome rows={monthly} selected={month} onSelect={(m) => { setMonth(m); setView('panel'); }} />
+          </section>
+        )}
       </div>
-
-      <div className="ord-two">
-        <section className="card ord-card">
-          <h3 className="oc-title">🏆 Lo que más te piden <small>{monthLabel(month, true)} · unidades</small></h3>
-          <TopProducts rows={top} />
-        </section>
-        <section className="card ord-card">
-          <h3 className="oc-title">📊 Cuánto vendiste por mes <small>tocá un mes para verlo</small></h3>
-          <MonthlyIncome rows={monthly} selected={month} onSelect={setMonth} />
-        </section>
-      </div>
-
-      <MonthNotes month={month} />
-
-      {gallery.length > 0 && (
-        <section className="block">
-          <h3 className="oc-title">🖼️ Fotos de {monthLabel(month, true).toLowerCase()}</h3>
-          <div className="ord-gallery">
-            {gallery.map((o) => (
-              <button key={o.id} className="og-item" onClick={() => setEditing(o)}>
-                <img src={o.imageUrl} alt={o.product} loading="lazy" />
-                <span>{o.product}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
 
       {editing && (
         <OrderEditor order={editing} products={products}
           onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       )}
+      <Confirm open={!!toDelete} danger title="⚠️ ¿Eliminar este pedido?" text={toDelete ? `"${toDelete.product}" se borra para siempre.` : ''}
+        yes="Sí, eliminar" no="Cancelar" onNo={() => setToDelete(null)} onYes={remove} />
     </div>
   );
 }
 
-function Stat({ label, value, emoji, hint, warn }) {
-  return (
-    <div className={'card ord-stat' + (warn ? ' warn' : '')}>
-      <span className="os-emoji" aria-hidden="true">{emoji}</span>
-      <span className="os-txt">
-        <small>{label}</small>
-        <strong>{value}</strong>
-        {hint && <em>{hint}</em>}
-      </span>
-    </div>
-  );
-}
-
-// Tilde grande ("Hecho" / "Entregado").
-function Tick({ on, label, onClick, cls }) {
-  return (
-    <button type="button" className={'or-tick ' + cls + (on ? ' on' : '')} onClick={onClick} aria-pressed={on} aria-label={label} title={label}>
-      <Icon name="check" size={18} />
-      <span className="or-tick-l">{label}</span>
-    </button>
-  );
-}
-
-function OrderRow({ o, onEdit, onPatch, showDate }) {
-  const due = dueInfo(o);
+function OrderRow({ o, onEdit, onDelete, onPatch }) {
+  const made = isMade(o);
+  const delivered = isDelivered(o);
   const bal = balanceOf(o);
+  const late = !delivered && o.delivery_date && daysUntil(o.delivery_date) < 0;
   return (
-    <article className={'ord-row' + (isDelivered(o) ? ' done' : '')}>
-      <button className="or-thumb" onClick={onEdit} aria-label={`Ver ${o.product}`}>
-        {o.imageUrl ? <img src={o.imageUrl} alt="" loading="lazy" /> : <span aria-hidden="true">📦</span>}
-      </button>
-      <div className="or-main">
-        <button className="or-title" onClick={onEdit}>{o.product}</button>
-        {(o.client_name || showDate) && (
-          <span className="or-sub">{o.client_name}{o.client_name && showDate ? ' · ' : ''}{showDate ? `pedido del ${fmtDay(o.order_date)}` : ''}</span>
-        )}
-      </div>
-      <div className="or-qty"><span className="or-k">Cant.</span><b>{o.quantity}</b></div>
-      <div className="or-money">
-        <b>{money.format(o.price)}</b>
-        {bal > 0 && (
-          <button className="or-collect" onClick={() => onPatch(o.id, { paid: true }, '¡Listo! Marcado como pagado')} title="Tocá cuando te pague">
-            Te debe {money.format(bal)}
-          </button>
-        )}
-      </div>
-      <div className="or-date">
-        <span className="or-k">Entrega</span>
-        <b>{fmtDay(o.delivery_date)}</b>
-        {due && <span className={'chip ' + due.cls}>{due.text}</span>}
-      </div>
-      <Tick cls="t-made" on={isMade(o)} label="Hecho" onClick={() => onPatch(o.id, { status: toggleMade(o) })} />
-      <Tick cls="t-deliv" on={isDelivered(o)} label="Entregado" onClick={() => onPatch(o.id, { status: toggleDelivered(o) }, isDelivered(o) ? null : '¡Entregado! 🎉')} />
-      <button className="mini-btn or-edit" onClick={onEdit} aria-label={`Editar ${o.product}`} title="Editar"><Icon name="edit" size={14} /></button>
-    </article>
+    <tr className={delivered ? 'done' : ''}>
+      <td data-l="Imagen">
+        <button type="button" className="or-thumb" onClick={onEdit} aria-label={`Ver ${o.product}`}>
+          {o.imageUrl ? <img src={o.imageUrl} alt="" loading="lazy" /> : <span aria-hidden="true">📦</span>}
+        </button>
+      </td>
+      <td data-l="Producto" className="ob-prod"><button type="button" onClick={onEdit}>{o.product}</button></td>
+      <td data-l="Cant.">{o.quantity}</td>
+      <td data-l="Precio" className="c-ok ob-price">{money.format(o.price)}</td>
+      <td data-l="Seña" className="ob-dep">
+        <span>{Number(o.deposit) > 0 ? money.format(o.deposit) : '—'}</span>
+        {bal > 0
+          ? <button type="button" className="or-collect" onClick={() => onPatch(o.id, { paid: true }, '¡Listo! Quedó pagado')} title="Tocá cuando te pague el resto">Resta {money.format(bal)}</button>
+          : Number(o.price) > 0 && <small className="c-ok">Pagado ✓</small>}
+      </td>
+      <td data-l="Producción">
+        <label className="ob-check">
+          <input type="checkbox" checked={made} onChange={() => onPatch(o.id, { status: toggleMade(o) })} aria-label={`Producido: ${o.product}`} />
+          <span className={made ? 'struck' : ''}>{fmtDate(o.production_date)}</span>
+        </label>
+      </td>
+      <td data-l="Entrega">
+        <label className="ob-check">
+          <input type="checkbox" checked={delivered} onChange={() => onPatch(o.id, { status: toggleDelivered(o) }, delivered ? null : '¡Entregado! 🎉')} aria-label={`Entregado: ${o.product}`} />
+          <span className={delivered ? 'struck' : ''}>{fmtDate(o.delivery_date)}</span>
+        </label>
+        {late && <span className="chip err ob-late">Atrasado</span>}
+      </td>
+      <td className="ob-actions">
+        <button type="button" className="mini-btn" onClick={onEdit} aria-label={`Editar ${o.product}`} title="Editar"><Icon name="edit" size={14} /></button>
+        <button type="button" className="mini-btn danger" onClick={onDelete} aria-label={`Eliminar ${o.product}`} title="Eliminar pedido"><Icon name="trash" size={14} /></button>
+      </td>
+    </tr>
   );
 }
 
-function TaskList({ kind, title, placeholder, tasks, reload }) {
+// Compras / Diseños pendientes: "+" abre el campo para agregar, tilde para tachar.
+function TaskFold({ kind, title, empty, placeholder, open, onToggle, tasks, reload }) {
   const { notify } = useAuth();
+  const [adding, setAdding] = useState(false);
   const [text, setText] = useState('');
   const mine = tasks.filter((t) => t.kind === kind);
   const run = async (fn) => { try { await fn(); reload(); } catch (e) { notify('err', e.message); } };
   const add = (e) => { e.preventDefault(); if (!text.trim()) return; const t = text; setText(''); run(() => addTask(kind, t)); };
-  const doneCount = mine.filter((t) => t.done).length;
-  const left = mine.length - doneCount;
+  const plus = (
+    <button type="button" className="ob-plus" onClick={() => { setAdding((v) => !v); if (!open) onToggle(); }} aria-label={`Agregar a ${title}`} title="Agregar">+</button>
+  );
   return (
-    <section className="card ord-card">
-      <h3 className="oc-title">{title} {left > 0 && <small>{left === 1 ? 'falta 1' : `faltan ${left}`}</small>}</h3>
-      <form className="ot-add" onSubmit={add}>
-        <div className="pink-input"><input value={text} onChange={(e) => setText(e.target.value)} maxLength={300}
-          placeholder={placeholder} aria-label={`Agregar a ${title}`} /></div>
-        <button className="btn primary" type="submit">Agregar</button>
-      </form>
-      {!mine.length ? <p className="oc-empty">Nada pendiente 🎉</p> : (
+    <Fold title={title} open={open} onToggle={onToggle} action={plus}>
+      {adding && (
+        <form className="ot-add" onSubmit={add}>
+          <div className="pink-input"><input value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={placeholder} autoFocus aria-label={title} /></div>
+          <button className="btn primary" type="submit">Agregar</button>
+        </form>
+      )}
+      {!mine.length ? <p className="ob-empty">{empty}</p> : (
         <ul className="ot-list">
           {mine.map((t) => (
             <li key={t.id} className={t.done ? 'done' : ''}>
               <label><input type="checkbox" checked={t.done} onChange={() => run(() => patchTask(t.id, { done: !t.done }))} /> <span>{t.text}</span></label>
-              <button className="mini-btn danger" onClick={() => run(() => deleteTask(t.id))} aria-label={`Borrar ${t.text}`} title="Borrar"><Icon name="x" size={12} /></button>
+              <button type="button" className="mini-btn danger" onClick={() => run(() => deleteTask(t.id))} aria-label={`Borrar ${t.text}`} title="Borrar"><Icon name="trash" size={12} /></button>
             </li>
           ))}
         </ul>
       )}
-      {doneCount > 0 && (
-        <button className="btn text ot-clear" onClick={() => run(async () => { for (const t of mine.filter((x) => x.done)) await deleteTask(t.id); })}>
-          Sacar los tachados ({doneCount})
-        </button>
-      )}
-    </section>
+    </Fold>
   );
 }
 
@@ -337,10 +338,10 @@ function MonthNotes({ month }) {
     }, 800);
   };
   return (
-    <section className="card ord-card ord-notes">
-      <h3 className="oc-title">📝 Anotaciones del mes <small aria-live="polite">{status}</small></h3>
-      <div className="pink-input"><textarea rows={4} value={text} onChange={(e) => change(e.target.value)} maxLength={5000}
-        placeholder="Escribí lo que quieras: recordatorios, insumos que faltan, ideas… Se guarda solo." aria-label="Anotaciones del mes" /></div>
-    </section>
+    <div className="ord-notes">
+      <div className="pink-input"><textarea rows={9} value={text} onChange={(e) => change(e.target.value)} maxLength={5000}
+        placeholder="Escribí tus notas acá… (recordatorios, insumos que faltan, etc.)" aria-label="Anotaciones del mes" /></div>
+      <small className="ob-hint" aria-live="polite">{status || 'Se guarda solo.'}</small>
+    </div>
   );
 }

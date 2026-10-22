@@ -47,6 +47,56 @@ export function TopProducts({ rows }) {
   );
 }
 
+// Productos más pedidos como torta (igual idea que la planilla original).
+// Colores categóricos validados para daltonismo sobre fondo oscuro, en orden fijo;
+// a partir del 7.º producto se agrupa en "Otros" (gris). Leyenda con nombre y unidades.
+const SLOTS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
+const OTHER = '#7d859f';
+export function ProductsDonut({ rows }) {
+  const [hover, setHover] = useState(null);
+  if (!rows.length) return <p className="oc-empty">Todavía no hay pedidos este mes.</p>;
+  const shown = rows.length > SLOTS.length
+    ? [...rows.slice(0, SLOTS.length - 1), rows.slice(SLOTS.length - 1).reduce((a, r) => ({ key: 'Otros', units: a.units + r.units, income: a.income + r.income, count: a.count + r.count }), { key: 'Otros', units: 0, income: 0, count: 0 })]
+    : rows;
+  const total = shown.reduce((a, r) => a + r.units, 0) || 1;
+  const R = 70, W = 26, C = 2 * Math.PI * R, GAP = shown.length > 1 ? 2 : 0;
+  let acc = 0;
+  const color = (r, i) => (r.key === 'Otros' ? OTHER : SLOTS[i]);
+  const h = hover != null ? shown[hover] : null;
+  return (
+    <div className="oc-donut" onMouseLeave={() => setHover(null)}>
+      <div className="od-ring">
+        <svg viewBox="0 0 180 180" role="img" aria-label="Productos más pedidos del mes">
+          <circle cx="90" cy="90" r={R} fill="none" stroke="rgba(255,255,255,.06)" strokeWidth={W} />
+          {shown.map((r, i) => {
+            const len = (r.units / total) * C;
+            const seg = (
+              <circle key={r.key} cx="90" cy="90" r={R} fill="none" stroke={color(r, i)} strokeWidth={hover === i ? W + 6 : W}
+                strokeDasharray={`${Math.max(0, len - GAP)} ${C}`} strokeDashoffset={-acc} transform="rotate(-90 90 90)"
+                opacity={hover == null || hover === i ? 1 : 0.4} onMouseEnter={() => setHover(i)} style={{ transition: 'opacity .15s, stroke-width .15s' }} />
+            );
+            acc += len;
+            return seg;
+          })}
+        </svg>
+        <div className="od-center" aria-hidden="true">
+          <b>{(h ? h.units : total).toLocaleString('es-AR')}</b>
+          <small>{h ? h.key : 'unidades'}</small>
+        </div>
+      </div>
+      <ul className="od-legend">
+        {shown.map((r, i) => (
+          <li key={r.key} className={hover === i ? 'on' : ''} onMouseEnter={() => setHover(i)} tabIndex={0} onFocus={() => setHover(i)} onBlur={() => setHover(null)}>
+            <span className="od-sw" style={{ background: color(r, i) }} />
+            <span className="od-name" title={r.key}>{r.key}</span>
+            <span className="od-val">{r.units.toLocaleString('es-AR')}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // Ingresos de los últimos meses. Tocar una barra abre ese mes.
 export function MonthlyIncome({ rows, selected, onSelect }) {
   const [hover, setHover] = useState(null);
