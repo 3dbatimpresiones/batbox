@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useContent } from '../data/ContentContext.jsx';
 import { CLUB_BENEFITS } from '../data/sample.js';
@@ -7,9 +8,9 @@ import { PageHead, SectionHead } from '../components/ui.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 
 const STEPS = [
-  { n: 1, title: 'Completá la solicitud', text: 'Usá el mismo correo de Google con el que vas a ingresar.' },
-  { n: 2, title: 'Verificamos tu membresía', text: 'La administración revisa que tu membresía esté activa.' },
-  { n: 3, title: 'Ingresá con Google', text: 'Una vez aprobado, entrás a Makers Club y al Cotizador PRO.' },
+  { n: 1, title: 'Entrá con Google', text: 'Tocá "Quiero unirme" e ingresá con tu cuenta de Google.' },
+  { n: 2, title: 'Suscribite y completá tus datos', text: 'Plan mensual por Mercado Pago: se cobra solo y lo cancelás cuando quieras.' },
+  { n: 3, title: 'Listo', text: 'Se activa solo. Entrás a Makers Club, al Cotizador PRO y a todas las herramientas.' },
 ];
 
 // Cómo pedir ayuda: todas las consultas se resuelven en la comunidad.
@@ -26,16 +27,23 @@ function ClubCta() {
   if (access === 'guest') {
     return (
       <div className="cta-row">
-        <button className="btn primary" onClick={() => signIn('/club')}><Icon name="login" size={16} /> Ingresar para solicitar o usar mi acceso</button>
-        <small className="cta-note">Al ingresar te mostramos si ya tenés acceso o cómo pedirlo, así nunca repetís la solicitud.</small>
+        <button className="btn club" onClick={() => signIn('/acceso')}><Icon name="crown" size={16} /> Quiero unirme al Makers Club</button>
+        <button className="btn ghost" onClick={() => signIn('/club')}><Icon name="login" size={16} /> Ya soy miembro: ingresar</button>
       </div>
     );
   }
-  return <a className="btn primary" href="#/club">Ver el estado de mi acceso <Icon name="arrowRight" size={16} /></a>;
+  if (access === 'none') return <a className="btn club" href="#/acceso"><Icon name="crown" size={16} /> Quiero unirme al Makers Club</a>;
+  return <a className="btn primary" href="#/acceso">Ver el estado de mi acceso <Icon name="arrowRight" size={16} /></a>;
 }
 
 export default function Community() {
   const { socials: SOCIALS } = useContent();
+  // #/community?seccion=club → baja directo a Makers Club
+  useEffect(() => {
+    if (/[?&]seccion=club\b/.test(window.location.hash)) {
+      setTimeout(() => document.getElementById('makers-club')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    }
+  }, []);
   return (
     <div>
       <PageHead icon="users" label="BAT COMUNIDAD" title="Comunidad Makers 3DBAT"
@@ -55,30 +63,7 @@ export default function Community() {
         </div>
       </section>
 
-      <section className="card club-info help-info">
-        <div className="ci-head">
-          <div className="card-icon lg"><Icon name="message" size={24} /></div>
-          <div>
-            <div className="section-label">AYUDA</div>
-            <h2>¿Problemas con tu impresión?</h2>
-          </div>
-        </div>
-        <p className="help-lead">Todas las consultas y ayudas se resuelven en la comunidad, así lo que se responde le sirve a todos.</p>
-        <ol className="steps">
-          {HELP_STEPS.map((s) => (
-            <li key={s.n}><span className="step-n">{s.n}</span><div><strong>{s.title}</strong><small>{s.text}</small></div></li>
-          ))}
-        </ol>
-        <div className="help-ctas">
-          {SOCIALS.filter((s) => HELP_GROUPS[s.id] && s.url).map((s) => (
-            <a key={s.id} className="btn primary" href={safeUrl(s.url)} target="_blank" rel="noopener noreferrer">
-              <SocialIcon social={s} size={16} /> {HELP_GROUPS[s.id]}
-            </a>
-          ))}
-        </div>
-      </section>
-
-      <section className="card club-info">
+      <section className="card club-info" id="makers-club">
         <div className="ci-head">
           <div className="card-icon lg pink"><Icon name="crown" size={24} /></div>
           <div>
@@ -102,6 +87,29 @@ export default function Community() {
           ))}
         </ol>
         <ClubCta />
+      </section>
+
+      <section className="card club-info help-info">
+        <div className="ci-head">
+          <div className="card-icon lg"><Icon name="message" size={24} /></div>
+          <div>
+            <div className="section-label">AYUDA</div>
+            <h2>¿Problemas con tu impresión?</h2>
+          </div>
+        </div>
+        <p className="help-lead">Todas las consultas y ayudas se resuelven en la comunidad, así lo que se responde le sirve a todos.</p>
+        <ol className="steps">
+          {HELP_STEPS.map((s) => (
+            <li key={s.n}><span className="step-n">{s.n}</span><div><strong>{s.title}</strong><small>{s.text}</small></div></li>
+          ))}
+        </ol>
+        <div className="help-ctas">
+          {SOCIALS.filter((s) => HELP_GROUPS[s.id] && s.url).map((s) => (
+            <a key={s.id} className="btn primary" href={safeUrl(s.url)} target="_blank" rel="noopener noreferrer">
+              <SocialIcon social={s} size={16} /> {HELP_GROUPS[s.id]}
+            </a>
+          ))}
+        </div>
       </section>
     </div>
   );

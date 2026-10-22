@@ -62,7 +62,10 @@ export default function AccessPanel({ intro }) {
         <button className="btn primary wide" onClick={() => signIn()}>
           <Icon name="login" size={18} /> Ingresar con Google
         </button>
-        <a className="btn ghost wide" href="#/community">¿Todavía no sos miembro? Conocé Makers Club</a>
+        <button className="btn club wide" onClick={() => signIn('/acceso')}>
+          <Icon name="crown" size={18} /> Quiero unirme al Makers Club
+        </button>
+        <a className="gate-link" href="#/community?seccion=club">¿Qué incluye? Ver beneficios</a>
       </Gate>
     );
   }

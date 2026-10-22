@@ -798,3 +798,10 @@
 .md-data .pink-input input { font-size: 14px; padding: 9px 12px; }
 .md-data-actions { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px; }
 .name-hint { margin-left: 8px; font-size: 10.5px; padding: 3px 8px; vertical-align: middle; }
+
+/* Botón "Quiero unirme al Makers Club" (rosa con corona) */
+.btn.club { background: var(--pink); color: var(--dark); box-shadow: 0 8px 18px rgba(247,142,182,.3); }
+.btn.club:hover:not(:disabled) { box-shadow: 0 10px 22px rgba(247,142,182,.42); }
+.gate-link { font-size: 13px; font-weight: 700; color: var(--pink); text-decoration: underline; text-underline-offset: 3px; }
+.gate-link:hover { color: #fff; }
+#makers-club { scroll-margin-top: 90px; }

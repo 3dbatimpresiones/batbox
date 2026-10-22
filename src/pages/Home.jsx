@@ -28,13 +28,13 @@ function ClubBanner() {
         <h2>{member ? `¡Hola, ${displayName}! Tu zona exclusiva te espera` : 'Herramientas PRO, tutoriales exclusivos y más'}</h2>
         <p>{member
           ? 'Entrá a Makers Club para usar el Cotizador PRO y ver el contenido exclusivo.'
-          : 'Si ya sos miembro, ingresá con tu cuenta de Google y listo: no hace falta registrarte de nuevo.'}</p>
+          : 'Si ya sos miembro, ingresá con tu cuenta de Google. Si todavía no, tocá "Quiero unirme": te suscribís y se activa solo.'}</p>
       </div>
       <div className="cb-actions">
         {member && <a className="btn dark" href="#/club">Entrar a Makers Club <Icon name="arrowRight" size={16} /></a>}
         {access === 'guest' && <>
           <button className="btn dark" onClick={() => signIn('/club')}><Icon name="login" size={16} /> Ingresar</button>
-          <a className="btn outline-dark" href="#/community">Conocé Makers Club</a>
+          <button className="btn outline-dark" onClick={() => signIn('/acceso')}><Icon name="crown" size={16} /> Quiero unirme</button>
         </>}
         {!member && access !== 'guest' && <a className="btn dark" href="#/club">Ver mi acceso <Icon name="arrowRight" size={16} /></a>}
       </div>
