@@ -934,3 +934,5 @@
 .sub-paypal > div { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 4px; }
 @media (max-width: 900px) { .sub-side .benefits { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .sub-side .benefits { grid-template-columns: minmax(0, 1fr); } }
+.sub-paypal.card { padding: 16px 22px; border-radius: 20px; }
+.sub-side .benefits { margin-bottom: 0; }
