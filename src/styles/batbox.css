@@ -859,3 +859,32 @@
 @media (max-width: 640px) {
   .wc-options, .modal.welcome .benefits { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Prueba gratis */
+.wc-lead { margin: -6px 0 16px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.wc-lead b { color: var(--pink); }
+.wc-trial-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+.trial-notice { position: fixed; right: 20px; bottom: 20px; z-index: 250; width: min(380px, calc(100vw - 32px)); display: flex; gap: 12px;
+  padding: 14px 14px 14px 16px; border-radius: 18px; background: rgba(27,32,92,.97); border: 1px solid rgba(247,142,182,.5);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45); backdrop-filter: blur(10px); animation: tn-in .35s ease-out; }
+.trial-notice.ended { border-color: var(--pink); box-shadow: 0 16px 40px rgba(0,0,0,.45), 0 0 0 4px rgba(247,142,182,.12); }
+@keyframes tn-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.tn-ico { flex: none; width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; color: var(--pink); background: rgba(247,142,182,.15); }
+.tn-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.tn-body strong { color: #fff; font-size: 14.5px; }
+.tn-body small { color: #cbd5e1; font-size: 12.5px; line-height: 1.45; }
+.tn-body small b { color: var(--pink); }
+.tn-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tn-close { flex: none; align-self: flex-start; width: 26px; height: 26px; border-radius: 8px; color: var(--muted); font-size: 18px; line-height: 1; }
+.tn-close:hover { color: #fff; background: rgba(255,255,255,.08); }
+@media (max-width: 760px) { .trial-notice { right: 16px; left: 16px; width: auto; bottom: 84px; } }
+@media (prefers-reduced-motion: reduce) { .trial-notice { animation: none; } }
+
+.trials-card { padding: 16px 20px; margin-bottom: 16px; border-radius: 20px; }
+.tc-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.tc-head h3 { margin: 0; color: #fff; font-size: 16px; }
+.tc-head .section-label { margin: 0 0 4px; }
+.tc-stats { display: flex; gap: 16px; flex-wrap: wrap; margin-left: auto; font-size: 13px; color: var(--muted); }
+.tc-stats b { font-size: 17px; color: #fff; margin-right: 3px; }
+.tc-list { margin-top: 12px; }
+@media (max-width: 1280px) { .trial-notice { bottom: 84px; } }

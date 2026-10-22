@@ -12,19 +12,43 @@ import { Benefits } from './ClubPitch.jsx';
 const KEY = (uid) => 'bb_welcome_seen_' + uid;
 
 export default function WelcomeChoice({ route }) {
-  const { access, user, displayName } = useAuth();
+  const { access, user, displayName, isTrial, trialEndsAt, trial } = useAuth();
   const [open, setOpen] = useState(false);
   const uid = user?.id;
 
   useEffect(() => {
-    if (access !== 'none' || !uid || route.parts[0] === 'acceso') { setOpen(false); return; }
+    // Si ya tuvo la prueba y terminó, alcanza con el recordatorio del Inicio (TrialNotice).
+    const show = (access === 'none' && !trial) || isTrial;
+    if (!show || !uid || route.parts[0] === 'acceso') { setOpen(false); return; }
     let seen = false;
     try { seen = localStorage.getItem(KEY(uid)) === '1'; } catch { /* sin storage: se muestra */ }
     setOpen(!seen);
-  }, [access, uid, route.parts]);
+  }, [access, isTrial, trial, uid, route.parts]);
 
   if (!open) return null;
   const done = () => { try { localStorage.setItem(KEY(uid), '1'); } catch { /* nada */ } setOpen(false); };
+
+  if (isTrial) {
+    const left = Math.max(0, Math.ceil((new Date(trialEndsAt) - Date.now()) / 864e5));
+    return createPortal(
+      <div className="modal-back" onClick={done}>
+        <div className="modal welcome" role="dialog" aria-modal="true" aria-labelledby="wc-title" onClick={(e) => e.stopPropagation()}>
+          <div className="wc-head">
+            <div className="section-label">BIENVENIDO A BATBOX</div>
+            <h2 id="wc-title">¡Hola{displayName ? `, ${displayName}` : ''}! Tenés {left} días gratis de todo el Makers Club</h2>
+            <p className="wc-lead">Probá todas las funciones PRO sin pagar nada: no hace falta tarjeta ni suscribirte. Cuando termine la prueba, si te gustó, seguís por <b>{CLUB_PRICE_TEXT} por mes</b>; si no, seguís usando todo lo gratis.</p>
+          </div>
+          <div className="section-label wc-sub">LO QUE TENÉS DESBLOQUEADO</div>
+          <Benefits />
+          <div className="wc-trial-actions">
+            <button className="btn primary" onClick={() => { done(); navigate('/club'); }}><Icon name="crown" size={16} /> Empezar a usarlo</button>
+            <button className="btn ghost" onClick={() => { done(); navigate('/acceso'); }}>Suscribirme ya</button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div className="modal-back" onClick={done}>

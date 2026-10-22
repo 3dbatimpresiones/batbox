@@ -8,13 +8,31 @@ import { PAY_STATUS, SUB_STATUS, daysLeft, fmtDate, money, mySubscription } from
 
 // #/acceso — login, estado de la cuenta, suscripción y datos personales.
 export function Account() {
-  const { access, isMember, isAdmin, isEditor, canEdit, displayName, email, signOut } = useAuth();
+  const { access, isMember, isAdmin, isEditor, canEdit, displayName, email, signOut, isTrial, trialEndsAt } = useAuth();
   const [me, setMe] = useState(undefined); // undefined = cargando
   const [meError, setMeError] = useState('');
   const load = useCallback(() => {
     mySubscription().then((d) => { setMe(d); setMeError(''); }, (e) => { setMe(null); setMeError(e.message); });
   }, []);
   useEffect(() => { if (isMember) load(); }, [isMember, load]);
+
+  if (isTrial) {
+    const left = Math.max(0, Math.ceil((new Date(trialEndsAt) - Date.now()) / 864e5));
+    return (
+      <div className="narrow">
+        <div className="gate card gate-wide">
+          <div className="big-ico tone-pink"><Icon name="crown" size={26} /></div>
+          <h2>Estás en la prueba gratis</h2>
+          <p className="gate-text">
+            {left <= 1 ? 'Hoy es tu último día' : `Te quedan ${left} días`} con todo el Makers Club desbloqueado (hasta el {new Date(trialEndsAt).toLocaleDateString('es-AR')}).
+            Para seguir después, suscribite acá: se activa solo y no perdés nada de lo que hiciste.
+          </p>
+          <AccessForm mode="new" me={me} />
+          <button className="btn text wide" onClick={signOut}><Icon name="logout" size={16} /> Cerrar sesión</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!isMember) {
     return (

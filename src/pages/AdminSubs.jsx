@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
 import {
   PAY_STATUS, SUB_STATUS, adminSubscriptions, daysLeft, deleteManualPayment, downloadCsv, fmtDate, linkSubscription,
-  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago, unlinkSubscription, memberFromSubscription, updateMember,
+  manualPayment, money, SIM_DB, SIM_SUBS, SIM_MEMBERS, syncMercadoPago, unlinkSubscription, memberFromSubscription, updateMember, adminTrials,
 } from '../lib/subsApi.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, SearchInput } from '../components/ui.jsx';
@@ -73,6 +73,7 @@ export default function AdminSubs() {
   const [syncing, setSyncing] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const [view, setView] = useState('club'); // club · ads (Espacio publicitario vendedores)
+  const [trials, setTrials] = useState(null);
 
   const load = useCallback(async () => {
     if (SIM_DB) { setData(SIM_SUBS); setMembers(SIM_MEMBERS); return; }
@@ -82,7 +83,7 @@ export default function AdminSubs() {
       setData(d); setMembers(m.data || []); setError(null);
     } catch (e) { setError(e.message); }
   }, []);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); adminTrials().then(setTrials, () => setTrials(null)); }, [load]);
 
   const run = async (fn, okText) => {
     if (SIM_DB) { notify('ok', 'Simulación: ' + okText); return true; }
@@ -200,6 +201,7 @@ export default function AdminSubs() {
       </div>
 
       {view === 'ads' && <AdsView subs={ads.subscriptions} payments={ads.payments} />}
+      {view === 'club' && trials && <TrialsCard trials={trials} />}
       {view === 'club' && <>
 
       <div className="member-stats subs-stats">
@@ -603,5 +605,50 @@ function AdsView({ subs, payments }) {
           </div>
         )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// PRUEBAS GRATIS de 14 días (cuentas nuevas): cuántas hay y quién se suscribió.
+// ---------------------------------------------------------------------
+function TrialsCard({ trials }) {
+  const [open, setOpen] = useState(false);
+  const now = Date.now();
+  const active = trials.filter((t) => new Date(t.ends_at) > now && !t.subscribed);
+  const converted = trials.filter((t) => t.subscribed);
+  const ended = trials.filter((t) => new Date(t.ends_at) <= now && !t.subscribed);
+  const rate = trials.length ? Math.round((converted.length / trials.length) * 100) : 0;
+  const name = (t) => [t.first_name, t.last_name].filter(Boolean).join(' ');
+  return (
+    <section className="card trials-card">
+      <div className="tc-head">
+        <div>
+          <div className="section-label">PRUEBAS GRATIS · 14 DÍAS</div>
+          <h3>Cuentas nuevas probando el Makers Club</h3>
+        </div>
+        <div className="tc-stats">
+          <span><b className="c-cyan">{active.length}</b> en prueba</span>
+          <span><b className="c-ok">{converted.length}</b> se suscribieron{trials.length ? ` (${rate}%)` : ''}</span>
+          <span><b>{ended.length}</b> terminaron sin suscribirse</span>
+        </div>
+        {trials.length > 0 && <button className="btn ghost small" onClick={() => setOpen(!open)}>{open ? 'Ocultar' : 'Ver quiénes'}</button>}
+      </div>
+      {!trials.length && <p className="ed-hint">Cuando alguien nuevo entre con Google, arranca su prueba y aparece acá.</p>}
+      {open && (
+        <div className="pay-list tc-list">
+          {trials.map((t) => {
+            const live = new Date(t.ends_at) > now;
+            const st = t.subscribed ? ['ok', 'Se suscribió'] : live ? ['club', `En prueba · quedan ${Math.max(0, Math.ceil((new Date(t.ends_at) - now) / 864e5))} días`] : ['muted', 'Terminó'];
+            return (
+              <div key={t.email} className="pay-row">
+                <span className={'chip ' + st[0]}>{st[1]}</span>
+                <span className="pr-sub">{name(t) || t.email}{name(t) && <small> · {t.email}</small>}</span>
+                <small className="pr-op">{fmtDate(t.started_at)} → {fmtDate(t.ends_at)}</small>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }

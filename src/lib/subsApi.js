@@ -33,6 +33,20 @@ export async function mySubscription() {
   return data; // null si todavía no tiene ficha
 }
 
+// Pruebas gratis de 14 días (migración 022). Si todavía no se corrió, devuelve null.
+export async function adminTrials() {
+  if (SIM_DB) {
+    const d = (x) => new Date(Date.now() + x * 864e5).toISOString();
+    return [
+      { email: 'nuevo.uno@gmail.com', started_at: d(-3), ends_at: d(11), member_status: null, subscribed: false },
+      { email: 'nuevo.dos@gmail.com', first_name: 'Nuevo', last_name: 'Dos', started_at: d(-20), ends_at: d(-6), member_status: 'approved', subscribed: true },
+      { email: 'nuevo.tres@hotmail.com', started_at: d(-30), ends_at: d(-16), member_status: null, subscribed: false },
+    ];
+  }
+  const { data, error } = await sb.rpc('bb_admin_trials');
+  return error ? null : data;
+}
+
 export async function adminSubscriptions() {
   const { data, error } = await sb.rpc('bb_admin_subscriptions');
   if (error) throw new Error(msg(error));

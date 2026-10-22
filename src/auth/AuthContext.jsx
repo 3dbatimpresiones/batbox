@@ -37,6 +37,14 @@ function simulatedState(kind) {
   const session = { user: { id: 'sim', email: 'maker@ejemplo.com', user_metadata: { full_name: 'Maker Ejemplo' } } };
   if (kind === 'guest') return { loading: false, session: null, member: null, error: null };
   if (kind === 'none') return { loading: false, session, member: null, error: null };
+  // prueba gratis activa (quedan 9 días) / terminada
+  if (kind === 'trial') {
+    const end = new Date(Date.now() + 9 * 864e5).toISOString();
+    return { loading: false, session, error: null, member: { email: 'maker@ejemplo.com', status: 'approved', role: 'user', subscription_expires_at: end, is_trial: true, trial_ends_at: end } };
+  }
+  if (kind === 'trialended') {
+    return { loading: false, session, member: null, error: null, trial: { active: false, ends_at: new Date(Date.now() - 864e5).toISOString() } };
+  }
   if (kind === 'owner') { // dueño: admin marcado como dueño por la base
     return { loading: false, session, error: null, owner: true,
       member: { email: 'dueno@ejemplo.com', first_name: '3DBAT', status: 'approved', role: 'admin', subscription_expires_at: null } };
@@ -99,7 +107,13 @@ export function AuthProvider({ children }) {
       const r = await sb.rpc('bb_is_owner');
       owner = r.data === true;
     }
-    setState({ loading: false, session, member, error: null, owner });
+    // Sin membresía: ¿tuvo prueba gratis y terminó? (para el recordatorio del Inicio)
+    let trial = null;
+    if (!member) {
+      const t = await sb.rpc('bb_my_trial');
+      trial = t.error ? null : t.data;
+    }
+    setState({ loading: false, session, member, error: null, owner, trial });
   }, []);
 
   useEffect(() => {
@@ -168,6 +182,10 @@ export function AuthProvider({ children }) {
       isEditor: access === 'member' && state.member?.role === 'editor',
       canEdit: access === 'member' && ['admin', 'editor'].includes(state.member?.role),
       isOwner: access === 'member' && state.member?.role === 'admin' && state.owner === true,
+      // Prueba gratis de 14 días (migración 022): entra como miembro hasta trialEndsAt.
+      isTrial: access === 'member' && state.member?.is_trial === true,
+      trialEndsAt: state.member?.trial_ends_at || null,
+      trial: state.trial || null,
       displayName: state.member?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || user?.email || '',
       email: state.member?.email || user?.email || '',
       signIn,

@@ -1,0 +1,67 @@
+import { useEffect, useState } from 'react';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { CLUB_PRICE_TEXT } from '../config.js';
+import Icon from './Icon.jsx';
+
+// Aviso flotante en el Inicio sobre la prueba gratis de 14 días (migración 022):
+//   · durante la prueba: cuántos días quedan (se oculta por esta visita al cerrarlo)
+//   · al terminar: recordatorio para suscribirse (al cerrarlo vuelve a aparecer en 3 días)
+const LATER_DAYS = 3;
+const keyOf = (uid, kind) => `bb_trial_notice_${kind}_${uid}`;
+export const daysLeftOf = (end) => Math.max(0, Math.ceil((new Date(end) - Date.now()) / 864e5));
+
+export default function TrialNotice({ route }) {
+  const { access, isTrial, trialEndsAt, trial, user } = useAuth();
+  const uid = user?.id;
+  const ended = access === 'none' && trial && !trial.active;
+  const kind = isTrial ? 'active' : ended ? 'ended' : null;
+  const [hidden, setHidden] = useState(true);
+
+  useEffect(() => {
+    if (!kind || !uid) { setHidden(true); return; }
+    let h = false;
+    try {
+      if (kind === 'active') h = sessionStorage.getItem(keyOf(uid, kind)) === '1';
+      else h = Date.now() < Number(localStorage.getItem(keyOf(uid, kind)) || 0);
+    } catch { /* sin storage: se muestra */ }
+    setHidden(h);
+  }, [kind, uid]);
+
+  if (!kind || hidden || (route.parts[0] ?? '') !== '') return null;
+  const close = () => {
+    try {
+      if (kind === 'active') sessionStorage.setItem(keyOf(uid, kind), '1');
+      else localStorage.setItem(keyOf(uid, kind), String(Date.now() + LATER_DAYS * 864e5));
+    } catch { /* nada */ }
+    setHidden(true);
+  };
+
+  if (kind === 'active') {
+    const left = daysLeftOf(trialEndsAt);
+    return (
+      <aside className="trial-notice" role="status">
+        <span className="tn-ico"><Icon name="crown" size={18} /></span>
+        <div className="tn-body">
+          <strong>Prueba gratis del Makers Club</strong>
+          <small>{left <= 1 ? 'Es tu último día' : `Te quedan ${left} días`} con todo desbloqueado. Si te gusta, seguís por {CLUB_PRICE_TEXT}/mes.</small>
+          <a className="btn club small" href="#/acceso"><Icon name="crown" size={14} /> Suscribirme</a>
+        </div>
+        <button className="tn-close" onClick={close} aria-label="Cerrar">×</button>
+      </aside>
+    );
+  }
+  return (
+    <aside className="trial-notice ended" role="status">
+      <span className="tn-ico"><Icon name="crown" size={18} /></span>
+      <div className="tn-body">
+        <strong>Terminó tu prueba gratis de 14 días</strong>
+        <small>¿Te gustaron las funciones PRO? Para seguir usándolas suscribite al Makers Club por <b>{CLUB_PRICE_TEXT} por mes</b>. Se cobra solo y lo cancelás cuando quieras.</small>
+        <div className="tn-actions">
+          <a className="btn club small" href="#/acceso"><Icon name="crown" size={14} /> Quiero suscribirme</a>
+          <button className="btn text small" onClick={close}>Ahora no</button>
+        </div>
+      </div>
+      <button className="tn-close" onClick={close} aria-label="Cerrar">×</button>
+    </aside>
+  );
+}

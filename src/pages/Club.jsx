@@ -13,7 +13,7 @@ import ClubPitch, { Benefits } from '../components/ClubPitch.jsx';
 const COMING = ['Perfil', 'Favoritos', 'Proyectos guardados'];
 
 export default function Club() {
-  const { isMember, isAdmin, isEditor, member, displayName, access } = useAuth();
+  const { isMember, isAdmin, isEditor, member, displayName, access, isTrial, trialEndsAt } = useAuth();
   const { tools: TOOLS, byKind } = useContent();
 
   if (!isMember) {
@@ -52,13 +52,15 @@ export default function Club() {
         <div className="cw-status card">
           <div className="section-label">TU MEMBRESÍA</div>
           <div className="chips">
-            <span className="chip ok"><Icon name="check" size={12} /> Miembro activo</span>
+            {isTrial
+              ? <span className="chip club"><Icon name="crown" size={12} /> Prueba gratis</span>
+              : <span className="chip ok"><Icon name="check" size={12} /> Miembro activo</span>}
             {isAdmin && <span className="chip club">✦ Admin</span>}
             {isEditor && <span className="chip cat">✎ Editor</span>}
           </div>
           <small>{member.email}</small>
-          {member.subscription_expires_at && <small>Acceso hasta: {fmtDate(member.subscription_expires_at.slice(0, 10))}</small>}
-          <a className="gate-link cw-link" href="#/acceso">Mi suscripción y mis datos</a>
+          {member.subscription_expires_at && <small>{isTrial ? 'Prueba hasta' : 'Acceso hasta'}: {fmtDate((trialEndsAt || member.subscription_expires_at).slice(0, 10))}</small>}
+          <a className="gate-link cw-link" href="#/acceso">{isTrial ? 'Suscribirme para seguir después de la prueba' : 'Mi suscripción y mis datos'}</a>
         </div>
       </section>
 

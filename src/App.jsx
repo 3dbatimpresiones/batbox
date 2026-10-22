@@ -16,6 +16,7 @@ import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
 import { Detail, NotFound, Search } from './pages/Detail.jsx';
 import WelcomeChoice from './components/WelcomeChoice.jsx';
+import TrialNotice from './components/TrialNotice.jsx';
 
 function Page({ route }) {
   const { parts, query } = route;
@@ -56,6 +57,7 @@ export default function App() {
       <BottomNav route={route} />
       <Toast />
       <WelcomeChoice route={route} />
+      <TrialNotice route={route} />
     </div>
   );
 }
