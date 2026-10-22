@@ -4,6 +4,7 @@ import { fmtDate } from '../lib/text.js';
 import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
 import { TrialChip } from '../components/TrialBadge.jsx';
+import { TRIAL_DAYS } from '../config.js';
 import { SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, NewsRow, ToolCard } from '../components/Cards.jsx';
 import ClubPitch, { Benefits } from '../components/ClubPitch.jsx';
@@ -23,7 +24,8 @@ export default function Club() {
         <div className="club-locked-head">
           <div className="section-label">MAKERS CLUB</div>
           <h1>Zona exclusiva de Makers Club</h1>
-          <p>Herramientas PRO, tutoriales exclusivos y recursos del taller, por una suscripción mensual.</p>
+          <p>Herramientas PRO, tutoriales exclusivos y recursos del taller, por una suscripción mensual.
+            {access === 'guest' && <> <b className="c-pink">¿Primera vez? Entrando con Google tenés {TRIAL_DAYS} días gratis de todo.</b></>}</p>
         </div>
         <div className="club-join">
           {/* Quien ya entró y todavía no es miembro ve la solicitud: los pasos ya están ahí. */}

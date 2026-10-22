@@ -4,6 +4,7 @@ import { navigate } from '../lib/router.js';
 import { newest, useContent } from '../data/ContentContext.jsx';
 import Icon from '../components/Icon.jsx';
 import { TrialBar } from '../components/TrialBadge.jsx';
+import { TRIAL_DAYS } from '../config.js';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
@@ -29,7 +30,9 @@ function ClubBanner() {
         <h2>{member ? `¡Hola, ${displayName}! Tu zona exclusiva te espera` : 'Herramientas PRO, tutoriales exclusivos y más'}</h2>
         <p>{member
           ? 'Entrá a Makers Club para usar el Cotizador PRO y ver el contenido exclusivo.'
-          : 'Si ya sos miembro, ingresá con tu cuenta de Google. Si todavía no, tocá "Quiero unirme": te suscribís y se activa solo.'}</p>
+          : access === 'guest'
+            ? `¿Primera vez? Entrá con Google y probá gratis ${TRIAL_DAYS} días todas las herramientas del Makers Club, sin tarjeta. Si ya sos miembro, entrá con tu cuenta y listo.`
+            : 'Para usar las herramientas PRO y el contenido exclusivo, tocá "Quiero unirme": te suscribís y se activa solo.'}</p>
       </div>
       <div className="cb-actions">
         {member && <a className="btn dark" href="#/club">Entrar a Makers Club <Icon name="arrowRight" size={16} /></a>}

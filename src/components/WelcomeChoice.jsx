@@ -35,13 +35,13 @@ export default function WelcomeChoice({ route }) {
         <div className="modal welcome" role="dialog" aria-modal="true" aria-labelledby="wc-title" onClick={(e) => e.stopPropagation()}>
           <div className="wc-head">
             <div className="section-label">BIENVENIDO A BATBOX</div>
-            <h2 id="wc-title">¡Hola{displayName ? `, ${displayName}` : ''}! Tenés {left} días gratis de todo el Makers Club</h2>
-            <p className="wc-lead">Probá todas las funciones PRO sin pagar nada: no hace falta tarjeta ni suscribirte. Cuando termine la prueba, si te gustó, seguís por <b>{CLUB_PRICE_TEXT} por mes</b>; si no, seguís usando todo lo gratis.</p>
+            <h2 id="wc-title">¡Hola{displayName ? `, ${displayName}` : ''}! Por ser tu primera vez, tenés {left} días gratis de todas las herramientas del Makers Club</h2>
+            <p className="wc-lead">Usá todo lo PRO sin pagar nada: no hace falta tarjeta ni suscribirte. Cuando terminen los {left} días, si te gustó, seguís por <b>{CLUB_PRICE_TEXT} por mes</b>; si no, seguís usando todo lo gratis (Cotizador FREE, tutoriales y más).</p>
           </div>
           <div className="section-label wc-sub">LO QUE TENÉS DESBLOQUEADO</div>
           <Benefits />
           <div className="wc-trial-actions">
-            <button className="btn primary" onClick={() => { done(); navigate('/club'); }}><Icon name="crown" size={16} /> Empezar a usarlo</button>
+            <button className="btn primary" onClick={() => { done(); navigate('/'); }}><Icon name="crown" size={16} /> Continuar gratis · {left} días de prueba</button>
             <button className="btn ghost" onClick={() => { done(); navigate('/acceso'); }}>Suscribirme ya</button>
           </div>
         </div>

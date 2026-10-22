@@ -1,5 +1,5 @@
 import { useAuth } from '../auth/AuthContext.jsx';
-import { CLUB_PRICE_TEXT, LINKS } from '../config.js';
+import { CLUB_PRICE_TEXT, LINKS, TRIAL_DAYS } from '../config.js';
 import Icon from './Icon.jsx';
 import AccessForm from './AccessForm.jsx';
 import { useState } from 'react';
@@ -55,7 +55,7 @@ function JoinPreview({ onSignIn, onBack }) {
           <span className="af-num">1</span>
           <div className="af-body">
             <strong>Ingresá con tu cuenta de Google</strong>
-            <p>Así tu acceso queda a tu nombre y no tenés que crear otra contraseña. <b>Ingresar no da acceso:</b> se activa recién cuando se confirma tu suscripción.</p>
+            <p>Así tu acceso queda a tu nombre y no tenés que crear otra contraseña. <b>Si es tu primera vez, al ingresar arrancan {TRIAL_DAYS} días gratis de todas las herramientas del Makers Club</b> (sin tarjeta). Para seguir después, completás los pasos 2 y 3.</p>
             <button className="btn primary" onClick={onSignIn}><Icon name="login" size={16} /> Ingresar con Google</button>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function AccessPanel({ intro, benefitsLink = true, full = false }
         <button className="btn primary wide" onClick={() => signIn()}>
           <Icon name="login" size={18} /> Ingresar con Google
         </button>
-        <small className="gate-caption">Para entrar a la web con tu cuenta. Si ya sos miembro, accedés a todo (usá la misma cuenta que en el Cotizador PRO). Si no, usás lo gratis.</small>
+        <small className="gate-caption">Para entrar con tu cuenta. Si ya sos miembro, accedés a todo (usá la misma cuenta que en el Cotizador PRO). <b className="c-pink">¿Es tu primera vez? Entrando tenés {TRIAL_DAYS} días gratis de todas las herramientas del Makers Club</b>, sin tarjeta. Después seguís usando todo lo gratis.</small>
         <button className="btn club wide" onClick={() => setJoin(true)}>
           <Icon name="crown" size={18} /> Quiero unirme al Makers Club
         </button>
