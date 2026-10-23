@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { CLUB_PRICE_TEXT, LINKS } from '../config.js';
+import { CLUB_PRICE_TEXT, LINKS, PAYPAL_PRICE_TEXT } from '../config.js';
 import { sb } from '../lib/supabase.js';
 import { navigate } from '../lib/router.js';
 import { mySubscription, requestAccess } from '../lib/subsApi.js';
 import Icon from '../components/Icon.jsx';
+import BrandIcon from '../components/BrandIcon.jsx';
 import { Benefits } from '../components/ClubPitch.jsx';
 
 // =====================================================================
@@ -12,6 +13,8 @@ import { Benefits } from '../components/ClubPitch.jsx';
 // Para quien ya decidió suscribirse (link del mensaje de WhatsApp/Discord):
 // entra con Google → deja sus datos → paga en Mercado Pago → se activa solo
 // y lo manda al Inicio. Sin prueba gratis (bb_skip_trial, migración 024).
+// Con PayPal (otros países) guarda los mismos datos, la ficha queda pendiente
+// en el panel y se aprueba a mano al ver el pago.
 // =====================================================================
 
 const EMPTY = { first_name: '', last_name: '', phone: '', discord: '', instagram: '' };
@@ -21,6 +24,13 @@ export default function Subscribe() {
   const { access, isTrial, user, signIn, signOut, recheck, notify, simulated } = useAuth();
   const [f, setF] = useState(EMPTY);
   const [phase, setPhase] = useState('form'); // form · waiting
+  const [method, setMethod] = useState(() => (/[?&]paypal\b/.test(window.location.hash) ? 'paypal' : 'mp')); // mp · paypal
+  const pp = method === 'paypal';
+  const priceText = pp ? (PAYPAL_PRICE_TEXT ? `${PAYPAL_PRICE_TEXT}/mes` : 'en dólares') : `${CLUB_PRICE_TEXT}/mes`;
+  const choose = (m) => {
+    setMethod(m); setError('');
+    window.history.replaceState(null, '', '#/suscribirme' + (m === 'paypal' ? '?paypal' : ''));
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [op, setOp] = useState('');
@@ -70,19 +80,21 @@ export default function Subscribe() {
 
   const set = (k) => (e) => { setF((x) => ({ ...x, [k]: e.target.value })); setError(''); };
 
-  const pay = async (e) => {
-    e.preventDefault();
+  const pay = async (how, e) => {
+    e?.preventDefault();
     if (!f.first_name.trim() || !f.last_name.trim()) { setError('Completá tu nombre y apellido.'); return; }
     if (f.phone.replace(/\D/g, '').length < 6) { setError('Completá tu celular (con característica).'); return; }
-    // La pestaña de Mercado Pago se abre ya (si se abre después de guardar, el navegador la bloquea).
+    // La pestaña de pago se abre ya (si se abre después de guardar, el navegador la bloquea).
     const w = window.open('about:blank', '_blank');
+    const url = how === 'paypal' ? LINKS.paypalSubscribe : LINKS.mpSubscribe;
     setBusy(true); setError('');
     try {
       if (!simulated) {
         await sb.rpc('bb_skip_trial');
         await requestAccess({ ...f, operation: '' });
       }
-      if (w) w.location.href = LINKS.mpSubscribe; else setPopupBlocked(true);
+      if (w) w.location.href = url; else setPopupBlocked(true);
+      setMethod(how);
       setPhase('waiting');
     } catch (err) {
       if (w) w.close();
@@ -112,7 +124,7 @@ export default function Subscribe() {
       <div className="big-ico tone-pink"><Icon name="crown" size={26} /></div>
       <div className="section-label">MAKERS CLUB 3DBAT</div>
       <h1>Suscribite al Makers Club</h1>
-      <p><b>{CLUB_PRICE_TEXT} por mes</b>, cuota automática por Mercado Pago. La cancelás cuando quieras.</p>
+      <p>Cuota mensual automática. La cancelás cuando quieras.</p>
     </div>
   );
 
@@ -136,17 +148,31 @@ export default function Subscribe() {
       {head}
       <div className="sub-grid">
         <div className="card sub-card">
+          <div className="pay-choice" role="radiogroup" aria-label="Cómo vas a pagar">
+            <button type="button" role="radio" aria-checked={!pp} className={'pc-opt' + (!pp ? ' active' : '')} onClick={() => choose('mp')} disabled={phase === 'waiting'}>
+              <span className="pc-flag" aria-label="Argentina">
+                <svg width="28" height="19" viewBox="0 0 28 19" aria-hidden="true"><rect width="28" height="19" rx="3" fill="#74ACDF" /><rect y="6.33" width="28" height="6.34" fill="#fff" /><circle cx="14" cy="9.5" r="2.1" fill="#F6B40E" /></svg>
+              </span>
+              <span className="pc-txt"><strong>Desde Argentina</strong><small>Mercado Pago</small></span>
+              <b className="pc-price">{CLUB_PRICE_TEXT}<small>/mes</small></b>
+            </button>
+            <button type="button" role="radio" aria-checked={pp} className={'pc-opt pp' + (pp ? ' active' : '')} onClick={() => choose('paypal')} disabled={phase === 'waiting'}>
+              <span className="pc-flag">🌎</span>
+              <span className="pc-txt"><strong>Desde otro país</strong><small>PayPal</small></span>
+              <b className="pc-price">{PAYPAL_PRICE_TEXT ? <>{PAYPAL_PRICE_TEXT}<small>/mes</small></> : <small>en dólares</small>}</b>
+            </button>
+          </div>
           {access === 'guest' ? (
             <div className="af-step">
               <span className="af-num">1</span>
               <div className="af-body">
                 <strong>Ingresá con tu cuenta de Google</strong>
                 <p>Tu suscripción queda a tu nombre y con esa misma cuenta entrás a BATBOX y al Cotizador PRO.</p>
-                <button className="btn primary" onClick={() => signIn('/suscribirme')}><Icon name="login" size={16} /> Ingresar con Google</button>
+                <button className="btn primary" onClick={() => signIn(pp ? '/suscribirme?paypal' : '/suscribirme')}><Icon name="login" size={16} /> Ingresar con Google</button>
               </div>
             </div>
           ) : phase === 'form' ? (
-            <form className="access-form" onSubmit={pay} noValidate>
+            <form className="access-form" onSubmit={(e) => pay(method, e)} noValidate>
               <div className="af-step done">
                 <span className="af-num"><Icon name="check" size={15} /></span>
                 <div className="af-body"><strong>Ingresaste con Google</strong><p>{user?.email}</p></div>
@@ -167,16 +193,34 @@ export default function Subscribe() {
               <div className="af-step">
                 <span className="af-num">3</span>
                 <div className="af-body">
-                  <strong>Pagá en Mercado Pago</strong>
-                  <p>Se abre Mercado Pago para suscribirte. Cuando termines, esta página se da cuenta sola y te lleva al inicio con todo desbloqueado.</p>
+                  <strong>{pp ? 'Pagá con PayPal' : 'Pagá en Mercado Pago'}</strong>
+                  <p>{pp
+                    ? <>Se abre PayPal para suscribirte{PAYPAL_PRICE_TEXT ? <> por <b>{PAYPAL_PRICE_TEXT} por mes</b></> : ' (el monto en dólares lo ves en PayPal antes de confirmar)'}. Los pagos de PayPal los revisamos a mano: apenas veamos el tuyo activamos tu cuenta y te avisamos.</>
+                    : 'Se abre Mercado Pago para suscribirte. Cuando termines, esta página se da cuenta sola y te lleva al inicio con todo desbloqueado.'}</p>
                 </div>
               </div>
               {error && <p className="af-msg err"><Icon name="alert" size={15} /> {error}</p>}
-              <button className="btn club wide" disabled={busy}>
-                <Icon name="crown" size={18} /> {busy ? 'Guardando…' : `Guardar y pagar ${CLUB_PRICE_TEXT}/mes`}
-              </button>
+              {pp ? (
+                <button className="btn paypal wide" disabled={busy}>
+                  {busy ? 'Guardando…' : <>Guardar y pagar {PAYPAL_PRICE_TEXT ? `${PAYPAL_PRICE_TEXT}/mes ` : ''}con <span className="pp-word"><b>Pay</b><i>Pal</i></span></>}
+                </button>
+              ) : (
+                <button className="btn club wide" disabled={busy}>
+                  <Icon name="crown" size={18} /> {busy ? 'Guardando…' : `Guardar y pagar ${priceText} con Mercado Pago`}
+                </button>
+              )}
               <button type="button" className="btn text wide" onClick={signOut}>Usar otra cuenta de Google</button>
             </form>
+          ) : method === 'paypal' ? (
+            <div className="sub-wait">
+              <span className="pp-logo big"><BrandIcon name="paypal" size={28} /></span>
+              <h2>¡Listo! Tus datos ya quedaron guardados</h2>
+              <p>Completá la suscripción en la pestaña de PayPal. Los pagos de PayPal los revisamos a mano: apenas veamos el tuyo activamos esta cuenta ({user?.email}) y te avisamos.</p>
+              <a className={'btn ' + (popupBlocked ? 'paypal' : 'ghost')} href={LINKS.paypalSubscribe} target="_blank" rel="noopener noreferrer">
+                <Icon name="external" size={16} /> {popupBlocked ? 'Abrir PayPal para pagar' : 'Volver a abrir PayPal'}
+              </a>
+              <button type="button" className="btn text" onClick={() => setPhase('form')}>Corregir mis datos</button>
+            </div>
           ) : (
             <div className="sub-wait">
               <div className="spinner" />
@@ -196,14 +240,6 @@ export default function Subscribe() {
               </details>
             </div>
           )}
-        </div>
-
-        <div className="card sub-paypal">
-          <div>
-            <strong>¿Sos de otro país?</strong>
-            <p>Pagá con PayPal. Completá igual tus datos acá y te activamos a mano apenas veamos el pago.</p>
-          </div>
-          <a className="btn ghost small" href={LINKS.paypalSubscribe} target="_blank" rel="noopener noreferrer">Suscribirme con PayPal <Icon name="external" size={13} /></a>
         </div>
 
         <aside className="card sub-card sub-side">

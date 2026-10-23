@@ -935,6 +935,14 @@
 @media (max-width: 900px) { .sub-side .benefits { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .sub-side .benefits { grid-template-columns: minmax(0, 1fr); } }
 .sub-paypal.card { padding: 16px 22px; border-radius: 20px; }
+/* PayPal con sus colores de marca, para que se reconozca de un vistazo */
+.pp-logo { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: #fff; color: #003087; }
+.pp-logo.big { width: 56px; height: 56px; border-radius: 16px; }
+.btn.paypal { background: #ffc439; color: #111827; border-color: #ffc439; gap: 6px; }
+.btn.paypal:hover:not(:disabled) { background: #f2ba36; border-color: #f2ba36; }
+.pp-word { font-size: 17px; font-style: italic; font-weight: 900; letter-spacing: -.02em; }
+.pp-word b { color: #003087; font-weight: 900; } .pp-word i { color: #009cde; }
+@media (max-width: 560px) { .sub-paypal .btn.paypal { width: 100%; } }
 .sub-side .benefits { margin-bottom: 0; }
 
 /* Grupo de WhatsApp del Makers Club */
@@ -971,3 +979,20 @@
 .ga-two { margin: 0; }
 @media (max-width: 700px) { .ga-row { flex-wrap: wrap; } .ga-link { flex-direction: column; align-items: stretch; } }
 .btn.primary.gc-btn { background: #25d366; color: #06301a; box-shadow: 0 8px 18px rgba(37,211,102,.25); }
+
+/* Pago directo: elegir Mercado Pago (Argentina) o PayPal (otros países) */
+.pay-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.pc-opt { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; text-align: left; color: inherit; cursor: pointer;
+  background: rgba(19,29,71,.45); border: 2px solid var(--line); transition: border-color .2s, background .2s; }
+.pc-opt:hover:not(:disabled) { border-color: rgba(93,218,219,.45); }
+.pc-opt.active { border-color: var(--pink); background: rgba(247,142,182,.1); }
+.pc-opt.pp.active { border-color: #ffc439; background: rgba(255,196,57,.08); }
+.pc-opt:disabled { cursor: default; opacity: .7; }
+.pc-flag { font-size: 24px; line-height: 1; }
+.pc-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.pc-txt strong { color: #fff; font-size: 14.5px; }
+.pc-txt small { color: var(--muted); font-size: 12.5px; }
+.pc-price { color: #fff; font-size: 17px; font-weight: 800; white-space: nowrap; }
+.pc-price small { color: var(--muted); font-size: 12px; font-weight: 600; }
+@media (max-width: 560px) { .pay-choice { grid-template-columns: minmax(0, 1fr); } }
+.pc-flag svg { display: block; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); }

@@ -11,6 +11,8 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_du93qodYkSZRevJ-BgXUGw_B
 // Precio de la suscripción mensual al Makers Club (se muestra en la web; el cobro real lo define el plan de Mercado Pago).
 export const CLUB_PRICE = 5000;
 export const CLUB_PRICE_TEXT = '$' + CLUB_PRICE.toLocaleString('es-AR');
+// Precio del plan de PayPal (otros países), tal como figura en PayPal. null = todavía no se cargó.
+export const PAYPAL_PRICE_TEXT = null;
 // Días de prueba gratis para cuentas nuevas (lo que manda es bb_trial_days() en la base, migración 022).
 export const TRIAL_DAYS = 7;
 
@@ -21,7 +23,7 @@ export const LINKS = {
   // Suscripción mensual al Makers Club (plan de Mercado Pago) y dónde la gestiona cada persona.
   mpSubscribe: 'https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=2c9380848b8b1e59018b8ba9505d0065',
   mpManage: 'https://www.mercadopago.com.ar/subscriptions',
-  // Para quien está fuera de Argentina (se aprueba a mano al ver el pago).
+  // Para quien está fuera de Argentina (se aprueba a mano al ver el pago). Precio: PAYPAL_PRICE_TEXT.
   paypalSubscribe: 'https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3YW5408561955474SNAH7JZI',
 };
 
