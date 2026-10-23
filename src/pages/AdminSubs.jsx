@@ -148,7 +148,10 @@ export default function AdminSubs() {
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return rows
-      .filter((r) => (filter === 'paying' ? r.state !== 'none' : filter === 'none' ? r.state === 'none' && r.m.status === 'approved' : r.state === filter))
+      .filter((r) => (filter === 'paying' ? r.state !== 'none'
+        : filter === 'none' ? r.state === 'none' && r.m.status === 'approved'
+        : filter === 'pend' ? r.m.status === 'pending'
+        : r.state === filter))
       .filter((r) => !needle || [r.m.email, r.m.first_name, r.m.last_name, r.m.phone, r.m.discord_username, r.m.instagram_username, r.sub?.payer_email, ...r.pays.map((p) => p.id)]
         .some((v) => v?.toLowerCase().includes(needle)))
       .sort((a, b) => (new Date(a.m.subscription_expires_at || 8.64e15) - new Date(b.m.subscription_expires_at || 8.64e15)));
@@ -248,8 +251,12 @@ export default function AdminSubs() {
           <div className="view-toggle">
             <button className={'seg' + (filter === 'paying' ? ' active' : '')} onClick={() => setFilter('paying')}>Con pagos</button>
             <button className={'seg' + (filter === 'none' ? ' active' : '')} onClick={() => setFilter('none')}>Aprobados sin pagos</button>
+            <button className={'seg' + (filter === 'pend' ? ' active' : '')} onClick={() => setFilter('pend')}>
+              Pendientes{rows.filter((r) => r.m.status === 'pending').length ? ` · ${rows.filter((r) => r.m.status === 'pending').length}` : ''}
+            </button>
           </div>
         </div>
+        {filter === 'pend' && <p className="ed-hint">Dejaron sus datos pero todavía no hay un pago registrado. Si te pagaron por <b>PayPal</b> (o transferencia), abrí su ficha y tocá <b>Registrar pago</b>: queda aprobado con su vencimiento. Los de Mercado Pago se aprueban solos cuando llega el pago.</p>}
         {filter === 'none' && <p className="ed-hint">Miembros aprobados que no tienen ningún pago registrado (por ejemplo, los que cargaste a mano antes). Abrí su ficha para registrar un pago manual o unir su suscripción.</p>}
       </div>
 
@@ -390,7 +397,7 @@ function SubDetail({ r, busy, onClose, onManual, onDelete, onUnlink, onSaveData 
               {[1, 2, 3, 6, 12].map((n) => <option key={n} value={n}>{n} {n === 1 ? 'mes' : 'meses'}</option>)}
             </select></div></label>
           <label className="ed-field"><span className="ed-label">Nota</span>
-            <div className="pink-input"><input maxLength={200} value={f.notes} placeholder="Ej. Transferencia" onChange={(e) => setF({ ...f, notes: e.target.value })} /></div></label>
+            <div className="pink-input"><input maxLength={200} value={f.notes} placeholder="Ej. PayPal o Transferencia" onChange={(e) => setF({ ...f, notes: e.target.value })} /></div></label>
         </div>
         <button className="btn primary wide" disabled={busy || f.amount === ''} onClick={save}>{busy ? 'Guardando…' : 'Registrar pago'}</button>
 
