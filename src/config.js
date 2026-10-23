@@ -12,7 +12,7 @@ export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_du93qodYkSZRevJ-BgXUGw_B
 export const CLUB_PRICE = 5000;
 export const CLUB_PRICE_TEXT = '$' + CLUB_PRICE.toLocaleString('es-AR');
 // Precio del plan de PayPal (otros países), tal como figura en PayPal. null = todavía no se cargó.
-export const PAYPAL_PRICE_TEXT = null;
+export const PAYPAL_PRICE_TEXT = 'US$ 5,60';
 // Días de prueba gratis para cuentas nuevas (lo que manda es bb_trial_days() en la base, migración 022).
 export const TRIAL_DAYS = 7;
 
