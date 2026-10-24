@@ -6,7 +6,7 @@ import { mt } from '../lib/mtApi.js';
 import * as api from '../lib/adminApi.js';
 import { REWARDS, REWARD_KINDS, rewardName, metricLabel } from '../data/rewards.js';
 import { FILACOLOR } from '../data/filacolor.js';
-import { Emblem, num } from '../components/Tycoon.jsx';
+import { Avatar, Emblem, num } from '../components/Tycoon.jsx';
 import { useFilacolorSettings } from './Filacolor.jsx';
 
 // =====================================================================
@@ -279,6 +279,7 @@ function Jugadores() {
         {(r.data || []).map((p) => (
           <div key={p.user_id} className={'card mt-player' + (p.banned ? ' banned' : '')}>
             <button className="mt-player-head" onClick={() => setOpen(open === p.user_id ? null : p.user_id)}>
+              <Avatar name={p.nick} src={p.avatar} size={36} />
               <span className="mt-player-name"><b>{p.nick}</b>{p.playing && <i className="mt-dot" title="Jugando ahora" />}<small>{p.email}</small></span>
               <span className="mt-player-stats"><b>{num(p.points)}</b><small>temporada · {num(p.week_points)} semana · {num(p.today)} hoy</small></span>
               {p.banned ? <span className="chip err">Bloqueado</span> : p.cap_days >= 5 ? <span className="chip warn">{p.cap_days} días al tope</span> : <span className="chip muted">{p.privacy}</span>}
@@ -314,6 +315,10 @@ function PlayerActions({ p, act }) {
         <select className="mt-select" value={reward} onChange={(e) => setReward(e.target.value)}><option value="">Elegí un premio…</option>{Object.entries(REWARDS).map(([id, x]) => <option key={id} value={id}>{x.name}</option>)}</select>
         <button className="btn ghost sm" disabled={!reward} onClick={() => act('bb_mt_admin_grant', { p_user: p.user_id, p_reward: reward }, 'Premio entregado')}>Regalar premio</button>
       </div>
+      {p.avatar && (
+        <div className="mt-inline"><Avatar name={p.nick} src={p.avatar} size={56} />
+          <button className="btn ghost sm" onClick={() => act('bb_mt_admin_player_set', { p_user: p.user_id, p_clear_avatar: true }, 'Foto sacada')}>Sacar su foto de perfil</button></div>
+      )}
       <div className="mt-adm-actions">
         <button className="btn text sm" onClick={() => setConfirm({ t: '¿Borrar sus puntos?', x: 'Se borran sus puntos de esta temporada y de esta semana. La partida no se toca.', go: () => act('bb_mt_admin_player_set', { p_user: p.user_id, p_reset_points: true }, 'Puntos borrados') })}>Borrar puntos de la temporada</button>
         <button className="btn text sm" onClick={() => setConfirm({ t: '¿Recuperar la copia anterior?', x: 'Para cuando alguien dice que perdió la partida: cambia la partida de la nube por la copia anterior (la actual queda como copia).', go: () => act('bb_mt_admin_restore_prev', { p_user: p.user_id }, 'Copia anterior recuperada') })}>Recuperar copia anterior de la nube</button>

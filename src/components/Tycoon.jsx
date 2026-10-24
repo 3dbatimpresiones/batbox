@@ -18,9 +18,14 @@ export function money(n) {
   return 'AR$ ' + num(v);
 }
 
-export function Avatar({ name, frame, size = 36 }) {
+export function Avatar({ name, frame, size = 36, src }) {
   const ch = (name || '?').trim().charAt(0).toUpperCase() || '?';
-  return <span className={'mt-av ' + frameClass(frame)} style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden="true">{ch}</span>;
+  const img = src && /^data:image\//.test(src) ? src : null;
+  return (
+    <span className={'mt-av ' + frameClass(frame) + (img ? ' has-img' : '')} style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden="true">
+      {img ? <img src={img} alt="" /> : ch}
+    </span>
+  );
 }
 export function Emblem({ emblem = 'nozzle', color = '#5DDADB', size = 36 }) {
   const E = EMBLEMS[emblem] || EMBLEMS.nozzle;
@@ -99,7 +104,7 @@ export function RankRows({ rows, farms, empty = 'Todavía no hay nadie en este r
         </div>
       ) : (
         <div key={r.rank + r.name} className={'mt-rank-row' + (r.me ? ' me' : '')}>
-          <span className="rk">{medal(r.rank)}</span><Avatar name={r.name} frame={r.frame} size={30} />
+          <span className="rk">{medal(r.rank)}</span><Avatar name={r.name} frame={r.frame} src={r.avatar} size={30} />
           <span className="rn">{r.name}{titleName(r.title) && <em>{titleName(r.title)}</em>}
             {r.farm && <small><Emblem emblem={r.farm.emblem} color={r.farm.color} size={14} /> {r.farm.name}</small>}</span>
           <b>{num(r.points)}</b>

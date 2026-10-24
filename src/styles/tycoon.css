@@ -23,6 +23,8 @@
 .mt-av.fr-comunidad { border: 2px solid transparent; background: linear-gradient(135deg, var(--indigo), #5b6cf0) padding-box, conic-gradient(var(--cyan), var(--pink), #8b8ff0, var(--cyan)) border-box; }
 .mt-av.fr-oro { border-color: #fbbf24; box-shadow: 0 0 12px rgba(251,191,36,.75); }
 .mt-av.fr-carbono { border-color: #3a3d45; background: repeating-linear-gradient(45deg, #23262d 0 4px, #2e323b 4px 8px); }
+.mt-av.has-img { overflow: hidden; padding: 0; }
+.mt-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .mt-emblem { display: inline-grid; place-items: center; flex: none; border-radius: 30%; border: 1px solid; }
 
 /* Retos */
