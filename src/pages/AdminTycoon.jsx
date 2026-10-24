@@ -15,16 +15,17 @@ import { useFilacolorSettings } from './Filacolor.jsx';
 // destacados de Filacolor (equipo). Cada acción la valida la base.
 // =====================================================================
 
-const SUBS = [['resumen', 'Resumen'], ['retos', 'Retos'], ['jugadores', 'Jugadores'], ['granjas', 'Granjas'], ['filacolor', 'Filacolor']];
+const SUBS = [['resumen', 'Resumen'], ['sugerencias', 'Sugerencias'], ['retos', 'Retos'], ['jugadores', 'Jugadores'], ['granjas', 'Granjas'], ['filacolor', 'Filacolor']];
 
 export default function AdminTycoon() {
   const { isAdmin } = useAuth();
-  const [sub, setSub] = useState(isAdmin ? 'resumen' : 'retos');
-  const subs = SUBS.filter(([k]) => isAdmin || ['retos', 'filacolor'].includes(k));
+  const [sub, setSub] = useState(isAdmin ? 'resumen' : 'sugerencias');
+  const subs = SUBS.filter(([k]) => isAdmin || ['retos', 'filacolor', 'sugerencias'].includes(k));
   return (
     <div className="mt-admin">
       <Options value={sub} onChange={setSub} options={subs.map(([value, label]) => ({ value, label }))} />
       {sub === 'resumen' && isAdmin && <Resumen />}
+      {sub === 'sugerencias' && <Sugerencias />}
       {sub === 'retos' && <Retos />}
       {sub === 'jugadores' && isAdmin && <Jugadores />}
       {sub === 'granjas' && isAdmin && <Granjas />}
@@ -94,6 +95,48 @@ function Resumen() {
         {d.log.length === 0 && <p className="ed-hint">Todavía no hay cambios.</p>}
         <div className="mt-log">{d.log.map((l) => <div key={l.id}><span>{when(l.created_at)}</span><b>{l.action}</b><small>{l.target || ''}</small></div>)}</div>
       </section>
+    </div>
+  );
+}
+
+// ---------- Sugerencias de los jugadores (migración 027) ----------
+const FB_KIND = { idea: ['💡 Idea', 'ok'], error: ['🐞 Algo anda mal', 'err'], otro: ['💬 Otra cosa', 'muted'] };
+const FB_STATUS = [['nueva', 'Nuevas'], ['leida', 'Leídas'], ['hecha', 'Hechas'], ['', 'Todas']];
+function Sugerencias() {
+  const { notify } = useAuth();
+  const [status, setStatus] = useState('nueva');
+  const r = useLoad('bb_mt_admin_feedback', { p_status: status || null }, [status]);
+  const [del, setDel] = useState(null);
+  if (r.error === 'missing') return <Empty icon="alert" title="Falta la migración 027" text="Corré supabase/027_batbox_mt_sugerencias.sql en Supabase → SQL Editor para recibir sugerencias." />;
+  if (r.error) return <Empty icon="alert" title="No se pudo cargar" text={r.error} />;
+  const set = async (id, st) => { try { await mt('bb_mt_admin_feedback_set', { p_id: id, p_status: st }); r.reload(); } catch (e) { notify('err', e.message); } };
+  return (
+    <div className="mt-adm">
+      <p className="ed-hint">Lo que mandan los jugadores desde el botón «Sugerencias» del juego. Marcalas como leídas o hechas para llevar la cuenta.</p>
+      <Options value={status} onChange={setStatus} options={FB_STATUS.map(([value, label]) => ({ value, label }))} />
+      {!r.data && <div className="empty"><div className="spinner" /></div>}
+      {r.data?.length === 0 && <Empty icon="message" title="Nada por acá" text={status === 'nueva' ? 'No hay sugerencias nuevas.' : 'Todavía no hay sugerencias.'} />}
+      <div className="mt-adm-list">
+        {(r.data || []).map((f) => (
+          <div key={f.id} className="card mt-adm-ch mt-fb">
+            <div className="mt-adm-ch-top">
+              <span className={'chip ' + (FB_KIND[f.kind]?.[1] || 'muted')}>{FB_KIND[f.kind]?.[0] || f.kind}</span>
+              {f.status !== 'nueva' && <span className="chip muted">{f.status === 'hecha' ? '✔ Hecha' : 'Leída'}</span>}
+              <small className="ed-hint">{when(f.created_at)} · {f.who || 'Sin cuenta'}{f.contact ? ` · contacto: ${f.contact}` : ''}</small>
+            </div>
+            <p className="mt-fb-msg">{f.message}</p>
+            {f.context && Object.keys(f.context).length > 0 && <small className="ed-hint">Lugar {f.context.space ?? '—'} · {f.context.machines ?? '—'} máquinas · pantalla {f.context.w ?? '—'} px</small>}
+            <div className="mt-adm-actions">
+              {f.status !== 'leida' && <button className="btn ghost sm" onClick={() => set(f.id, 'leida')}>Marcar leída</button>}
+              {f.status !== 'hecha' && <button className="btn ghost sm" onClick={() => set(f.id, 'hecha')}>✔ Hecha</button>}
+              {f.status !== 'nueva' && <button className="btn text sm" onClick={() => set(f.id, 'nueva')}>Volver a nueva</button>}
+              <button className="btn text sm" onClick={() => setDel(f)}><Icon name="trash" size={14} /> Borrar</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Confirm open={!!del} danger title="¿Borrar la sugerencia?" text="No se puede deshacer." yes="Borrar"
+        onYes={async () => { const f = del; setDel(null); try { await mt('bb_mt_admin_feedback_set', { p_id: f.id, p_delete: true }); r.reload(); } catch (e) { notify('err', e.message); } }} onNo={() => setDel(null)} />
     </div>
   );
 }

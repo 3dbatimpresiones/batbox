@@ -164,6 +164,7 @@
 .mt-player-body, .mt-player-actions { display: flex; flex-direction: column; gap: 8px; }
 .mt-inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; } .mt-inline .pink-input, .mt-inline .mt-select { flex: 1; min-width: 180px; }
 .mt-farm-adm { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.mt-fb-msg { margin: 4px 0; color: #fff; font-size: 15px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .mt-hl-edit { display: flex; flex-direction: column; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .mt-hl-img { width: 160px; aspect-ratio: 16/10; object-fit: contain; background: #fff; border-radius: 10px; }
 
