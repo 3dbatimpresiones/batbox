@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from 'react';
 import { useRoute } from './lib/router.js';
 import { useActivityPing } from './lib/activity.js';
+import { useLive } from './lib/mtApi.js';
 import { useAuth } from './auth/AuthContext.jsx';
 import { BottomNav, DevBanner, Footer, Header, Toast } from './components/Layout.jsx';
 import Home from './pages/Home.jsx';
@@ -10,6 +11,8 @@ import Wiki from './pages/Wiki.jsx';
 import Club from './pages/Club.jsx';
 import Orders from './pages/Orders.jsx';
 import Subscribe from './pages/Subscribe.jsx';
+import Juego from './pages/Juego.jsx';
+import Filacolor from './pages/Filacolor.jsx';
 // El Creador de Llaveros trae el motor 3D: se descarga solo al abrirlo.
 const Keychains = lazy(() => import('./pages/Keychains.jsx'));
 const Loading = () => <div className="empty"><div className="spinner" /></div>;
@@ -31,6 +34,8 @@ function Page({ route }) {
     case 'club': return <Club />;
     case 'pedidos': return <Orders />;
     case 'llaveros': return <Suspense fallback={<Loading />}><Keychains /></Suspense>;
+    case 'juego': return <Juego query={query} />;
+    case 'filacolor': return <Filacolor />;
     case 'acceso': return <Account />;
     case 'suscribirme': return <Subscribe />; // página oculta de pago directo (no está en ningún menú)
     case 'admin': return <Admin route={route} />;
@@ -45,6 +50,8 @@ export default function App() {
   const { isMember, simulated } = useAuth();
   // Minutos de uso para el ranking de admins (solo miembros aprobados).
   useActivityPing(isMember && !simulated, route.parts[0] || 'inicio');
+  // Presencia pública (con o sin cuenta): solo cuenta cuántos hay, nunca quién.
+  useLive();
   // Al cambiar de sección se arranca arriba (no al filtrar ni al buscar).
   useEffect(() => { window.scrollTo(0, 0); }, [route.path]);
 

@@ -25,6 +25,17 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # 3DBAT Maker Tycoon dentro de BATBOX (/batbox/juego/): se compila desde su propio repo público.
+      - uses: actions/checkout@v4
+        with:
+          repository: 3dbatimpresiones/maker-tycoon
+          path: _juego
+      - name: Compilar el juego en dist/juego
+        working-directory: _juego
+        run: |
+          npm ci
+          npm test
+          npx vite build --outDir ../dist/juego --emptyOutDir
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

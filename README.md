@@ -78,6 +78,20 @@ src/
   Vista **Historial** (migración `supabase/005_batbox_historial.sql`, 10 tests en PGlite, solo lee): estimación desde el 17/06/2026 (creación del Supabase) con `auth.refresh_tokens` — días y horas distintas con la app abierta, primer y último ingreso. Se pierden las sesiones cerradas con "Cerrar sesión".
 - Probar el panel sin migración (solo dev): `http://localhost:5173/batbox/?simular=admin&simdb#/admin` (no guarda).
 
+## 3DBAT Maker Tycoon y Filacolor
+
+- El juego (repo `maker-tycoon`) se publica DENTRO de BATBOX en `/batbox/juego/`: el deploy de GitHub Pages lo compila
+  desde su repo público y `web-3dbat` (`npm run build:full`) lo compila desde `../maker-tycoon`. Al estar en la misma web,
+  comparte la sesión de Google con BATBOX. Después de cambiar el juego, volver a publicar BATBOX.
+- `#/juego`: página del juego (ranking de temporada, semanal, granjas, comunidad, Hall de la Fama, retos y granjas).
+  `#/filacolor`: Abastecimiento oficial · FILACOLOR. Bloque destacado en el Inicio y contador «online» en el encabezado.
+- Base: `supabase/026_batbox_maker_tycoon.sql` (+ `026_rollback.sql`): partidas en la nube, perfiles, Puntos Maker con topes
+  (los calcula la base), granjas, retos, premios, presencia, temporadas y funciones de admin. Sin la 026, todo lo online dice «muy pronto».
+- Panel admin → pestaña **Maker Tycoon**: resumen y temporadas (cerrar = Hall de la Fama), retos y premios, jugadores
+  (bloquear, renombrar, borrar puntos, regalar premios, recuperar la copia anterior de la nube), granjas y destacados de Filacolor
+  (`bb_settings` clave `filacolor`; también los lee el juego).
+- `src/data/filacolor.js` y `src/data/rewards.js` son copias de las del juego (`maker-tycoon/src/online/`): mantenerlas iguales.
+
 ## Archivos privados
 
 La carpeta `supabase/` (migraciones SQL y Edge Functions) queda solo en la compu: está en `.gitignore` y no se publica.

@@ -6,6 +6,7 @@ import { PORTAL_URL } from '../config.js';
 import Icon from './Icon.jsx';
 import { SocialIcon } from './BrandIcon.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
+import { LiveChip } from './Tycoon.jsx';
 
 export function Brand({ compact }) {
   return (
@@ -51,13 +52,15 @@ export function Header({ route }) {
         <Brand />
         <nav className="top-nav" aria-label="Secciones">
           {NAV.map((n) => (
-            <a key={n.key} href={'#' + n.to} className={'nav-link' + (section === n.key ? ' active' : '') + (n.key === 'club' ? ' club' : '')}>
+            <a key={n.key} href={'#' + n.to} className={'nav-link' + (section === n.key ? ' active' : '') + (n.key === 'club' ? ' club' : '') + (n.key === 'juego' ? ' game' : '')}>
               {n.key === 'club' && <Icon name="crown" size={15} />}
+              {n.key === 'juego' && <Icon name="gamepad" size={15} />}
               {n.short}
             </a>
           ))}
         </nav>
         <div className="top-actions">
+          <LiveChip />
           <a className={'icon-btn' + (section === 'buscar' ? ' active' : '')} href="#/buscar" title="Buscar" aria-label="Buscar">
             <Icon name="search" />
           </a>

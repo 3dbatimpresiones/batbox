@@ -9,6 +9,7 @@ import AdminComments from './AdminComments.jsx';
 import AdminActivity from './AdminActivity.jsx';
 import AdminSubs from './AdminSubs.jsx';
 import AdminGroup from './AdminGroup.jsx';
+import AdminTycoon from './AdminTycoon.jsx';
 import { navigate } from '../lib/router.js';
 import { matches } from '../lib/text.js';
 import { isHttpUrl, parseMediaUrl, slugify, thumbSrc, ytThumb } from '../lib/media.js';
@@ -67,7 +68,7 @@ export default function Admin({ route }) {
       <MigrationNotice />
       {sub === 'nuevo' && <Editor key={'new-' + arg} kind={KIND[arg] ? arg : 'tutorial'} />}
       {sub === 'editar' && <Editor key={'edit-' + arg} slug={arg} />}
-      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', comentarios: 'comments', redes: 'socials', wiki: 'wiki' }[route.query.tab] || 'content'} />}
+      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', comentarios: 'comments', redes: 'socials', wiki: 'wiki', juego: 'tycoon' }[route.query.tab] || 'content'} />}
     </div>
   );
 }
@@ -104,6 +105,7 @@ function Dashboard({ initialTab }) {
         {isAdmin && <button className={'seg' + (tab === 'subs' ? ' active' : '')} onClick={() => setTab('subs')}>Suscripciones</button>}
         {isAdmin && <button className={'seg' + (tab === 'group' ? ' active' : '')} onClick={() => setTab('group')}>WhatsApp</button>}
         {isAdmin && <button className={'seg' + (tab === 'activity' ? ' active' : '')} onClick={() => setTab('activity')}>Actividad</button>}
+        <button className={'seg' + (tab === 'tycoon' ? ' active' : '')} onClick={() => setTab('tycoon')}>Maker Tycoon</button>
         <button className={'seg' + (tab === 'wiki' ? ' active' : '')} onClick={() => setTab('wiki')}>WikiBAT</button>
         <button className={'seg' + (tab === 'comments' ? ' active' : '')} onClick={() => setTab('comments')}>Comentarios</button>
         <button className={'seg' + (tab === 'socials' ? ' active' : '')} onClick={() => setTab('socials')}>Redes</button>
@@ -113,6 +115,7 @@ function Dashboard({ initialTab }) {
       {tab === 'members' && isAdmin && <AdminMembers />}
       {tab === 'comments' && <AdminComments />}
       {tab === 'wiki' && <AdminWiki />}
+      {tab === 'tycoon' && <AdminTycoon />}
       {tab === 'subs' && isAdmin && <AdminSubs />}
       {tab === 'group' && isAdmin && <AdminGroup />}
       {tab === 'activity' && isAdmin && <AdminActivity />}

@@ -9,8 +9,10 @@ import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
+import { TycoonHomeBlock } from '../components/Tycoon.jsx';
 
 const QUICK = [
+  { to: '/juego', icon: 'gamepad', label: 'Maker Tycoon' },
   { to: '/tools', icon: 'wrench', label: 'Herramientas' },
   { to: '/academy', icon: 'graduation', label: 'Tutoriales' },
   { to: '/wiki', icon: 'book', label: 'WikiBAT' },
@@ -76,6 +78,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <TycoonHomeBlock />
 
       <section className="block">
         <SectionHead label="BAT HERRAMIENTAS" title="Accesos rápidos" to="/tools" />
