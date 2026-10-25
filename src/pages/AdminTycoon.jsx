@@ -16,7 +16,7 @@ import { useFilacolorSettings } from './Filacolor.jsx';
 // destacados de Filacolor (equipo). Cada acción la valida la base.
 // =====================================================================
 
-const SUBS = [['resumen', 'Resumen'], ['sugerencias', 'Sugerencias'], ['retos', 'Retos'], ['jugadores', 'Jugadores'], ['granjas', 'Granjas'], ['usados', 'Usados'], ['filacolor', 'Filacolor']];
+const SUBS = [['resumen', 'Resumen'], ['sugerencias', 'Sugerencias'], ['retos', 'Retos'], ['jugadores', 'Jugadores'], ['granjas', 'Granjas'], ['chat', 'Chat'], ['usados', 'Usados'], ['filacolor', 'Filacolor']];
 
 export default function AdminTycoon() {
   const { isAdmin } = useAuth();
@@ -31,6 +31,7 @@ export default function AdminTycoon() {
       {sub === 'jugadores' && isAdmin && <Jugadores />}
       {sub === 'granjas' && isAdmin && <Granjas />}
       {sub === 'usados' && isAdmin && <Usados />}
+      {sub === 'chat' && isAdmin && <ChatAdmin />}
       {sub === 'filacolor' && <FilacolorAdmin />}
     </div>
   );
@@ -367,6 +368,74 @@ function Granjas() {
       </div>
       <Confirm open={!!confirm} danger title="¿Disolver la granja?" text={`Se borra «${confirm?.name}» y sus integrantes quedan sin granja. Sus partidas y premios no se tocan.`} yes="Disolver"
         onYes={() => { const f = confirm; setConfirm(null); act({ p_farm: f.id, p_dissolve: true }, 'Granja disuelta'); }} onNo={() => setConfirm(null)} />
+    </div>
+  );
+}
+
+// ---------- Chat en vivo (migración 031) ----------
+const CH_FILTER = [['', 'Todo'], ['global', 'Global'], ['otras', 'Granjas y grupos']];
+const MUTES = [[60, '1 hora'], [60 * 24, '1 día'], [60 * 24 * 7, '7 días']];
+function ChatAdmin() {
+  const { notify } = useAuth();
+  const [room, setRoom] = useState('');
+  const r = useLoad('bb_mt_admin_chat', { p_room: room || null, p_limit: 200 }, [room]);
+  const [mute, setMute] = useState(null);
+  const [mins, setMins] = useState(60);
+  const [reason, setReason] = useState('');
+  if (r.error === 'missing') return <Empty icon="alert" title="Falta la migración 031" text="Corré supabase/031_batbox_mt_chat.sql en Supabase → SQL Editor para activar el chat del juego." />;
+  if (r.error) return <Empty icon="alert" title="No se pudo cargar" text={r.error} />;
+  const d = r.data;
+  const del = async (id) => { try { await mt('bb_mt_chat_delete', { p_id: id }); notify('ok', 'Mensaje borrado'); r.reload(); } catch (e) { notify('err', e.message); } };
+  const doMute = async (userId, minutes, why) => {
+    try { await mt('bb_mt_admin_chat_mute', { p_user: userId, p_minutes: minutes, p_reason: why || null }); notify('ok', minutes ? 'Silenciado en el chat' : 'Ya puede volver a escribir'); r.reload(); } catch (e) { notify('err', e.message); }
+  };
+  return (
+    <div className="mt-adm">
+      <p className="ed-hint">Los mensajes del chat del juego (Global, granjas y grupos). Los jugadores no pueden mandar links: solo ustedes, el equipo. Podés borrar mensajes y silenciar a alguien por un tiempo (no puede escribir, pero sigue jugando).</p>
+      {d && (
+        <div className="mt-kpis">
+          <div className="card"><span>Mensajes en 24 h</span><b>{num(d.stats.today)}</b></div>
+          <div className="card"><span>Personas que escribieron</span><b>{num(d.stats.people)}</b><small>en 24 h</small></div>
+          <div className="card"><span>Grupos armados</span><b>{num(d.stats.groups)}</b></div>
+        </div>
+      )}
+      {d?.muted?.length > 0 && (
+        <section className="card mt-adm-card">
+          <div className="section-label">SILENCIADOS AHORA</div>
+          {d.muted.map((m) => (
+            <div key={m.user_id} className="mt-inline"><b>{m.nick}</b><small className="ed-hint">hasta {when(m.until)}{m.reason ? ` · ${m.reason}` : ''}</small>
+              <button className="btn ghost sm" onClick={() => doMute(m.user_id, 0)}>Quitar silencio</button></div>
+          ))}
+        </section>
+      )}
+      <Options value={room} onChange={setRoom} options={CH_FILTER.map(([value, label]) => ({ value, label }))} />
+      {!d && <div className="empty"><div className="spinner" /></div>}
+      {d?.rows?.length === 0 && <Empty icon="message" title="Sin mensajes" text="Todavía nadie escribió en el chat." />}
+      <div className="mt-adm-list">
+        {(d?.rows || []).map((m) => (
+          <div key={m.id} className="card mt-adm-ch mt-fb">
+            <div className="mt-adm-ch-top">
+              <b>{m.nick || '—'}</b>
+              {m.staff && <span className="chip warn">Equipo</span>}
+              <span className="chip muted">{m.room_name}</span>
+              {m.deleted && <span className="chip err">Borrado</span>}
+              <small className="ed-hint">{when(m.at)}</small>
+            </div>
+            <p className="mt-fb-msg" style={m.deleted ? { textDecoration: 'line-through', opacity: 0.6 } : null}>{m.body}</p>
+            {!m.staff && (
+              <div className="mt-adm-actions">
+                {!m.deleted && <button className="btn text sm" onClick={() => del(m.id)}><Icon name="trash" size={14} /> Borrar</button>}
+                <button className="btn ghost sm" onClick={() => { setReason(''); setMins(60); setMute(m); }}>Silenciar a {m.nick}</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <Confirm open={!!mute} danger title={`¿Silenciar a ${mute?.nick}?`} yes="Silenciar" onNo={() => setMute(null)}
+        onYes={() => { const m = mute; setMute(null); doMute(m.user_id, mins, reason); }}
+        text={<>No va a poder escribir en el chat por un tiempo (sigue jugando normal).
+          <span style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>{MUTES.map(([v, l]) => <button key={v} type="button" className={'btn sm ' + (mins === v ? 'primary' : 'ghost')} onClick={() => setMins(v)}>{l}</button>)}</span>
+          <span className="pink-input" style={{ display: 'block', marginTop: 10 }}><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={120} placeholder="Motivo (lo ve el jugador, opcional)" /></span></>} />
     </div>
   );
 }
