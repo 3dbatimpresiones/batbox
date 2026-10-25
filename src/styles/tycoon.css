@@ -192,3 +192,5 @@
 .mt-rank-row .rs-play { color: #4ade80; }
 .mt-rank-row .rs-bg { color: #fbbf24; }
 .mt-rank-row .rs-off { color: var(--muted); font-weight: 400; }
+.mt-av.fr-platino { border-color: #cbd5e1; box-shadow: 0 0 12px rgba(203,213,225,.8); }
+.mt-av.fr-diamante { border-color: #67e8f9; box-shadow: 0 0 14px rgba(103,232,249,.9), 0 0 4px #a78bfa inset; }

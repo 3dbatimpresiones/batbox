@@ -24,12 +24,22 @@ export const REWARDS = {
   t_maker_semana: { kind: 'title', name: 'Maker de la semana', how: 'Lo entrega el equipo 3DBAT.' },
   t_corazon: { kind: 'title', name: 'Corazón de la comunidad', how: 'Lo entrega el equipo 3DBAT.' },
   t_puntual: { kind: 'title', name: 'Siempre a tiempo', how: 'Retos de pedidos.' },
+  t_liga_plata: { kind: 'title', name: 'Liga Plata', how: 'Ascender a Plata en la Liga Maker.' },
+  t_liga_oro: { kind: 'title', name: 'Liga Oro', how: 'Ascender a Oro en la Liga Maker.' },
+  t_liga_platino: { kind: 'title', name: 'Liga Platino', how: 'Ascender a Platino en la Liga Maker.' },
+  t_liga_diamante: { kind: 'title', name: 'Liga Diamante', how: 'Ascender a Diamante en la Liga Maker.' },
+  t_liga_leyenda: { kind: 'title', name: 'Leyenda Maker', how: 'Ascender a Leyenda Maker en la Liga.' },
+  t_liga_top100: { kind: 'title', name: 'Top 100 3DBAT', how: 'Llegar a la división más alta de la Liga.' },
+  t_duelista: { kind: 'title', name: 'Duelista', how: 'Ganar 10 Duelos Maker.' },
+  t_guerra: { kind: 'title', name: 'Campeón de guerra de granjas', how: 'Ganar una guerra amistosa de granjas.' },
   // Marcos
   f_cian: { kind: 'frame', name: 'Neón cian', how: 'Retos y eventos.', css: 'fr-cian' },
   f_rosa: { kind: 'frame', name: 'Neón rosa', how: 'Retos y eventos.', css: 'fr-rosa' },
   f_comunidad: { kind: 'frame', name: 'Marco de la comunidad', how: 'Aportar a un reto de comunidad cumplido.', css: 'fr-comunidad' },
   f_oro: { kind: 'frame', name: 'Marco dorado', how: 'Podio de una temporada.', css: 'fr-oro' },
   f_carbono: { kind: 'frame', name: 'Fibra de carbono', how: 'Retos y eventos.', css: 'fr-carbono' },
+  f_liga_platino: { kind: 'frame', name: 'Marco Platino', how: 'Llegar a Platino en la Liga Maker.', css: 'fr-platino' },
+  f_liga_diamante: { kind: 'frame', name: 'Marco Diamante', how: 'Llegar a Diamante en la Liga Maker.', css: 'fr-diamante' },
   // Decoración del taller (aparece en el 3D)
   d_cartel3dbat: { kind: 'decor', name: 'Cartel neón 3DBAT', how: 'Regalo por crear tu perfil online.' },
   d_planta: { kind: 'decor', name: 'Planta del taller', how: 'Retos y eventos.' },
@@ -48,6 +58,7 @@ export const REWARDS = {
   b_circuito: { kind: 'banner', name: 'Banner Circuito', how: 'Reto de granja semanal.', css: 'bn-circuito' },
   b_galaxia: { kind: 'banner', name: 'Banner Galaxia', how: 'Eventos de granja.', css: 'bn-galaxia' },
   b_fuego: { kind: 'banner', name: 'Banner Fuego', how: 'Eventos de granja.', css: 'bn-fuego' },
+  b_campeones: { kind: 'banner', name: 'Banner Campeones', how: 'Ganar una guerra amistosa de granjas.', css: 'bn-campeones' },
   // Planos (productos que se ven distinto, pagan IGUAL que su versión común)
   p_bati: { kind: 'plan', name: 'Plano: Llavero BATI', how: 'Eventos especiales.' },
 };
