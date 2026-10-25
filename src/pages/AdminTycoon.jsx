@@ -379,6 +379,29 @@ function Granjas() {
 // ---------- Chat en vivo (migración 031) ----------
 const CH_FILTER = [['', 'Todo'], ['global', 'Global'], ['otras', 'Granjas y grupos']];
 const MUTES = [[60, '1 hora'], [60 * 24, '1 día'], [60 * 24 * 7, '7 días']];
+// Denuncias de mensajes (migración 035)
+function ChatReports({ onDel }) {
+  const { notify } = useAuth();
+  const r = useLoad('bb_mt_admin_chat_reports', {}, []);
+  if (r.error || !r.data?.length) return null;
+  const close = async (id) => { try { await mt('bb_mt_admin_chat_report_close', { p_msg: id }); notify('ok', 'Denuncia cerrada'); r.reload(); } catch (e) { notify('err', e.message); } };
+  return (
+    <section className="card mt-adm-card">
+      <div className="section-label">🚩 DENUNCIAS PENDIENTES ({r.data.length})</div>
+      {r.data.map((x) => (
+        <div key={x.msg_id} className="mt-adm-ch mt-fb">
+          <div className="mt-adm-ch-top"><b>{x.nick || '—'}</b><span className="chip err">{x.n} {x.n === 1 ? 'denuncia' : 'denuncias'}</span>{x.deleted && <span className="chip muted">Ya borrado</span>}<small className="ed-hint">{when(x.created_at)}</small></div>
+          <p className="mt-fb-msg">{x.body}</p>
+          <div className="mt-adm-actions">
+            {!x.deleted && <button className="btn text sm" onClick={async () => { await onDel(x.msg_id); close(x.msg_id); }}><Icon name="trash" size={14} /> Borrar y cerrar</button>}
+            <button className="btn ghost sm" onClick={() => close(x.msg_id)}>Está bien, cerrar</button>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function ChatAdmin() {
   const { notify } = useAuth();
   const [room, setRoom] = useState('');
@@ -412,6 +435,7 @@ function ChatAdmin() {
           ))}
         </section>
       )}
+      <ChatReports onDel={del} />
       <Options value={room} onChange={setRoom} options={CH_FILTER.map(([value, label]) => ({ value, label }))} />
       {!d && <div className="empty"><div className="spinner" /></div>}
       {d?.rows?.length === 0 && <Empty icon="message" title="Sin mensajes" text="Todavía nadie escribió en el chat." />}
