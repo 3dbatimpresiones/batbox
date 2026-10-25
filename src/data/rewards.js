@@ -32,6 +32,7 @@ export const REWARDS = {
   t_liga_top100: { kind: 'title', name: 'Top 100 3DBAT', how: 'Llegar a la división más alta de la Liga.' },
   t_duelista: { kind: 'title', name: 'Duelista', how: 'Ganar 10 Duelos Maker.' },
   t_guerra: { kind: 'title', name: 'Campeón de guerra de granjas', how: 'Ganar una guerra amistosa de granjas.' },
+  t_bati_live: { kind: 'title', name: 'Estuve en BATI LIVE', how: 'Aportar a una meta cumplida de BATI LIVE.' },
   // Marcos
   f_cian: { kind: 'frame', name: 'Neón cian', how: 'Retos y eventos.', css: 'fr-cian' },
   f_rosa: { kind: 'frame', name: 'Neón rosa', how: 'Retos y eventos.', css: 'fr-rosa' },
