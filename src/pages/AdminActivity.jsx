@@ -5,9 +5,10 @@ import { Empty, SearchInput } from '../components/ui.jsx';
 
 // =====================================================================
 // ACTIVIDAD (pestaña del panel admin)
-// * En vivo (migración 004): minutos de uso del Cotizador PRO y de BATBOX
-//   + quién está en línea. bb_admin_activity() verifica is_admin().
-//   "En línea" = usó BATBOX o el cotizador en los últimos 2 minutos.
+// * En vivo (migración 004 + 033): minutos de uso del Cotizador PRO, de BATBOX
+//   y del juego Maker Tycoon + quién está en línea. bb_admin_activity() verifica is_admin().
+//   "En línea" = usó BATBOX o el cotizador en los últimos 2 minutos, o tiene el juego abierto.
+//   Del juego se distingue "Jugando" (ventana a la vista y en uso) de "Juego abierto" (de fondo).
 // * Historial (migración 005): estimación desde que existe el Supabase con
 //   las renovaciones de sesión. bb_admin_history() (solo admins).
 // =====================================================================
@@ -17,15 +18,17 @@ const SORTS = [
   { key: 'minutes_total', label: 'Uso total' },
   { key: 'minutes_cotizador', label: 'Cotizador' },
   { key: 'minutes_batbox', label: 'BATBOX' },
+  { key: 'minutes_juego', label: 'Juego' },
 ];
-const SORT_NOTE = { minutes_total: 'de uso en total', minutes_cotizador: 'en el Cotizador', minutes_batbox: 'en BATBOX' };
+const SORT_NOTE = { minutes_total: 'de uso en total', minutes_cotizador: 'en el Cotizador', minutes_batbox: 'en BATBOX', minutes_juego: 'jugando Maker Tycoon' };
+const APPS = [['minutes_cotizador', 'b-cot', 'Cotizador'], ['minutes_batbox', 'b-bb', 'BATBOX'], ['minutes_juego', 'b-game', 'Juego']];
 const SECTION = {
   inicio: 'Inicio', tools: 'Herramientas', academy: 'Tutoriales', wiki: 'WikiBAT', media: 'Multimedia', library: 'Recursos',
   community: 'Comunidad', club: 'Makers Club', acceso: 'Mi cuenta', admin: 'Panel admin', buscar: 'Búsqueda', ver: 'viendo un contenido',
 };
 const REFRESH = 30 * 1000;
 
-const fullName = (r) => [r.first_name, r.last_name].filter(Boolean).join(' ') || r.email?.split('@')[0] || 'Miembro';
+const fullName = (r) => [r.first_name, r.last_name].filter(Boolean).join(' ') || r.nick || r.email?.split('@')[0] || 'Miembro';
 export function fmtMinutes(m) {
   if (!m) return '0 min';
   if (m < 60) return `${m} min`;
@@ -39,7 +42,23 @@ function fmtAgo(s) {
   const d = Math.round(s / 86400);
   return d === 1 ? 'Ayer' : `Hace ${d} días`;
 }
-const where = (r) => (r.last_app === 'cotizador' ? 'en el Cotizador PRO' : `en BATBOX${SECTION[r.last_section] ? ' · ' + SECTION[r.last_section] : ''}`);
+const webWhere = (r) => (r.last_app === 'cotizador' ? 'en el Cotizador PRO' : `en BATBOX${SECTION[r.last_section] ? ' · ' + SECTION[r.last_section] : ''}`);
+// Dónde está: en la página (BATBOX/Cotizador) y/o en el juego. Sin la migración 033 no hay datos del juego.
+function where(r) {
+  const web = r.web_online ?? (r.online && r.last_app !== 'juego');
+  const parts = [];
+  if (r.game_state === 'jugando') parts.push('🎮 Jugando Maker Tycoon (ventana del juego a la vista)');
+  else if (r.game_state === 'abierto') parts.push('Juego abierto de fondo (no lo está mirando)');
+  if (web) parts.push(webWhere(r));
+  return parts.join(' · también ') || webWhere(r);
+}
+// Etiqueta corta del estado en línea
+function LiveChip({ r }) {
+  const web = r.web_online ?? (r.online && r.last_app !== 'juego');
+  if (r.game_state === 'jugando') return <span className="chip ok game"><span className="live-dot sm" />🎮 Jugando</span>;
+  if (r.game_state === 'abierto' && !web) return <span className="chip warn"><span className="live-dot sm" />Juego de fondo</span>;
+  return <span className="chip ok"><span className="live-dot sm" />En la página</span>;
+}
 
 // Solo `npm run dev` con ?simdb: datos ficticios para ver la pantalla.
 const SIM = import.meta.env.DEV && new URLSearchParams(window.location.search).has('simdb');
@@ -49,7 +68,8 @@ const SIM_ROWS = [
   { user_id: 'c', email: 'maker.dos@ejemplo.com', first_name: 'Maker', last_name: 'Dos', role: 'user', minutes_batbox: 160, minutes_cotizador: 205, sessions: 12, days_active: 9, last_app: 'batbox', last_section: 'academy', seconds_ago: 50, online: true },
   { user_id: 'd', email: 'maker.tres@ejemplo.com', first_name: 'Maker', last_name: 'Tres', role: 'user', minutes_batbox: 12, minutes_cotizador: 188, sessions: 6, days_active: 5, last_app: 'cotizador', seconds_ago: 7400, online: false },
   { user_id: 'e', email: 'maker.cuatro@ejemplo.com', first_name: null, last_name: null, role: 'user', minutes_batbox: 48, minutes_cotizador: 0, sessions: 3, days_active: 2, last_app: 'batbox', last_section: 'media', seconds_ago: 190000, online: false },
-].map((r) => ({ ...r, minutes_total: r.minutes_batbox + r.minutes_cotizador }));
+].map((r, i) => ({ ...r, minutes_juego: [55, 30, 0, 0, 12][i], game_state: ['jugando', null, 'abierto', null, null][i], web_online: r.online && i !== 0 }))
+  .map((r) => ({ ...r, minutes_total: r.minutes_batbox + r.minutes_cotizador + r.minutes_juego, online: r.online || !!r.game_state }));
 
 function LiveView() {
   const [days, setDays] = useState(30);
@@ -91,6 +111,8 @@ function LiveView() {
   }
 
   const online = rows.filter((r) => r.online);
+  const playing = online.filter((r) => r.game_state === 'jugando').length;
+  const hasGame = rows.some((r) => 'minutes_juego' in r);
   const sum = (k) => rows.reduce((t, r) => t + (r[k] || 0), 0);
   const max = Math.max(1, ...ranking.map((r) => r[sort]));
   const periodLabel = PERIODS.find((p) => p.days === days)?.label.toLowerCase();
@@ -98,11 +120,13 @@ function LiveView() {
   return (
     <div className="activity">
       <div className="member-stats act-stats">
-        <div className="mstat t-ok"><b>{online.length}</b><span>En línea ahora</span></div>
+        <div className="mstat t-ok"><b>{online.length}</b><span>En línea ahora{hasGame ? ` · ${playing} jugando` : ''}</span></div>
         <div className="mstat"><b className="c-cyan">{rows.filter((r) => r.minutes_total > 0).length}</b><span>Activos · {periodLabel}</span></div>
         <div className="mstat"><b>{fmtMinutes(sum('minutes_cotizador'))}</b><span>En el Cotizador</span></div>
         <div className="mstat"><b>{fmtMinutes(sum('minutes_batbox'))}</b><span>En BATBOX</span></div>
+        {hasGame && <div className="mstat"><b className="c-game">{fmtMinutes(sum('minutes_juego'))}</b><span>Jugando Maker Tycoon</span></div>}
       </div>
+      {!hasGame && !loading && <p className="ed-hint warn-box">Para ver también al juego (minutos jugados y quién está jugando de verdad) corré <b>supabase/033_batbox_actividad_juego.sql</b> en Supabase.</p>}
 
       <section className="card online-box">
         <div className="online-head">
@@ -111,13 +135,13 @@ function LiveView() {
           <button className="mini-btn" title="Actualizar" onClick={() => load()}><Icon name="refresh" size={14} /></button>
         </div>
         {loading ? <div className="spinner xs" /> : !online.length
-          ? <p className="ed-hint">Nadie está usando BATBOX ni el cotizador en este momento.</p>
+          ? <p className="ed-hint">Nadie está usando BATBOX, el cotizador ni el juego en este momento.</p>
           : (
             <ul className="online-list">
               {online.map((r) => (
                 <li key={r.user_id}>
                   <span className="avatar">{fullName(r).charAt(0).toUpperCase()}<span className="status-dot s-member" /></span>
-                  <div><b>{fullName(r)}</b><small>{where(r)}</small></div>
+                  <div><b>{fullName(r)} <LiveChip r={r} /></b><small>{where(r)}</small></div>
                 </li>
               ))}
             </ul>
@@ -135,7 +159,9 @@ function LiveView() {
         </div>
         <SearchInput value={q} onChange={setQ} placeholder="Buscar miembro…" />
         <p className="ed-hint">
-          Se cuentan los minutos de <b>uso activo</b> de cada miembro aprobado: la página abierta, a la vista y en uso.
+          Se cuentan los minutos de <b>uso activo</b>: la página abierta, a la vista y en uso. BATBOX y el Cotizador cuentan a los miembros aprobados;
+          el juego, a todos los que juegan con su cuenta de Google, y solo mientras la ventana del juego está a la vista («Jugando»).
+          «Juego de fondo» = lo tiene abierto en otra pestaña o ventana: el taller sigue andando pero no lo está mirando.
           No se guarda qué cotizan ni qué miran. Esta pantalla la ven solo los administradores.
         </p>
       </div>
@@ -152,22 +178,21 @@ function LiveView() {
                   <strong>
                     {fullName(r)}
                     {r.role === 'admin' && <span className="chip club">Admin</span>}{r.role === 'editor' && <span className="chip cat">Editor</span>}
+                    {r.member === false && <span className="chip muted" title="Juega con su cuenta de Google pero no es miembro de BATBOX">Solo juego</span>}
                   </strong>
                   <small>{r.email}</small>
-                  <div className="rank-bar" title={`Cotizador ${fmtMinutes(r.minutes_cotizador)} · BATBOX ${fmtMinutes(r.minutes_batbox)}`}>
-                    {sort !== 'minutes_batbox' && <span className="b-cot" style={{ width: `${(r.minutes_cotizador / max) * 100}%` }} />}
-                    {sort !== 'minutes_cotizador' && <span className="b-bb" style={{ width: `${(r.minutes_batbox / max) * 100}%` }} />}
+                  <div className="rank-bar" title={APPS.map(([k, , l]) => `${l} ${fmtMinutes(r[k] || 0)}`).join(' · ')}>
+                    {APPS.filter(([k]) => sort === 'minutes_total' || sort === k).map(([k, c]) => <span key={k} className={c} style={{ width: `${((r[k] || 0) / max) * 100}%` }} />)}
                   </div>
                   <div className="rank-legend">
-                    <span><i className="b-cot" />Cotizador {fmtMinutes(r.minutes_cotizador)}</span>
-                    <span><i className="b-bb" />BATBOX {fmtMinutes(r.minutes_batbox)}</span>
+                    {APPS.filter(([k]) => k !== 'minutes_juego' || hasGame).map(([k, c, l]) => <span key={k}><i className={c} />{l} {fmtMinutes(r[k] || 0)}</span>)}
                     <span>{r.days_active} {r.days_active === 1 ? 'día' : 'días'} · {r.sessions} {r.sessions === 1 ? 'sesión' : 'sesiones'}</span>
                   </div>
                 </div>
                 <div className="rank-side">
                   <div className="metric main"><b>{fmtMinutes(r[sort])}</b><small>{SORT_NOTE[sort]} · {periodLabel}</small></div>
                   {r.online
-                    ? <span className="chip ok"><span className="live-dot sm" />En línea</span>
+                    ? <LiveChip r={r} />
                     : <span className="chip muted">Última vez {fmtAgo(r.seconds_ago).toLowerCase()}</span>}
                   {r.online && <small>{where(r)}</small>}
                 </div>
@@ -287,6 +312,7 @@ function HistoryView() {
                     <strong>
                       {fullName(r)}
                       {r.role === 'admin' && <span className="chip club">Admin</span>}{r.role === 'editor' && <span className="chip cat">Editor</span>}
+                    {r.member === false && <span className="chip muted" title="Juega con su cuenta de Google pero no es miembro de BATBOX">Solo juego</span>}
                       {chip && <span className={'chip ' + chip[0]}>{chip[1]}</span>}
                     </strong>
                     <small>{r.email}</small>

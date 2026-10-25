@@ -283,7 +283,11 @@ function Jugadores() {
           <div key={p.user_id} className={'card mt-player' + (p.banned ? ' banned' : '')}>
             <button className="mt-player-head" onClick={() => setOpen(open === p.user_id ? null : p.user_id)}>
               <Avatar name={p.nick} src={p.avatar} size={36} />
-              <span className="mt-player-name"><b>{p.nick}</b>{p.playing && <i className="mt-dot" title="Jugando ahora" />}<small>{p.email}</small></span>
+              <span className="mt-player-name"><b>{p.nick}</b>{p.playing && <i className="mt-dot" title="Jugando ahora" />}
+                {p.game_state === 'jugando' ? <span className="mt-state on" title="La ventana del juego está a la vista y la está usando">🎮 Jugando</span>
+                  : p.game_state === 'abierto' ? <span className="mt-state" title="Tiene el juego abierto en otra pestaña o ventana">Juego de fondo</span>
+                  : p.web_online ? <span className="mt-state" title="Está en BATBOX o el cotizador, no en el juego">En la página</span> : null}
+                <small>{p.email}</small></span>
               <span className="mt-player-stats"><b>{num(p.points)}</b><small>temporada · {num(p.week_points)} semana · {num(p.today)} hoy</small></span>
               {p.banned ? <span className="chip err">Bloqueado</span> : p.cap_days >= 5 ? <span className="chip warn">{p.cap_days} días al tope</span> : <span className="chip muted">{p.privacy}</span>}
             </button>

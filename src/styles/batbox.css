@@ -996,3 +996,14 @@
 .pc-price small { color: var(--muted); font-size: 12px; font-weight: 600; }
 @media (max-width: 560px) { .pay-choice { grid-template-columns: minmax(0, 1fr); } }
 .pc-flag svg { display: block; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255,255,255,.15); }
+
+/* Actividad: el juego (Maker Tycoon) */
+.b-game { background: #a78bfa; }
+.c-game { color: #a78bfa; }
+.chip.game { background: rgba(167,139,250,.16); color: #c4b5fd; border-color: rgba(167,139,250,.45); }
+.online-list .chip { margin-left: 6px; font-size: 11px; vertical-align: middle; }
+.mt-state { font-size: 11px; margin-left: 6px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.mt-state.on { color: #c4b5fd; border-color: rgba(167,139,250,.5); }
+.ed-hint.warn-box { border: 1px dashed rgba(251,191,36,.5); padding: 8px 12px; border-radius: 10px; }
+.act-stats:has(> :nth-child(5)) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 760px) { .act-stats:has(> :nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
