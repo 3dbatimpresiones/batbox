@@ -93,6 +93,33 @@ export function ChallengeCard({ c, compact }) {
 }
 
 const medal = (r) => (r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `#${r}`);
+// ---------- Estado tipo Steam en el ranking (migración 034) ----------
+// "Jugando · hace 25 min", "Juego abierto de fondo · hace 1 h" o "Jugó hace 3 h", + horas jugadas.
+function agoTxt(ms) {
+  const m = Math.max(1, Math.round(ms / 60000));
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60), r = m % 60;
+  if (h < 24) return r && h < 10 ? `${h} h ${r} min` : `${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? '1 día' : `${d} días`;
+}
+function hoursTxt(mins) {
+  if (!mins) return '';
+  if (mins < 60) return `${mins} min jugados`;
+  const h = mins / 60;
+  return `${h < 10 ? h.toLocaleString('es-AR', { maximumFractionDigits: 1 }) : Math.round(h).toLocaleString('es-AR')} h jugadas`;
+}
+export function LiveStatus({ live, skew = 0 }) {
+  if (!live) return null;
+  const now = Date.now() - skew;
+  const since = live.since ? now - Date.parse(live.since) : 0;
+  const hrs = hoursTxt(live.mins);
+  if (live.st === 'jugando') return <span className="mt-rs rs-play" title="Tiene la ventana del juego a la vista y está jugando">🎮 Jugando{live.since ? ` desde hace ${agoTxt(since)}` : ''}{hrs && <i> · {hrs}</i>}</span>;
+  if (live.st === 'abierto') return <span className="mt-rs rs-bg" title="Tiene el juego abierto en otra pestaña o ventana">🟡 Juego de fondo{live.since ? ` desde hace ${agoTxt(since)}` : ''}{hrs && <i> · {hrs}</i>}</span>;
+  if (live.last) return <span className="mt-rs rs-off">Jugó por última vez hace {agoTxt(now - Date.parse(live.last))}{hrs && <i> · {hrs}</i>}</span>;
+  return hrs ? <span className="mt-rs rs-off">{hrs}</span> : null;
+}
+
 export function RankRows({ rows, farms, empty = 'Todavía no hay nadie en este ranking.' }) {
   if (!rows?.length) return <p className="mt-empty">{empty}</p>;
   return (
@@ -106,7 +133,8 @@ export function RankRows({ rows, farms, empty = 'Todavía no hay nadie en este r
         <div key={r.rank + r.name} className={'mt-rank-row' + (r.me ? ' me' : '')}>
           <span className="rk">{medal(r.rank)}</span><Avatar name={r.name} frame={r.frame} src={r.avatar} size={30} />
           <span className="rn">{r.name}{titleName(r.title) && <em>{titleName(r.title)}</em>}
-            {r.farm && <small><Emblem emblem={r.farm.emblem} color={r.farm.color} size={14} /> {r.farm.name}</small>}</span>
+            {r.farm && <small><Emblem emblem={r.farm.emblem} color={r.farm.color} size={14} /> {r.farm.name}</small>}
+            <LiveStatus live={r.live} /></span>
           <b>{num(r.points)}</b>
         </div>
       )))}

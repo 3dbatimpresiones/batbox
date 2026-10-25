@@ -185,3 +185,10 @@
 @media (max-width: 400px) {
   .mt-live-chip { display: none; }
 }
+
+/* Estado tipo Steam en el ranking */
+.mt-rank-row .mt-rs { display: block; font-size: 11px; font-weight: 600; line-height: 1.25; }
+.mt-rank-row .mt-rs i { font-style: normal; color: var(--muted); font-weight: 400; }
+.mt-rank-row .rs-play { color: #4ade80; }
+.mt-rank-row .rs-bg { color: #fbbf24; }
+.mt-rank-row .rs-off { color: var(--muted); font-weight: 400; }
