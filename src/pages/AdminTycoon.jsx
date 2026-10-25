@@ -6,7 +6,8 @@ import { mt } from '../lib/mtApi.js';
 import * as api from '../lib/adminApi.js';
 import { REWARDS, REWARD_KINDS, rewardName, metricLabel } from '../data/rewards.js';
 import { FILACOLOR } from '../data/filacolor.js';
-import { Avatar, Emblem, num } from '../components/Tycoon.jsx';
+import { Avatar, Emblem, num, money } from '../components/Tycoon.jsx';
+import { machineName } from '../data/machines.js';
 import { useFilacolorSettings } from './Filacolor.jsx';
 
 // =====================================================================
@@ -15,7 +16,7 @@ import { useFilacolorSettings } from './Filacolor.jsx';
 // destacados de Filacolor (equipo). Cada acción la valida la base.
 // =====================================================================
 
-const SUBS = [['resumen', 'Resumen'], ['sugerencias', 'Sugerencias'], ['retos', 'Retos'], ['jugadores', 'Jugadores'], ['granjas', 'Granjas'], ['filacolor', 'Filacolor']];
+const SUBS = [['resumen', 'Resumen'], ['sugerencias', 'Sugerencias'], ['retos', 'Retos'], ['jugadores', 'Jugadores'], ['granjas', 'Granjas'], ['usados', 'Usados'], ['filacolor', 'Filacolor']];
 
 export default function AdminTycoon() {
   const { isAdmin } = useAuth();
@@ -29,6 +30,7 @@ export default function AdminTycoon() {
       {sub === 'retos' && <Retos />}
       {sub === 'jugadores' && isAdmin && <Jugadores />}
       {sub === 'granjas' && isAdmin && <Granjas />}
+      {sub === 'usados' && isAdmin && <Usados />}
       {sub === 'filacolor' && <FilacolorAdmin />}
     </div>
   );
@@ -365,6 +367,57 @@ function Granjas() {
       </div>
       <Confirm open={!!confirm} danger title="¿Disolver la granja?" text={`Se borra «${confirm?.name}» y sus integrantes quedan sin granja. Sus partidas y premios no se tocan.`} yes="Disolver"
         onYes={() => { const f = confirm; setConfirm(null); act({ p_farm: f.id, p_dissolve: true }, 'Granja disuelta'); }} onNo={() => setConfirm(null)} />
+    </div>
+  );
+}
+
+// ---------- Tienda de usados (migración 030) ----------
+const MK_STATUS = { listed: ['A la venta', 'ok'], sold: ['Vendida', 'muted'], cancelled: ['La sacó el dueño', 'muted'], expired: ['Venció (volvió)', 'muted'], removed: ['Sacada por el equipo', 'err'] };
+const MK_FILTER = [['listed', 'A la venta'], ['sold', 'Vendidas'], ['', 'Todas']];
+function Usados() {
+  const { notify } = useAuth();
+  const [status, setStatus] = useState('listed');
+  const r = useLoad('bb_mt_admin_market', { p_status: status || null, p_limit: 150 }, [status]);
+  const [rm, setRm] = useState(null);
+  const [reason, setReason] = useState('');
+  if (r.error === 'missing') return <Empty icon="alert" title="Falta la migración 030" text="Corré supabase/030_batbox_mt_usados.sql en Supabase → SQL Editor para activar la tienda de usados." />;
+  if (r.error) return <Empty icon="alert" title="No se pudo cargar" text={r.error} />;
+  const st = r.data?.stats;
+  const remove = async () => {
+    const x = rm; setRm(null);
+    try { await mt('bb_mt_admin_market_remove', { p_id: x.id, p_reason: reason || null }); notify('ok', 'Publicación sacada: la máquina vuelve a su dueño'); setReason(''); r.reload(); } catch (e) { notify('err', e.message); }
+  };
+  return (
+    <div className="mt-adm">
+      <p className="ed-hint">Máquinas usadas que los jugadores ponen a la venta entre ellos. El precio siempre queda entre el 10 % y el 90 % de la nueva (menos si está gastada). Si sacás una publicación, la máquina vuelve al taller de su dueño.</p>
+      {st && (
+        <div className="mt-kpis">
+          <div className="card"><span>A la venta ahora</span><b>{num(st.active)}</b></div>
+          <div className="card"><span>Vendidas en 24 h</span><b>{num(st.sold24)}</b></div>
+          <div className="card"><span>Vendidas en total</span><b>{num(st.sold)}</b><small>{money(st.volume)} virtuales</small></div>
+        </div>
+      )}
+      <Options value={status} onChange={setStatus} options={MK_FILTER.map(([value, label]) => ({ value, label }))} />
+      {!r.data && <div className="empty"><div className="spinner" /></div>}
+      {r.data?.rows?.length === 0 && <Empty icon="box" title="Nada por acá" text={status === 'listed' ? 'No hay máquinas a la venta ahora.' : 'Todavía no hay movimientos.'} />}
+      <div className="mt-adm-list">
+        {(r.data?.rows || []).map((x) => (
+          <div key={x.id} className="card mt-adm-ch">
+            <div className="mt-adm-ch-top">
+              <b>{machineName(x.model)}</b>
+              <span className={'chip ' + (MK_STATUS[x.status]?.[1] || 'muted')}>{MK_STATUS[x.status]?.[0] || x.status}</span>
+              <small className="ed-hint">{money(x.price)} (nueva {money(x.cost)}) · desgaste {Math.round(Number(x.wear) * 100)} %</small>
+            </div>
+            <small className="ed-hint">Publicó <b>{x.seller || '—'}</b> el {when(x.at)}{x.buyer ? <> · compró <b>{x.buyer}</b> el {when(x.closed_at)}</> : ''}{x.note ? ` · motivo: ${x.note}` : ''}</small>
+            {x.status === 'listed' && (
+              <div className="mt-adm-actions"><button className="btn text sm" onClick={() => { setReason(''); setRm(x); }}><Icon name="trash" size={14} /> Sacar de la venta</button></div>
+            )}
+          </div>
+        ))}
+      </div>
+      <Confirm open={!!rm} danger title="¿Sacar esta publicación?" yes="Sacar" onYes={remove} onNo={() => setRm(null)}
+        text={<>La {rm ? machineName(rm.model) : ''} de {rm?.seller} vuelve a su taller.
+          <span className="pink-input" style={{ display: 'block', marginTop: 10 }}><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={120} placeholder="Motivo (lo ve el jugador, opcional)" /></span></>} />
     </div>
   );
 }
