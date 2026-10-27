@@ -10,6 +10,7 @@ import AdminActivity from './AdminActivity.jsx';
 import AdminSubs from './AdminSubs.jsx';
 import AdminGroup from './AdminGroup.jsx';
 import AdminTycoon from './AdminTycoon.jsx';
+import AdminFeedback from './AdminFeedback.jsx';
 import { navigate } from '../lib/router.js';
 import { matches } from '../lib/text.js';
 import { isHttpUrl, parseMediaUrl, slugify, thumbSrc, ytThumb } from '../lib/media.js';
@@ -68,7 +69,7 @@ export default function Admin({ route }) {
       <MigrationNotice />
       {sub === 'nuevo' && <Editor key={'new-' + arg} kind={KIND[arg] ? arg : 'tutorial'} />}
       {sub === 'editar' && <Editor key={'edit-' + arg} slug={arg} />}
-      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', comentarios: 'comments', redes: 'socials', wiki: 'wiki', juego: 'tycoon' }[route.query.tab] || 'content'} />}
+      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', sugerencias: 'feedback', comentarios: 'comments', redes: 'socials', wiki: 'wiki', juego: 'tycoon' }[route.query.tab] || 'content'} />}
     </div>
   );
 }
@@ -93,7 +94,7 @@ function MigrationNotice() {
 function Dashboard({ initialTab }) {
   const { isAdmin } = useAuth();
   // Miembros y Actividad muestran datos personales: solo admins (los editores no).
-  const [tab, setTab] = useState(!isAdmin && ['members', 'subs', 'group', 'activity'].includes(initialTab) ? 'content' : initialTab);
+  const [tab, setTab] = useState(!isAdmin && ['members', 'subs', 'group', 'activity', 'feedback'].includes(initialTab) ? 'content' : initialTab);
   const { socials } = useContent();
   return (
     <div>
@@ -105,6 +106,7 @@ function Dashboard({ initialTab }) {
         {isAdmin && <button className={'seg' + (tab === 'subs' ? ' active' : '')} onClick={() => setTab('subs')}>Suscripciones</button>}
         {isAdmin && <button className={'seg' + (tab === 'group' ? ' active' : '')} onClick={() => setTab('group')}>WhatsApp</button>}
         {isAdmin && <button className={'seg' + (tab === 'activity' ? ' active' : '')} onClick={() => setTab('activity')}>Actividad</button>}
+        {isAdmin && <button className={'seg' + (tab === 'feedback' ? ' active' : '')} onClick={() => setTab('feedback')}>Sugerencias</button>}
         <button className={'seg' + (tab === 'tycoon' ? ' active' : '')} onClick={() => setTab('tycoon')}>Maker Tycoon</button>
         <button className={'seg' + (tab === 'wiki' ? ' active' : '')} onClick={() => setTab('wiki')}>WikiBAT</button>
         <button className={'seg' + (tab === 'comments' ? ' active' : '')} onClick={() => setTab('comments')}>Comentarios</button>
@@ -119,6 +121,7 @@ function Dashboard({ initialTab }) {
       {tab === 'subs' && isAdmin && <AdminSubs />}
       {tab === 'group' && isAdmin && <AdminGroup />}
       {tab === 'activity' && isAdmin && <AdminActivity />}
+      {tab === 'feedback' && isAdmin && <AdminFeedback />}
     </div>
   );
 }

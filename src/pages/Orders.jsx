@@ -8,6 +8,7 @@ import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
 import { TrialChip } from '../components/TrialBadge.jsx';
 import OrderEditor from '../components/OrderEditor.jsx';
+import FeedbackModal from '../components/FeedbackModal.jsx';
 import { MonthlyIncome, ProductsDonut, monthLabel } from '../components/OrderCharts.jsx';
 import { Confirm, Empty } from '../components/ui.jsx';
 import '../styles/orders.css';
@@ -69,6 +70,7 @@ function OrdersApp() {
   const [view, setView] = useState('panel');
   const [editing, setEditing] = useState(null);
   const [toDelete, setToDelete] = useState(null);
+  const [feedback, setFeedback] = useState(false);
   const [open, setOpen] = useState({ pedidos: true, compras: true, disenos: true, productos: true, notas: true });
   const toggle = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
 
@@ -158,7 +160,12 @@ function OrdersApp() {
             <h1 className="ob-title">CONTROL DE PEDIDOS</h1>
             <div className="ob-sub">3DBAT · MAKERS CLUB · {monthLabel(month, true).toUpperCase()} <TrialChip /></div>
           </div>
-          <button type="button" className="btn primary ob-new" onClick={newOrder}>+ Registrar Pedido</button>
+          <div className="ob-head-actions">
+            <button type="button" className="ob-feedback" title="Mandanos una idea o contanos si algo anda mal" onClick={() => setFeedback(true)}>
+              <Icon name="message" size={16} /> Sugerencias
+            </button>
+            <button type="button" className="btn primary ob-new" onClick={newOrder}>+ Registrar Pedido</button>
+          </div>
         </header>
 
         <section className="ob-stats" aria-label="Resumen del mes">
@@ -238,6 +245,8 @@ function OrdersApp() {
       )}
       <Confirm open={!!toDelete} danger title="⚠️ ¿Eliminar este pedido?" text={toDelete ? `"${toDelete.product}" se borra para siempre.` : ''}
         yes="Sí, eliminar" no="Cancelar" onNo={() => setToDelete(null)} onYes={remove} />
+      {feedback && <FeedbackModal source="control-pedidos" sourceLabel="Control de Pedidos"
+        context={{ route: '#/pedidos', view, month }} onClose={() => setFeedback(false)} />}
     </div>
   );
 }
