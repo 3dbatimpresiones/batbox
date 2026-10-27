@@ -49,6 +49,17 @@ export const TOOLS = [
     featured: true,
   },
   {
+    id: 'personalizador-de-chops',
+    name: 'Personalizador de chops 3D',
+    description: 'Subí tu chop (STL o 3MF) y tu escudo o logo en SVG: se repite en filas y columnas sobre la pared, en relieve y curvado, y bajás un STL de una sola pieza listo para imprimir.',
+    icon: 'box',
+    category: 'Modelado',
+    status: 'available',
+    access: 'club',
+    url: '#/chops', // se abre dentro de BATBOX
+    featured: true,
+  },
+  {
     id: 'peso-de-carretes-vacios',
     name: 'Peso de Carretes Vacíos',
     description: 'Base de datos comunitaria de bobinas vacías: buscá tu marca y calculá cuánto filamento te queda.',
