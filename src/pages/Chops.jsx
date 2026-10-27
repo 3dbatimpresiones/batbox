@@ -8,6 +8,7 @@ import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
 import { TrialChip } from '../components/TrialBadge.jsx';
 import ChopViewer from '../components/ChopViewer.jsx';
+import FeedbackButton from '../components/FeedbackButton.jsx';
 import '../styles/keychains.css';
 
 // =====================================================================
@@ -109,6 +110,7 @@ export default function Chops() {
           <div className="section-label">MAKERS CLUB · HERRAMIENTA</div>
           <h1>Personalizador de chops 3D</h1>
           <p>Subí tu chop y tu escudo o logo: se repite en filas y columnas sobre la pared, en relieve, y bajás un STL listo para imprimir.</p>
+          <FeedbackButton source="personalizador-chops" />
         </div>
         <AccessPanel intro="Herramienta solo para miembros" />
       </div>
@@ -418,6 +420,7 @@ function ChopsApp() {
           <TrialChip />
         </div>
         <p>Tu escudo o logo repetido en filas y columnas sobre la pared del chop, en relieve o grabado, listo para imprimir.</p>
+        <FeedbackButton source="personalizador-chops" />
       </header>
 
       <nav className="chop-wizard" aria-label="Etapas del personalizador">

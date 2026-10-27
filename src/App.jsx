@@ -13,6 +13,7 @@ import Orders from './pages/Orders.jsx';
 import Subscribe from './pages/Subscribe.jsx';
 import Juego from './pages/Juego.jsx';
 import Filacolor from './pages/Filacolor.jsx';
+import Feedback from './pages/Feedback.jsx';
 // El Creador de Llaveros trae el motor 3D: se descarga solo al abrirlo.
 const Keychains = lazy(() => import('./pages/Keychains.jsx'));
 // El Personalizador de chops también trae el motor 3D: se descarga solo al abrirlo.
@@ -39,6 +40,7 @@ function Page({ route }) {
     case 'chops': return <Suspense fallback={<Loading />}><Chops /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;
+    case 'sugerencias': return <Feedback source={query.source || ''} />;
     case 'acceso': return <Account />;
     case 'suscribirme': return <Subscribe />; // página oculta de pago directo (no está en ningún menú)
     case 'admin': return <Admin route={route} />;

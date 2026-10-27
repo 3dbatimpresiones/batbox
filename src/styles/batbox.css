@@ -1004,6 +1004,23 @@
 .online-list .chip { margin-left: 6px; font-size: 11px; vertical-align: middle; }
 .mt-state { font-size: 11px; margin-left: 6px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
 .mt-state.on { color: #c4b5fd; border-color: rgba(167,139,250,.5); }
+
+/* Buzón común de sugerencias, disponible desde todas las herramientas. */
+.tool-feedback { justify-self: end; align-self: center; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; padding: 0 14px; border-radius: 12px;
+  font-size: 12px; font-weight: 800; color: #fff; text-decoration: none; background: rgba(13,20,51,.82); border: 1px solid rgba(247,142,182,.55); cursor: pointer; }
+.tool-feedback:hover { border-color: var(--pink); color: var(--pink); }
+.feedback-modal { width: min(520px, 100%); }
+.feedback-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.feedback-head h2 { margin: 2px 0 0; }
+.feedback-text { margin-top: 14px; }
+.feedback-text textarea { min-height: 120px; }
+.feedback-count { display: block; margin-top: 4px; text-align: right; color: var(--muted); font-size: 11px; }
+.feedback-who { margin: 8px 0 14px !important; color: var(--muted) !important; font-size: 12px !important; }
+.feedback-error { margin-bottom: 12px; padding: 9px 12px; border-radius: 12px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.45); color: #fecaca; font-size: 12.5px; }
+.feedback-sent { text-align: center; }
+.feedback-sent .btn { margin-top: 4px; }
+.feedback-page { min-height: 55vh; }
+@media (max-width: 860px) { .tool-feedback { justify-self: start; } }
 .ed-hint.warn-box { border: 1px dashed rgba(251,191,36,.5); padding: 8px 12px; border-radius: 10px; }
 .act-stats:has(> :nth-child(5)) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 @media (max-width: 760px) { .act-stats:has(> :nth-child(5)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

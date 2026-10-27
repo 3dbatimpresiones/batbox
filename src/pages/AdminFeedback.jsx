@@ -3,10 +3,11 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { loadAdminFeedback, setAdminFeedback } from '../lib/feedbackApi.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty, Options } from '../components/ui.jsx';
+import { FEEDBACK_TOOLS } from '../components/FeedbackButton.jsx';
 
 const KINDS = { idea: ['💡 Idea', 'ok'], error: ['🐞 Algo anda mal', 'err'], otro: ['💬 Otra cosa', 'muted'] };
 const STATUSES = [{ value: 'nueva', label: 'Nuevas' }, { value: 'leida', label: 'Leídas' }, { value: 'hecha', label: 'Hechas' }, { value: '', label: 'Todas' }];
-const SOURCES = { 'control-pedidos': 'Control de Pedidos' };
+const SOURCES = Object.fromEntries(Object.entries(FEEDBACK_TOOLS).map(([source, tool]) => [source, tool.label]));
 const sourceName = (source) => SOURCES[source] || source?.replaceAll('-', ' ') || 'Sin herramienta';
 const when = (t) => t ? new Date(t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
