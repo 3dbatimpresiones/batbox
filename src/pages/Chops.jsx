@@ -124,6 +124,7 @@ function ChopsApp() {
   const [raw, setRaw] = useState(null);               // triángulos tal cual el archivo
   const [chopName, setChopName] = useState('');
   const [tf, setTf] = useState({ up: 'z', flip: false, scale: 1, cx: 0, cy: 0, q: null });
+  const [handle, setHandle] = useState([]);           // arcos de la manija (detectados en el worker): zona prohibida
   const [axis, setAxis] = useState(null);             // { z0, z1, r0, r1 }
   const [surfaceGap, setSurfaceGap] = useState(0);    // separación radial manual de la malla celeste
   const [chopState, setChopState] = useState({ ok: false, error: '' });
@@ -199,7 +200,7 @@ function ChopsApp() {
     let alive = true;
     const t = setTimeout(async () => {
       const { vert, tri } = weld(chopPos);
-      try { await call({ type: 'chop', vert, tri }, [vert.buffer, tri.buffer]); if (alive) setChopState({ ok: true, error: '' }); }
+      try { const r = await call({ type: 'chop', vert, tri }, [vert.buffer, tri.buffer]); if (alive) { setHandle(r.handle || []); setChopState({ ok: true, error: '' }); } }
       catch (e) { if (alive) setChopState({ ok: false, error: e.message }); }
     }, 250);
     return () => { alive = false; clearTimeout(t); };
@@ -213,8 +214,9 @@ function ChopsApp() {
     if (chopState.ok && axis) setWizardStep((s) => s === 1 ? 2 : s);
   }, [chopState.ok, axis]);
 
-  const layout = useMemo(() => (axis && design ? computeLayout(p, axis, design.h0 / design.w0) : null), [p, axis, design]);
+  const layout = useMemo(() => (axis && design ? computeLayout(p, axis, design.h0 / design.w0, handle) : null), [p, axis, design, handle]);
   const ready = chopState.ok && designState.ok && axis && layout;
+  const forbidden = useMemo(() => [...handle, ...(p.exclude ? [{ center: p.exclCenter, width: p.exclWidth }] : [])], [handle, p.exclude, p.exclCenter, p.exclWidth]);
 
   // Vista previa liviana (relieves curvados, sin la unión).
   const update = useCallback(async () => {
@@ -298,7 +300,7 @@ function ChopsApp() {
     }
   };
   // Solo en `npm run dev`: acceso para las pruebas automáticas (Vite lo saca del build).
-  if (import.meta.env.DEV) window.__chop = { setSel, onTransform, p, tf, items, THREE };
+  if (import.meta.env.DEV) window.__chop = { setSel, onTransform, p, tf, items, THREE, handle, axis, layout };
   const loose = Object.keys(p.overrides || {}).length;
   const selLabel = !sel ? 'Nada (tocá el chop o un diseño)'
     : sel.target === 'chop' ? 'El chop'
@@ -518,7 +520,10 @@ function ChopsApp() {
               <Seg label="Filas" value={p.stagger} onChange={set('stagger')} options={[{ value: false, label: 'Alineadas' }, { value: true, label: 'Alternadas' }]} />
             </Sec>
             <Sec title="Zona del asa" icon="☕">
-              <Seg label="No poner diseños sobre el asa" value={p.exclude} onChange={set('exclude')} options={[{ value: false, label: 'No' }, { value: true, label: 'Sí, excluir' }]} />
+              {handle.length
+                ? <div className="kc-tip">🛡️ Manija detectada (zona roja): los diseños <b>nunca</b> se ponen ahí, ni aunque los arrastres, porque romperían el chop.</div>
+                : <div className="kc-note">No se detectó manija en este modelo. Si tiene una, marcala abajo a mano.</div>}
+              <Seg label="Excluir otra zona a mano" value={p.exclude} onChange={set('exclude')} options={[{ value: false, label: 'No' }, { value: true, label: 'Sí, excluir' }]} />
               {p.exclude && <div className="chop-stack">
                 <Num label="Centro del asa" value={p.exclCenter} onChange={set('exclCenter')} min={0} max={359} step={1} unit="°" />
                 <Num label="Ancho a excluir" value={p.exclWidth} onChange={set('exclWidth')} min={5} max={300} step={1} unit="°" />
@@ -587,7 +592,7 @@ function ChopsApp() {
           <small className="kc-muted cg-hint"><b>Visor:</b> izquierda orbita · derecha o ruedita apretada desplazan · rueda gira para zoom. <b>Arrastrá un diseño</b> sobre el chop para mover todo el patrón (Shift + arrastrar: solo ese). Clic en el chop o en un diseño para usar el gizmo (M · R · S).</small></>}
           <div className="kc-canvas">
             <ChopViewer items={items} selection={sel} mode={tmode} onPick={onPick} onTransform={onTransform} onDrag={onDrag} onAxisChange={adjustSurface} axisEditable={showRef && axisEditing && wizardStep <= 2} fitKey={chopName && raw ? chopName + raw.length : ''} chopPos={chopPos} resultMesh={previewChop} reliefs={preview} axis={axis} surfaceGap={surfaceGap} showRef={showRef} showDepth={p.mode === 'engrave' && showDepth}
-              exclusion={p.exclude ? { center: p.exclCenter, width: p.exclWidth } : null}
+              exclusion={forbidden}
               colors={{ chop: '#8E9089', relief: p.mode === 'engrave' ? '#3B2A4A' : '#F78EB6' }} view={view} />
             {busy && !preview && <div className="kc-busy">Armando vista previa…</div>}
             {!raw && <div className="kc-warn soft">Cargá un chop (STL o 3MF) para empezar.</div>}

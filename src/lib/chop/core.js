@@ -89,8 +89,8 @@ export function snapRadius(idx, it, W, H, cosP, sinP, engrave) {
 // Un relieve por cada posición del patrón, ya curvado sobre la superficie.
 // Plano del diseño: x = a lo ancho (arco), y = a lo alto (sobre la pared),
 // z = hacia afuera (de -profundidad a +espesor). Después se dobla (warp).
-export function buildReliefs(M, cs0, design, p, axis, wall) {
-  const lay = computeLayout(p, axis, design.h0 / design.w0);
+export function buildReliefs(M, cs0, design, p, axis, wall, handle = null) {
+  const lay = computeLayout(p, axis, design.h0 / design.w0, handle);
   const s = lay.W / design.w0;
   // Un perfil extruido por cada combinación de giro y escala (los diseños sueltos pueden tener los suyos).
   const shapes = new Map();

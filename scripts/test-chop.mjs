@@ -6,6 +6,7 @@ import { buildReliefs, chopFromMesh, combineAll, designSection, unionAll, wallIn
 import { computeLayout, rAt } from '../src/lib/chop/layout.js';
 import { toBinarySTL } from '../src/lib/keychain/exporters.js';
 import { detectWallZone, orient, guessAxis, radiusAt, weld } from '../src/lib/chop/files.js';
+import { detectHandle } from '../src/lib/chop/handle.js';
 
 const out = process.argv[2] || 'test-out';
 mkdirSync(out, { recursive: true });
@@ -169,7 +170,44 @@ for (const [name, r0, r1] of [['cilindro', 40, 40], ['cono', 34, 44]]) {
   ok(`${name}: las filas se achican y quedan dentro de la pared útil`,
     tall.items.length === 60 && tall.items.every((i) => !i.out) && tall.W < base.width && tall.fitScale < 1,
     `${tall.W.toFixed(2)} mm, escala ${tall.fitScale.toFixed(3)}`);
+  // 7. Manija: detección automática y regla dura (nunca un diseño sobre la manija)
+  {
+    const arcs = detectHandle(pos);
+    const fmt = JSON.stringify(arcs.map((a) => [+a.center.toFixed(1), +a.width.toFixed(1), Math.round(a.z0), Math.round(a.z1)]));
+    ok(`${name}: manija detectada sola en 0°, con su altura`, arcs.length === 1 && Math.min(arcs[0].center, 360 - arcs[0].center) < 3
+      && arcs[0].z0 < 32 && arcs[0].z1 > 88 && arcs[0].z0 > 15 && arcs[0].z1 < 105, fmt);
+    const on = computeLayout({ ...base, startAngle: -30 }, axis, 1.2, arcs);      // columna 0 justo sobre la manija
+    const touching = on.items.filter((i) => Math.min(i.angle, 360 - i.angle) < 25);
+    ok(`${name}: los diseños que caen sobre la manija se sacan (10 de 12) y avisa`,
+      on.items.length === 10 && touching.length === 0 && on.onHandle === 2 && on.warnings.some((w) => w.includes('manija')), `${on.items.length} diseños`);
+    const dragged = computeLayout({ ...base, overrides: { '0-0': { da: -30 } } }, axis, 1.2, arcs);   // arrastrado a mano encima
+    ok(`${name}: un diseño arrastrado encima de la manija también se saca`, dragged.items.length === 11 && !dragged.items.some((i) => i.key === '0-0'));
+    const spun = computeLayout({ ...base, startAngle: -30 + 26, spin: 90 }, axis, 1.2, arcs);   // girado: se mide su caja real
+    ok(`${name}: girado 90° cuenta su ancho real (no se cuela por el costado)`, !spun.items.some((i) => Math.min(i.angle, 360 - i.angle) < 26));
+    // Geometría real: ningún relieve ni grabado toca el volumen de la manija.
+    const rm = (r0 + r1) / 2, hh = 120 / 2;
+    const ringH = M.Manifold.difference(M.Manifold.cylinder(8, 28, 28, 48), M.Manifold.cylinder(8, 20, 20, 48)).translate([0, 0, -4]).rotate([90, 0, 0]).translate([rm + 14, 0, hh]);
+    const wallCone = M.Manifold.cylinder(120, r0, r1, 96);
+    const handleOnly = M.Manifold.difference(ringH, wallCone);
+    const wall = wallIndex(vert, tri);
+    for (const mode of ['relief', 'engrave']) {
+      const pp = { ...base, startAngle: -30, mode, engrave: 0.8 };
+      const touch = (reliefs) => { const u = M.Manifold.union(reliefs); const x = M.Manifold.intersection(u, handleOnly); const v = x.volume(); u.delete(); x.delete(); reliefs.forEach((r) => r.delete()); return v; };
+      const without = touch(buildReliefs(M, cs, design, pp, axis, null, null).reliefs);   // pared ideal: así sin la regla seguro la toca
+      const withSnap = touch(buildReliefs(M, cs, design, pp, axis, wall, arcs).reliefs);   // y con ajuste a la pared real
+      const withH = touch(buildReliefs(M, cs, design, pp, axis, null, arcs).reliefs);
+      ok(`${name} (${mode === 'engrave' ? 'grabado' : 'relieve'}): sin la regla tocaría la manija; con la regla, 0 mm³`, without > 1 && withH < 1e-6 && withSnap < 1e-6,
+        `${without.toFixed(1)} mm³ → ${withH.toFixed(3)} mm³`);
+    }
+    ringH.delete(); wallCone.delete(); handleOnly.delete();
+  }
   chop.delete();
+}
+// Sin manija → no inventa una (ni con aros)
+for (const [label, soup] of [['vaso liso', makeChop(40, 40, 120, false)], ['vaso con aros', makeChop(40, 40, 120, false, true)]]) {
+  const ax = guessAxis(soup);
+  const arcs = detectHandle(orient(soup, { cx: ax.cx, cy: ax.cy }));
+  ok(`${label}: no detecta manija donde no hay`, arcs.length === 0, JSON.stringify(arcs));
 }
 console.log(`\nResultado: ${pass} OK, ${fail} fallas`);
 process.exit(fail ? 1 : 0);

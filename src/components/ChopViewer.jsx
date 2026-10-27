@@ -424,12 +424,15 @@ export default function ChopViewer({ chopPos, resultMesh, reliefs, axis, surface
     // Eje
     s.helpers.add(new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, axis.z1 + 15], 3)),
       new THREE.LineDashedMaterial({ color: 0xf78eb6 })));
-    if (exclusion) {
+    // Zonas prohibidas (manija detectada + exclusión manual), en rojo.
+    for (const ex of [].concat(exclusion || [])) {
       const r = Math.max(axis.r0, axis.r1) + 6;
-      const start = ((exclusion.center - exclusion.width / 2) * Math.PI) / 180, len = (exclusion.width * Math.PI) / 180;
+      const start = ((ex.center - ex.width / 2) * Math.PI) / 180, len = (Math.min(360, ex.width) * Math.PI) / 180;
+      const za = Math.max(axis.z0, ex.z0 ?? axis.z0), zb = Math.min(axis.z1, ex.z1 ?? axis.z1);
+      if (!(zb > za)) continue;
       // En CylinderGeometry, después de girarlo para que el eje sea Z, el ángulo θ queda en θ - 90° desde +X.
-      const wedge = new THREE.CylinderGeometry(r, r, h, 24, 1, true, start + Math.PI / 2, len);
-      wedge.rotateX(Math.PI / 2); wedge.translate(0, 0, axis.z0 + h / 2);
+      const wedge = new THREE.CylinderGeometry(r, r, zb - za, 24, 1, true, start + Math.PI / 2, len);
+      wedge.rotateX(Math.PI / 2); wedge.translate(0, 0, za + (zb - za) / 2);
       s.helpers.add(new THREE.Mesh(wedge, new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
     }
   }, [axis, exclusion, showRef, axisEditable]);

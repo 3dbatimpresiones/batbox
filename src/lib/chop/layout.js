@@ -20,7 +20,20 @@ export const slantOf = (axis) => Math.atan2(axis.r1 - axis.r0, Math.max(1e-6, ax
 const wrap = (a) => ((a % 360) + 360) % 360;
 const angDist = (a, b) => { const d = Math.abs(wrap(a) - wrap(b)); return Math.min(d, 360 - d); };
 
-export function computeLayout(p, axis, aspect) {
+// ¿El diseño (ya en su lugar final, con giro y escala) pisa algún arco prohibido?
+// Usa la caja girada del diseño para no subestimar su tamaño.
+function hitsArc(arcs, angle, h, r, W, H, spinDeg, cos) {
+  if (!arcs?.length) return false;
+  const sp = (spinDeg * Math.PI) / 180, c = Math.abs(Math.cos(sp)), s = Math.abs(Math.sin(sp));
+  const halfW = (W / 2) * c + (H / 2) * s, halfH = ((W / 2) * s + (H / 2) * c) * cos;
+  const halfDeg = (halfW / Math.max(1, r)) * (180 / Math.PI);
+  return arcs.some((a) => angDist(angle, a.center) < a.width / 2 + halfDeg
+    && (a.z0 == null || (h + halfH > a.z0 && h - halfH < a.z1)));
+}
+
+// handle = arcos de la manija detectados en el modelo (detectHandle). Es una regla dura:
+// ningún diseño que los pise llega a la vista previa ni al STL, aunque se lo arrastre ahí.
+export function computeLayout(p, axis, aspect, handle = null) {
   const phi = slantOf(axis), cos = Math.cos(phi);
   const cols = Math.max(1, Math.round(p.cols)), rows = Math.max(1, Math.round(p.rows));
   // Mantiene todo el patrón dentro de la pared útil. Si no entra, reduce diseños y
@@ -36,7 +49,8 @@ export function computeLayout(p, axis, aspect) {
   const full = p.coverage >= 359.999;
   const step = p.coverage / cols;                       // separación horizontal: sale de columnas y cobertura
   const items = [], warnings = [];
-  let outOfZone = 0, inHandle = 0;
+  let outOfZone = 0, inHandle = 0, onHandle = 0;
+  const manual = p.exclude ? [{ center: p.exclCenter, width: p.exclWidth }] : null;
 
   for (let i = 0; i < rows; i++) {
     // Altura del centro, medida sobre la pared (en un cono la pared es inclinada).
@@ -49,15 +63,18 @@ export function computeLayout(p, axis, aspect) {
       const off = (j + 0.5) * step + shift;
       if (!full && off + halfDeg > p.coverage + 0.01) continue;   // alternadas en cobertura parcial: la última no entra
       const angle = wrap(p.startAngle + off);
-      if (p.exclude && angDist(angle, p.exclCenter) < p.exclWidth / 2 + halfDeg) { inHandle++; continue; }
       const key = `${i}-${j}`, ov = p.overrides?.[key] || {};
       const al = Math.min(Math.max(along + (ov.dh || 0), safe + H / 2), zoneAlong - safe - H / 2);
       const hh = axis.z0 + al * cos;
+      const fa = wrap(angle + (ov.da || 0)), rr = rAt(axis, hh), sc = ov.s || 1, spin = (p.spin || 0) + (ov.spin || 0);
+      // Se controla la posición FINAL (también si se lo arrastró a mano).
+      if (manual && hitsArc(manual, fa, hh, rr, W * sc, H * sc, spin, cos)) { inHandle++; continue; }
+      if (hitsArc(handle, fa, hh, rr, W * sc, H * sc, spin, cos)) { onHandle++; continue; }
       const top = axis.z0 + (al + H / 2) * cos, bottom = axis.z0 + (al - H / 2) * cos;
       const outside = bottom < axis.z0 - 0.01 || top > axis.z1 + 0.01;
       if (outside) outOfZone++;
-      items.push({ key, out: outside, row: i, col: j, angle: wrap(angle + (ov.da || 0)), h: hh, along: al, r: rAt(axis, hh),
-        dr: (p.radial || 0) + (ov.dr || 0), spin: (p.spin || 0) + (ov.spin || 0), s: ov.s || 1, loose: !!p.overrides?.[key] });
+      items.push({ key, out: outside, row: i, col: j, angle: fa, h: hh, along: al, r: rr,
+        dr: (p.radial || 0) + (ov.dr || 0), spin, s: sc, loose: !!p.overrides?.[key] });
     }
   }
 
@@ -67,8 +84,9 @@ export function computeLayout(p, axis, aspect) {
   if (widthDeg > step + 0.01) warnings.push('Los diseños se tocan o se superponen de costado: bajá el ancho, las columnas o subí la cobertura.');
   if (widthDeg > 120) warnings.push('El diseño es muy ancho para este radio: se va a deformar mucho al curvarse.');
   if (outOfZone) warnings.push(`${outOfZone} ${outOfZone === 1 ? 'diseño queda' : 'diseños se pasan'} de la zona decorable (se ven igual: revisá que sigan sobre la pared del chop).`);
+  if (onHandle) warnings.push(`${onHandle} ${onHandle === 1 ? 'diseño se sacó porque tocaba' : 'diseños se sacaron porque tocaban'} la manija (nunca se ponen sobre la manija: rompería el chop).`);
   if (inHandle) warnings.push(`${inHandle} ${inHandle === 1 ? 'diseño se saltea' : 'diseños se saltean'} por la zona del asa.`);
   if (items.length > LIMITS.total) warnings.push(`Máximo ${LIMITS.total} diseños por chop.`);
 
-  return { items: items.slice(0, LIMITS.total), W, H, step, warnings, fitScale };
+  return { items: items.slice(0, LIMITS.total), W, H, step, warnings, fitScale, onHandle };
 }
