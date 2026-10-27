@@ -21,9 +21,18 @@ const wrap = (a) => ((a % 360) + 360) % 360;
 const angDist = (a, b) => { const d = Math.abs(wrap(a) - wrap(b)); return Math.min(d, 360 - d); };
 
 export function computeLayout(p, axis, aspect) {
-  const W = p.width, H = p.width * aspect;
   const phi = slantOf(axis), cos = Math.cos(phi);
   const cols = Math.max(1, Math.round(p.cols)), rows = Math.max(1, Math.round(p.rows));
+  // Mantiene todo el patrón dentro de la pared útil. Si no entra, reduce diseños y
+  // separación proporcionalmente; además deja 1 mm de margen contra los aros.
+  const zoneAlong = Math.max(1, (axis.z1 - axis.z0) / cos);
+  const safe = Math.min(1, zoneAlong * 0.1);
+  const requestedH = p.width * aspect;
+  const requestedUsed = rows * requestedH + (rows - 1) * p.gapV;
+  const fitScale = Math.min(1, Math.max(0.01, (zoneAlong - safe * 2) / Math.max(0.01, requestedUsed)));
+  const W = p.width * fitScale, H = requestedH * fitScale, gapV = p.gapV * fitScale;
+  const used = rows * H + (rows - 1) * gapV;
+  const startH = Math.min(Math.max(p.startH, safe), Math.max(safe, zoneAlong - safe - used));
   const full = p.coverage >= 359.999;
   const step = p.coverage / cols;                       // separación horizontal: sale de columnas y cobertura
   const items = [], warnings = [];
@@ -31,10 +40,8 @@ export function computeLayout(p, axis, aspect) {
 
   for (let i = 0; i < rows; i++) {
     // Altura del centro, medida sobre la pared (en un cono la pared es inclinada).
-    const along = p.startH + H / 2 + i * (H + p.gapV);
+    const along = startH + H / 2 + i * (H + gapV);
     const h = axis.z0 + along * cos;
-    const top = axis.z0 + (along + H / 2) * cos, bottom = axis.z0 + (along - H / 2) * cos;
-    const outside = bottom < axis.z0 - 0.01 || top > axis.z1 + 0.01;   // se pasa: se ve igual, con aviso
     const r = rAt(axis, h);
     const halfDeg = ((W / 2) / r) * (180 / Math.PI);
     const shift = p.stagger && i % 2 === 1 ? step / 2 : 0;
@@ -44,7 +51,10 @@ export function computeLayout(p, axis, aspect) {
       const angle = wrap(p.startAngle + off);
       if (p.exclude && angDist(angle, p.exclCenter) < p.exclWidth / 2 + halfDeg) { inHandle++; continue; }
       const key = `${i}-${j}`, ov = p.overrides?.[key] || {};
-      const al = along + (ov.dh || 0), hh = axis.z0 + al * cos;
+      const al = Math.min(Math.max(along + (ov.dh || 0), safe + H / 2), zoneAlong - safe - H / 2);
+      const hh = axis.z0 + al * cos;
+      const top = axis.z0 + (al + H / 2) * cos, bottom = axis.z0 + (al - H / 2) * cos;
+      const outside = bottom < axis.z0 - 0.01 || top > axis.z1 + 0.01;
       if (outside) outOfZone++;
       items.push({ key, out: outside, row: i, col: j, angle: wrap(angle + (ov.da || 0)), h: hh, along: al, r: rAt(axis, hh),
         dr: (p.radial || 0) + (ov.dr || 0), spin: (p.spin || 0) + (ov.spin || 0), s: ov.s || 1, loose: !!p.overrides?.[key] });
@@ -60,5 +70,5 @@ export function computeLayout(p, axis, aspect) {
   if (inHandle) warnings.push(`${inHandle} ${inHandle === 1 ? 'diseño se saltea' : 'diseños se saltean'} por la zona del asa.`);
   if (items.length > LIMITS.total) warnings.push(`Máximo ${LIMITS.total} diseños por chop.`);
 
-  return { items: items.slice(0, LIMITS.total), W, H, step, warnings };
+  return { items: items.slice(0, LIMITS.total), W, H, step, warnings, fitScale };
 }

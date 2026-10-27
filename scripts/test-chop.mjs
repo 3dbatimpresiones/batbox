@@ -5,7 +5,7 @@ import Module from 'manifold-3d';
 import { buildReliefs, chopFromMesh, combineAll, designSection, unionAll, wallIndex, wallRadius } from '../src/lib/chop/core.js';
 import { computeLayout, rAt } from '../src/lib/chop/layout.js';
 import { toBinarySTL } from '../src/lib/keychain/exporters.js';
-import { orient, guessAxis, radiusAt, weld } from '../src/lib/chop/files.js';
+import { detectWallZone, orient, guessAxis, radiusAt, weld } from '../src/lib/chop/files.js';
 
 const out = process.argv[2] || 'test-out';
 mkdirSync(out, { recursive: true });
@@ -14,7 +14,7 @@ let pass = 0, fail = 0;
 const ok = (n, c, x = '') => { c ? pass++ : fail++; console.log(`${c ? 'OK  ' : 'FALLA'} ${n}${x ? ' — ' + x : ''}`); };
 
 // Chop de prueba: vaso (cilindro o cono) hueco con base, + asa en +X (ángulo 0°)
-function makeChop(r0, r1, h, handle) {
+function makeChop(r0, r1, h, handle, rings = false) {
   const outer = M.Manifold.cylinder(h, r0, r1, 96);
   const inner = M.Manifold.cylinder(h, r0 - 3, r1 - 3, 96).translate([0, 0, 4]);
   let body = M.Manifold.difference(outer, inner);
@@ -23,6 +23,11 @@ function makeChop(r0, r1, h, handle) {
       .rotate([90, 0, 0]).translate([(r0 + r1) / 2 + 14, 0, h / 2]);
     const cut = M.Manifold.cube([30, 30, h], true).translate([(r0 + r1) / 2 - 15 - 2, 0, h / 2]); // deja el asa metida 2 mm en la pared
     body = M.Manifold.union(body, M.Manifold.difference(ring, cut));
+  }
+  if (rings) {
+    const lower = M.Manifold.difference(M.Manifold.cylinder(8, r0 + 4, r0 + 4, 96), M.Manifold.cylinder(8, r0 - 0.5, r0 - 0.5, 96)).translate([0, 0, 4]);
+    const upper = M.Manifold.difference(M.Manifold.cylinder(8, r1 + 4, r1 + 4, 96), M.Manifold.cylinder(8, r1 - 0.5, r1 - 0.5, 96)).translate([0, 0, h - 12]);
+    body = M.Manifold.union([body, lower, upper]);
   }
   const mesh = body.getMesh(); body.delete();
   // Como si viniera de un STL: triángulos sueltos → soldar → Manifold
@@ -38,6 +43,17 @@ ok('el diseño conserva el hueco (área = 480 - 64)', Math.abs(cs.area() - (480 
 
 const base = { rows: 2, cols: 6, width: 20, gapV: 6, startH: 4, startAngle: 0, coverage: 360, stagger: false,
   exclude: false, exclCenter: 0, exclWidth: 60, depth: 0.6, relief: 1.2 };
+
+// Detector de pared útil: dos aros salientes no deben formar parte de la zona decorable.
+{
+  const ringSoup = makeChop(40, 40, 120, true, true);
+  const ringAxis = guessAxis(ringSoup);
+  const ringPos = orient(ringSoup, { cx: ringAxis.cx, cy: ringAxis.cy });
+  const zone = detectWallZone(ringPos);
+  ok('detector: la zona cilíndrica principal queda entre los aros',
+    zone.z0 > 10 && zone.z0 < 25 && zone.z1 > 95 && zone.z1 < 110 && zone.z1 - zone.z0 > 70,
+    `z ${zone.z0.toFixed(1)}…${zone.z1.toFixed(1)}, r ${zone.r0.toFixed(1)}…${zone.r1.toFixed(1)}`);
+}
 
 for (const [name, r0, r1] of [['cilindro', 40, 40], ['cono', 34, 44]]) {
   const soup = makeChop(r0, r1, 120, true);
@@ -148,9 +164,11 @@ for (const [name, r0, r1] of [['cilindro', 40, 40], ['cono', 34, 44]]) {
   // 5. Cobertura parcial: 180° y 4 columnas → 45° entre centros, todos dentro de 0..180
   const half = computeLayout({ ...base, coverage: 180, cols: 4 }, axis, 1.2);
   ok(`${name}: cobertura 180° / 4 columnas = 45° y todo dentro del arco`, half.step === 45 && half.items.every((i) => i.angle > 0 && i.angle < 180), half.items.map((i) => i.angle).join(','));
-  // 6. Filas que no entran en la zona → se avisan
+  // 6. Filas que no entran en la zona → se ajustan automáticamente sin perder diseños
   const tall = computeLayout({ ...base, rows: 10 }, axis, 1.2);
-  ok(`${name}: las filas que se pasan de la zona NO desaparecen (se ven, con aviso)`, tall.items.length === 60 && tall.items.some((i) => i.out) && tall.warnings.some((w) => /se pasan? de la zona/.test(w)));
+  ok(`${name}: las filas se achican y quedan dentro de la pared útil`,
+    tall.items.length === 60 && tall.items.every((i) => !i.out) && tall.W < base.width && tall.fitScale < 1,
+    `${tall.W.toFixed(2)} mm, escala ${tall.fitScale.toFixed(3)}`);
   chop.delete();
 }
 console.log(`\nResultado: ${pass} OK, ${fail} fallas`);

@@ -56,10 +56,10 @@ function applyLive(content, live, axis) {
 }
 const fmt = (v, d = 1) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d).replace('.', ',');
 
-export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef, colors, view, items, selection, mode, onPick, onTransform, onDrag, fitKey }) {
+export default function ChopViewer({ chopPos, resultMesh, reliefs, axis, surfaceGap, exclusion, showRef, showDepth, colors, view, items, selection, mode, onPick, onTransform, onDrag, onAxisChange, axisEditable, fitKey }) {
   const cb = useRef({});
   const liveRef = useRef(null);
-  cb.current = { onPick, onTransform, onDrag, items, selection, mode, axis };
+  cb.current = { onPick, onTransform, onDrag, onAxisChange, axisEditable, items, selection, mode, axis, surfaceGap, chopPos };
   const box = useRef(null);
   const st = useRef(null);
 
@@ -78,6 +78,11 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     const fill = new THREE.DirectionalLight(0xbfd8ff, 0.6); fill.position.set(220, 160, 120); scene.add(fill);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.dampingFactor = 0.12; controls.screenSpacePanning = true;
+    // Controles como los usa el usuario en OrcaSlicer: izquierda orbita;
+    // derecha o ruedita apretada desplazan; girar la rueda conserva el zoom.
+    controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
+    controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
     controls.target.set(0, 0, 60);
     // Cama: grilla de 10 mm (como en el slicer)
     const bed = new THREE.Group();
@@ -142,7 +147,7 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     scene.add(tc.getHelper());
     // Clic (sin arrastrar) para elegir qué se transforma
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    let down = null, drag = null;
+    let down = null, drag = null, axisDrag = null;
     const toNdc = (e) => {
       const rect = renderer.domElement.getBoundingClientRect();
       ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
@@ -163,9 +168,36 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       return best;
     };
     const onDown = (e) => {
+      // Evita el autoscroll de Chromium sin impedir que OrbitControls reciba
+      // el botón central y lo use para orbitar.
+      if (e.button === 1) { e.preventDefault(); down = null; return; }
+      if (e.button !== 0) { down = null; return; }
       down = { x: e.clientX, y: e.clientY };
-      if (tc.axis || e.button !== 0) return;
+      if (tc.axis) return;
       toNdc(e);
+      if (cb.current.axisEditable) {
+        const handle = ray.intersectObjects(helpers.children.filter((o) => o.name === 'axis-handle'), false)[0];
+        if (handle) {
+          const kind = handle.object.userData.kind;
+          // Siempre arrastramos sobre un plano paralelo a la pantalla. El plano
+          // horizontal anterior quedaba casi paralelo al rayo de la cámara y un
+          // movimiento mínimo podía disparar el radio a valores enormes.
+          const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(camera.getWorldDirection(new THREE.Vector3()), handle.point);
+          const p0 = ray.ray.intersectPlane(plane, new THREE.Vector3());
+          if (p0) {
+            let maxZ = cb.current.axis.z1;
+            const pos = cb.current.chopPos;
+            if (pos?.length) for (let i = 2; i < pos.length; i += 3) maxZ = Math.max(maxZ, pos[i]);
+            const radial = new THREE.Vector3(handle.object.position.x, handle.object.position.y, 0).normalize();
+            axisDrag = { kind, plane, p0, radial, maxZ, gap0: cb.current.surfaceGap || 0, axis0: { ...cb.current.axis }, lastDr: 0, pointerId: e.pointerId };
+            controls.enabled = false;
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            renderer.domElement.setPointerCapture?.(e.pointerId);
+            return;
+          }
+        }
+      }
       const hit = ray.intersectObjects(content.children, false)[0];
       if (hit?.object.name !== 'reliefs') return;
       // Agarró un diseño: se arrastra sobre la pared (todos, o solo ese con Shift)
@@ -178,6 +210,30 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       renderer.domElement.setPointerCapture?.(e.pointerId);
     };
     const onMove = (e) => {
+      if (axisDrag) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        toNdc(e);
+        const p = ray.ray.intersectPlane(axisDrag.plane, new THREE.Vector3());
+        if (!p) return;
+        if (axisDrag.kind === 'radius') {
+          const rawDr = p.clone().sub(axisDrag.p0).dot(axisDrag.radial);
+          const nextGap = Math.max(-10, Math.min(10, axisDrag.gap0 + rawDr));
+          const dr = nextGap - axisDrag.gap0;
+          const incremental = dr - axisDrag.lastDr; axisDrag.lastDr = dr;
+          cb.current.onAxisChange?.({ kind: 'radius', delta: incremental, gap: nextGap });
+          showLive({ chop: `Malla / pared ${fmt(dr)} mm` });
+        } else {
+          const dz = p.z - axisDrag.p0.z;
+          const value = axisDrag.kind === 'z1'
+            ? Math.min(axisDrag.maxZ, Math.max(axisDrag.axis0.z0 + 5, axisDrag.axis0.z1 + dz))
+            : Math.max(0, Math.min(axisDrag.axis0.z1 - 5, axisDrag.axis0.z0 + dz));
+          cb.current.onAxisChange?.({ kind: axisDrag.kind, value });
+          showLive({ chop: `${axisDrag.kind === 'z1' ? 'Límite superior' : 'Límite inferior'} ${fmt(dz)} mm` });
+        }
+        renderer.domElement.style.cursor = 'grabbing';
+        return;
+      }
       if (!drag) return;
       if (!drag.moved && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) return;
       drag.moved = true;
@@ -200,8 +256,16 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       cb.current.onDrag?.({ key: d.shift ? d.it.key : null, da: (d.da || 0) * (180 / Math.PI), dh: d.dz || 0 });
       return true;
     };
+    const endAxisDrag = () => {
+      if (!axisDrag) return false;
+      const pointerId = axisDrag.pointerId;
+      axisDrag = null; controls.enabled = true; renderer.domElement.style.cursor = ''; showLive(null);
+      if (renderer.domElement.hasPointerCapture?.(pointerId)) renderer.domElement.releasePointerCapture(pointerId);
+      return true;
+    };
     const onPickUp = (e) => {
-      if (endDrag()) { down = null; return; }
+      if (endAxisDrag()) { e.preventDefault(); e.stopImmediatePropagation(); down = null; return; }
+      if (endDrag()) { e.preventDefault(); e.stopImmediatePropagation(); down = null; return; }
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 || tc.dragging || tc.axis) { down = null; return; }
       down = null;
       const rect = renderer.domElement.getBoundingClientRect();
@@ -218,8 +282,11 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       } else fn?.({ target: 'chop' });
     };
     renderer.domElement.addEventListener('pointerdown', onDown, true);   // antes que la órbita de la cámara
-    renderer.domElement.addEventListener('pointermove', onMove);
-    renderer.domElement.addEventListener('pointerup', onPickUp);
+    renderer.domElement.addEventListener('pointermove', onMove, true);
+    renderer.domElement.addEventListener('pointerup', onPickUp, true);
+    renderer.domElement.addEventListener('pointercancel', onPickUp, true);
+    const stopMiddleAutoscroll = (e) => { if (e.button === 1) e.preventDefault(); };
+    renderer.domElement.addEventListener('auxclick', stopMiddleAutoscroll);
     const gizmo = new ViewHelper(camera, renderer.domElement);
     gizmo.setLabels('X', 'Y', 'Z');
     const timer = new THREE.Timer();
@@ -249,8 +316,10 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose(); gizmo.dispose(); tc.dispose();
       renderer.domElement.removeEventListener('pointerup', onUp);
       renderer.domElement.removeEventListener('pointerdown', onDown, true);
-      renderer.domElement.removeEventListener('pointermove', onMove);
-      renderer.domElement.removeEventListener('pointerup', onPickUp);
+      renderer.domElement.removeEventListener('pointermove', onMove, true);
+      renderer.domElement.removeEventListener('pointerup', onPickUp, true);
+      renderer.domElement.removeEventListener('pointercancel', onPickUp, true);
+      renderer.domElement.removeEventListener('auxclick', stopMiddleAutoscroll);
       scene.traverse((o) => { o.geometry?.dispose(); });
       renderer.dispose(); el.removeChild(renderer.domElement);
     };
@@ -271,12 +340,32 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
   useEffect(() => {
     const s = st.current; if (!s) return;
     s.content.traverse((o) => o.geometry?.dispose()); s.content.clear();
-    if (chopPos) { const m = new THREE.Mesh(soupGeometry(chopPos), new THREE.MeshStandardMaterial({ color: colors.chop, roughness: 0.6 })); m.name = 'chop'; s.content.add(m); }
-    if (reliefs?.length) {
-      const mat = new THREE.MeshStandardMaterial({ color: colors.relief, roughness: 0.45 });
-      reliefs.forEach((r, i) => { const m = new THREE.Mesh(meshGeometry(r), mat); m.name = 'reliefs'; m.userData.it = items?.[i] || null; s.content.add(m); });
+    if (resultMesh || chopPos) {
+      const geometry = resultMesh ? meshGeometry(resultMesh) : soupGeometry(chopPos);
+      const m = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: colors.chop, roughness: 0.6 }));
+      m.name = 'chop'; s.content.add(m);
     }
-  }, [chopPos, reliefs, colors.chop, colors.relief]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (reliefs?.length) {
+      // En grabado mostramos solo las caras internas del cortador. Con prueba de
+      // profundidad activa, la pared oculta el resto y el verde queda dentro del
+      // hueco real, como una iluminación de rayos X muy sutil.
+      const mat = resultMesh && showDepth
+        ? new THREE.MeshBasicMaterial({
+          color: 0x55d98a, transparent: true, opacity: 0.18,
+          depthTest: true, depthWrite: false, side: THREE.BackSide,
+          polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+        })
+        : resultMesh
+          ? new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false })
+          : new THREE.MeshStandardMaterial({ color: colors.relief, roughness: 0.45 });
+      reliefs.forEach((r, i) => {
+        const m = new THREE.Mesh(meshGeometry(r), mat);
+        m.name = 'reliefs'; m.userData.it = items?.[i] || null;
+        if (resultMesh && showDepth) m.renderOrder = 2;
+        s.content.add(m);
+      });
+    }
+  }, [chopPos, resultMesh, reliefs, showDepth, colors.chop, colors.relief]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gizmo: dónde se ubica y cómo se ve según lo elegido y el modo (como OrcaSlicer)
   useEffect(() => {
@@ -318,6 +407,20 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       for (let k = 0; k <= 96; k++) { const t = (k / 96) * Math.PI * 2; ring.push(r * Math.cos(t), r * Math.sin(t), z); }
       s.helpers.add(new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(ring, 3)), new THREE.LineBasicMaterial({ color: 0x5ddadb })));
     }
+    if (axisEditable) {
+      const addHandle = (kind, label, position, color) => {
+        const handle = new THREE.Mesh(new THREE.SphereGeometry(3.2, 18, 12), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.3 }));
+        handle.name = 'axis-handle'; handle.userData.kind = kind; handle.position.copy(position); s.helpers.add(handle);
+        const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 42;
+        const ctx = canvas.getContext('2d'); ctx.fillStyle = 'rgba(13,20,51,.88)'; ctx.roundRect(1, 1, 158, 40, 12); ctx.fill();
+        ctx.strokeStyle = '#5ddadb'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = '#fff'; ctx.font = '700 20px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, 80, 22);
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), depthTest: false }));
+        sprite.position.copy(position).add(new THREE.Vector3(0, 0, kind === 'z1' ? 6 : kind === 'z0' ? -6 : 6)); sprite.scale.set(24, 6.3, 1); sprite.renderOrder = 5; s.helpers.add(sprite);
+      };
+      addHandle('z1', 'Arriba', new THREE.Vector3(0, -axis.r1, axis.z1), 0x5ddadb);
+      addHandle('z0', 'Abajo', new THREE.Vector3(0, -axis.r0, axis.z0), 0x5ddadb);
+      addHandle('radius', 'Radio', new THREE.Vector3((axis.r0 + axis.r1) / 2, 0, (axis.z0 + axis.z1) / 2), 0xf78eb6);
+    }
     // Eje
     s.helpers.add(new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 0, 0, axis.z1 + 15], 3)),
       new THREE.LineDashedMaterial({ color: 0xf78eb6 })));
@@ -329,7 +432,7 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       wedge.rotateX(Math.PI / 2); wedge.translate(0, 0, axis.z0 + h / 2);
       s.helpers.add(new THREE.Mesh(wedge, new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false })));
     }
-  }, [axis, exclusion, showRef]);
+  }, [axis, exclusion, showRef, axisEditable]);
 
   return (
     <div className="kc-viewer chop-viewer" ref={box} tabIndex={0}>

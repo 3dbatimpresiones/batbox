@@ -91,7 +91,7 @@ export function snapRadius(idx, it, W, H, cosP, sinP, engrave) {
 // z = hacia afuera (de -profundidad a +espesor). Después se dobla (warp).
 export function buildReliefs(M, cs0, design, p, axis, wall) {
   const lay = computeLayout(p, axis, design.h0 / design.w0);
-  const s = p.width / design.w0;
+  const s = lay.W / design.w0;
   // Un perfil extruido por cada combinación de giro y escala (los diseños sueltos pueden tener los suyos).
   const shapes = new Map();
   const profile = (spin, k) => {
@@ -107,7 +107,7 @@ export function buildReliefs(M, cs0, design, p, axis, wall) {
   // Grabado (hacia adentro): de -profundidad del grabado a +0,4 mm (sale un poco afuera para cortar limpio).
   const engrave = p.mode === 'engrave';
   const below = engrave ? p.engrave : p.depth, above = engrave ? 0.4 : p.relief;
-  const seg = Math.max(0.35, Math.min(1.2, p.width / 60));          // malla fina para que se curve parejo
+  const seg = Math.max(0.35, Math.min(1.2, lay.W / 60));            // malla fina para que se curve parejo
   const phi = slantOf(axis), cosP = Math.cos(phi), sinP = Math.sin(phi);
   const out = [];
   let snapped = 0;

@@ -168,6 +168,30 @@
 .kc-hint b { color: #fff; } .kc-hint i { color: var(--pink); font-style: normal; font-weight: 700; }
 
 /* Personalizador de chops (reusa la grilla y los controles del Creador de Llaveros) */
+.chop-wizard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 10px; }
+.chop-wizard button { min-width: 0; display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-radius: 13px;
+  border: 1px solid var(--line); background: rgba(19,29,71,.62); color: var(--muted); font: inherit; cursor: pointer; text-align: left; }
+.chop-wizard button span { flex: none; display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%;
+  background: rgba(255,255,255,.08); color: #cbd5e1; font-size: 12px; font-weight: 800; }
+.chop-wizard button b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.chop-wizard button.current { border-color: var(--cyan); background: rgba(93,218,219,.12); color: #fff; }
+.chop-wizard button.current span { background: var(--cyan); color: var(--dark); }
+.chop-wizard button.done { border-color: rgba(93,218,219,.32); color: var(--cyan); }
+.chop-wizard button.done span { background: rgba(93,218,219,.18); color: var(--cyan); }
+.chop-wizard button:disabled { opacity: .38; cursor: not-allowed; }
+.chop .chop-step-head { padding: 8px 2px 12px; border-bottom: 1px solid var(--line); }
+.chop .chop-step-head span, .chop .chop-next-card span { color: var(--cyan); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.chop .chop-step-head h3, .chop .chop-next-card h3 { margin: 3px 0; color: #fff; font-size: 18px; }
+.chop .chop-step-head p, .chop .chop-next-card p { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.45; }
+.chop .chop-wizard-actions { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.chop .chop-wizard-actions .btn { flex: 1; justify-content: center; }
+.chop .chop-review-summary { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.chop .chop-review-summary > div { display: grid; grid-template-columns: 58px minmax(0,1fr) auto; align-items: center; gap: 8px;
+  padding: 10px; border-radius: 11px; background: rgba(19,29,71,.55); border: 1px solid var(--line); }
+.chop .chop-review-summary span { color: var(--muted); font-size: 11px; }
+.chop .chop-review-summary b { color: #fff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chop .chop-review-summary button { border: 0; background: none; color: var(--cyan); font-weight: 800; font-size: 11px; cursor: pointer; }
+.chop .chop-next-card { padding: 12px; border-radius: 13px; background: rgba(93,218,219,.07); border: 1px solid rgba(93,218,219,.25); }
 .chop .chop-load { width: 100%; }
 .chop .kc-warn-inline { padding: 9px 12px; border-radius: 12px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.45); color: #fecaca; font-size: 12.5px; line-height: 1.45; }
 .chop .kc-views { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -187,3 +211,9 @@
 .chop .chop-viewer { position: relative; }
 .chop .chop-live { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 3; pointer-events: none; padding: 7px 14px; border-radius: 999px;
   background: rgba(13,20,51,.9); border: 1px solid var(--pink); color: #fff; font-size: 13.5px; font-weight: 700; white-space: nowrap; box-shadow: 0 8px 20px rgba(0,0,0,.35); }
+
+@media (min-width: 1281px) { .chop .kc-layout { height: calc(100dvh - 250px); } }
+@media (max-width: 700px) {
+  .chop-wizard { grid-template-columns: repeat(2, 1fr); }
+  .chop-wizard button { padding: 8px; }
+}

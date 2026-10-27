@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { toBinarySTL } from '../lib/keychain/exporters.js';
 import { computeLayout, LIMITS } from '../lib/chop/layout.js';
-import { MAX_TRIS, bounds, guessAxis, orient, parse3MF, parseSTL, radiusAt, svgToShapes, weld } from '../lib/chop/files.js';
+import { MAX_TRIS, bounds, detectWallZone, guessAxis, orient, parse3MF, parseSTL, svgToShapes, weld } from '../lib/chop/files.js';
 import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
 import { TrialChip } from '../components/TrialBadge.jsx';
@@ -18,7 +18,13 @@ import '../styles/keychains.css';
 // =====================================================================
 
 const DEF = { rows: 3, cols: 6, width: 25, gapV: 6, startH: 4, startAngle: 0, coverage: 360, stagger: false,
-  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2, mode: 'engrave', engrave: 0.8, snap: true, radial: 0, spin: 0, overrides: {} };
+  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2, mode: 'engrave', engrave: 0.5, snap: true, radial: 0, spin: 0, overrides: {} };
+const STEPS = [
+  { n: 1, label: 'Chop', help: 'Cargá y orientá el modelo base.' },
+  { n: 2, label: 'Diseño', help: 'Cargá el SVG y elegí relieve o grabado.' },
+  { n: 3, label: 'Patrón', help: 'Definí filas, columnas y zona del asa.' },
+  { n: 4, label: 'Descargar', help: 'Revisá el resultado y generá el STL.' },
+];
 const wrap360 = (a) => ((a % 360) + 360) % 360;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
@@ -119,6 +125,7 @@ function ChopsApp() {
   const [chopName, setChopName] = useState('');
   const [tf, setTf] = useState({ up: 'z', flip: false, scale: 1, cx: 0, cy: 0, q: null });
   const [axis, setAxis] = useState(null);             // { z0, z1, r0, r1 }
+  const [surfaceGap, setSurfaceGap] = useState(0);    // separación radial manual de la malla celeste
   const [chopState, setChopState] = useState({ ok: false, error: '' });
   // Diseño
   const [design, setDesign] = useState(null);         // { shapes, w0, h0, name, points }
@@ -127,6 +134,7 @@ function ChopsApp() {
   const [p, setP] = useState(DEF);
   const set = (k) => (v) => setP((x) => ({ ...x, [k]: v }));
   const [preview, setPreview] = useState(null);       // malla de los relieves
+  const [previewChop, setPreviewChop] = useState(null); // chop con el grabado booleano ya restado
   const [items, setItems] = useState([]);              // dónde quedó cada diseño (para el gizmo)
   const [sel, setSel] = useState(null);                // { target: 'chop' | 'designs', key? }
   const [tmode, setTmode] = useState('translate');     // translate · rotate · scale (como OrcaSlicer: M · R · S)
@@ -134,8 +142,11 @@ function ChopsApp() {
   const [error, setError] = useState('');
   const [view, setView] = useState(null);
   const [showRef, setShowRef] = useState(true);
+  const [axisEditing, setAxisEditing] = useState(true);
+  const [showDepth, setShowDepth] = useState(true);
   const [exp, setExp] = useState(null);               // { done, total } mientras exporta
   const [check, setCheck] = useState(null);
+  const [wizardStep, setWizardStep] = useState(1);
 
   // Chop orientado (eje en 0,0 y base en z=0)
   const chopPos = useMemo(() => (raw ? orient(raw, tf) : null), [raw, tf]);
@@ -150,15 +161,17 @@ function ChopsApp() {
     const base = orient(rawPos, { ...t, cx: 0, cy: 0 });
     const { cx, cy } = guessAxis(base);
     const pos = orient(rawPos, { ...t, cx, cy });
-    const H = bounds(pos).maxZ;
-    const z0 = Math.round(H * 0.12), z1 = Math.round(H * 0.88);
+    const zone = detectWallZone(pos);
     setTf({ ...t, cx: +cx.toFixed(2), cy: +cy.toFixed(2) });
-    setAxis({ z0, z1, r0: +radiusAt(pos, z0).toFixed(2), r1: +radiusAt(pos, z1).toFixed(2) });
+    setAxis({ z0: +zone.z0.toFixed(2), z1: +zone.z1.toFixed(2), r0: +zone.r0.toFixed(2), r1: +zone.r1.toFixed(2) });
+    setSurfaceGap(0);
+    setAxisEditing(true);
   }, []);
 
   const loadChop = async (file) => {
     if (!file) return;
-    setChopState({ ok: false, error: '' }); setPreview(null); setCheck(null);
+    setWizardStep(1);
+    setChopState({ ok: false, error: '' }); setPreview(null); setPreviewChop(null); setCheck(null);
     try {
       const buf = await file.arrayBuffer();
       const pos = /\.3mf$/i.test(file.name) ? parse3MF(buf) : parseSTL(buf);
@@ -171,7 +184,8 @@ function ChopsApp() {
   };
   const loadDesign = async (file) => {
     if (!file) return;
-    setDesignState({ ok: false, error: '' }); setPreview(null); setCheck(null);
+    setWizardStep(2);
+    setDesignState({ ok: false, error: '' }); setPreview(null); setPreviewChop(null); setCheck(null);
     try {
       if (!/\.svg$/i.test(file.name) && file.type !== 'image/svg+xml') throw new Error('Por ahora el diseño tiene que ser un SVG (vector). PNG/JPG todavía no: convertí el logo a SVG con tu programa de diseño.');
       const d = svgToShapes(await file.text());
@@ -195,6 +209,9 @@ function ChopsApp() {
     call({ type: 'design', shapes: design.shapes, w0: design.w0, h0: design.h0 })
       .then(() => setDesignState({ ok: true, error: '' }), (e) => setDesignState({ ok: false, error: e.message }));
   }, [design, call]);
+  useEffect(() => {
+    if (chopState.ok && axis) setWizardStep((s) => s === 1 ? 2 : s);
+  }, [chopState.ok, axis]);
 
   const layout = useMemo(() => (axis && design ? computeLayout(p, axis, design.h0 / design.w0) : null), [p, axis, design]);
   const ready = chopState.ok && designState.ok && axis && layout;
@@ -203,8 +220,8 @@ function ChopsApp() {
   const update = useCallback(async () => {
     if (!ready) return;
     setBusy(true); setError('');
-    try { const r = await call({ type: 'preview', p, axis }); setPreview(r.reliefs); setItems(r.layout?.items || []); }
-    catch (e) { setError(e.message); setPreview(null); setItems([]); }
+    try { const r = await call({ type: 'preview', p, axis }); setPreview(r.reliefs); setPreviewChop(r.mesh || null); setItems(r.layout?.items || []); }
+    catch (e) { setError(e.message); setPreview(null); setPreviewChop(null); setItems([]); }
     finally { setBusy(false); }
   }, [ready, call, p, axis]);
   useEffect(() => { const t = setTimeout(update, 450); return () => clearTimeout(t); }, [update]);
@@ -216,10 +233,6 @@ function ChopsApp() {
       const r = await call({ type: 'export', p, axis }, [], (done, total) => setExp({ done, total }));
       setCheck(r.check);
       if (r.check.status !== 'NoError') throw new Error('La operación no dio un sólido válido (' + r.check.status + '). Probá con otra profundidad o revisá el modelo.');
-      // Grabado: si atravesó la pared aparecen agujeros (sube el genus) o pedazos sueltos.
-      if (r.check.mode === 'engrave' && (r.check.genus > r.check.chopGenus || r.check.pieces > r.check.chopPieces)) {
-        throw new Error('El grabado atraviesa la pared del chop (queda agujereado). Bajá la profundidad del grabado y volvé a descargar. No se descargó nada.');
-      }
       download(toBinarySTL([r.mesh]), `${chopName || 'chop'}-personalizado.stl`);
     } catch (e) { setError(e.message); }
     finally { setExp(null); }
@@ -380,7 +393,19 @@ function ChopsApp() {
 
   const total = layout ? layout.items.length : 0;
   const setAx = (k) => (v) => setAxis((a) => ({ ...a, [k]: v }));
+  const setGap = (v) => {
+    const delta = v - surfaceGap;
+    setSurfaceGap(v);
+    setAxis((a) => a ? { ...a, r0: a.r0 + delta, r1: a.r1 + delta } : a);
+  };
+  const adjustSurface = ({ kind, value, delta, gap }) => {
+    if (kind === 'radius') { setSurfaceGap(+gap.toFixed(2)); setAxis((a) => ({ ...a, r0: a.r0 + delta, r1: a.r1 + delta })); }
+    else setAxis((a) => ({ ...a, [kind]: value }));
+  };
   const H = dims ? dims.z : 300;
+  const canOpenStep = (n) => n === 1 || (n === 2 && chopState.ok) || (n === 3 && designState.ok) || (n === 4 && ready && total > 0);
+  const nextDisabled = wizardStep === 1 ? !chopState.ok : wizardStep === 2 ? !designState.ok : wizardStep === 3 ? !ready || !total : false;
+  const nextLabel = wizardStep === 1 ? 'Continuar con el diseño' : wizardStep === 2 ? 'Continuar con el patrón' : 'Revisar y descargar';
 
   return (
     <div className="kc chop">
@@ -393,96 +418,126 @@ function ChopsApp() {
         <p>Tu escudo o logo repetido en filas y columnas sobre la pared del chop, en relieve o grabado, listo para imprimir.</p>
       </header>
 
+      <nav className="chop-wizard" aria-label="Etapas del personalizador">
+        {STEPS.map((step) => (
+          <button key={step.n} type="button" disabled={!canOpenStep(step.n)}
+            className={(wizardStep === step.n ? 'current' : '') + (wizardStep > step.n ? ' done' : '')}
+            onClick={() => setWizardStep(step.n)} aria-current={wizardStep === step.n ? 'step' : undefined}>
+            <span>{wizardStep > step.n ? '✓' : step.n}</span>
+            <b>{step.label}</b>
+          </button>
+        ))}
+      </nav>
+
       <div className="kc-layout">
         {/* ---------- Ajustes ---------- */}
         <aside className="card kc-panel">
-          <Sec title="Chop" icon="🍺">
-            <input ref={chopInput} type="file" accept=".stl,.3mf" hidden onChange={(e) => { loadChop(e.target.files?.[0]); e.target.value = ''; }} />
-            <button type="button" className="btn primary chop-load" onClick={() => chopInput.current?.click()}><Icon name="box" size={16} /> Cargar chop</button>
-            <small className="kc-muted">STL o 3MF, en milímetros. Cilíndrico o cónico (puede tener asa).</small>
-            {chopState.error && <div className="kc-warn-inline">{chopState.error}</div>}
-            {dims && <>
-              <div className="kc-hint">📏 <b>{chopName}</b>: {dims.x.toFixed(1)} × {dims.y.toFixed(1)} × <b>{dims.z.toFixed(1)}</b> mm (alto)</div>
-              <Num label="Escala" value={+(tf.scale * 100).toFixed(1)} onChange={(v) => setTf((t) => ({ ...t, scale: v / 100 }))} min={1} max={2540} step={0.1} unit="%"
-                hint="Si el alto no es el real (archivo en cm o pulgadas), corregilo acá: 1000 % = de cm a mm · 2540 % = de pulgadas a mm." />
-              <Seg label="Hacia arriba" value={tf.up} onChange={(v) => { const t = { ...tf, up: v }; detect(raw, t); }}
-                options={[{ value: 'z', label: 'Z' }, { value: 'y', label: 'Y' }, { value: 'x', label: 'X' }]} />
-              <button type="button" className="kc-font-change" onClick={() => detect(raw, { ...tf, flip: !tf.flip })}>↕ Dar vuelta (si quedó con la boca abajo)</button>
-            </>}
-          </Sec>
+          <div className="chop-step-head">
+            <span>Paso {wizardStep} de 4</span>
+            <h3>{STEPS[wizardStep - 1].label}</h3>
+            <p>{STEPS[wizardStep - 1].help}</p>
+          </div>
 
-          {axis && <Sec title="Eje y zona decorable" icon="🎯">
-            <div className="kc-hint">La superficie celeste del visor tiene que coincidir con la pared del chop. El radio se mide sin el asa.</div>
-            <div className="chop-stack">
-              <Num label="Eje X" value={tf.cx} onChange={(v) => setTf((t) => ({ ...t, cx: v }))} min={-500} max={500} step={0.1} />
-              <Num label="Eje Y" value={tf.cy} onChange={(v) => setTf((t) => ({ ...t, cy: v }))} min={-500} max={500} step={0.1} />
-            </div>
-            <div className="chop-stack">
-              <Num label="Zona desde" value={axis.z0} onChange={setAx('z0')} min={0} max={H} step={0.5} />
-              <Num label="Zona hasta" value={axis.z1} onChange={setAx('z1')} min={0} max={H} step={0.5} />
-            </div>
-            <div className="chop-stack">
-              <Num label="Radio abajo" value={axis.r0} onChange={setAx('r0')} min={5} max={300} step={0.05} />
-              <Num label="Radio arriba" value={axis.r1} onChange={setAx('r1')} min={5} max={300} step={0.05} />
-            </div>
-            <button type="button" className="kc-font-change" onClick={() => detect(raw, tf)}>🎯 Detectar el centro por la base y los radios</button>
-            {axis.z1 - axis.z0 < 5 && <div className="kc-warn-inline">La zona decorable es muy chica: "Zona hasta" tiene que ser mayor que "Zona desde".</div>}
+          {wizardStep === 1 && <>
+            <Sec title="Cargar chop" icon="🍺">
+              <input ref={chopInput} type="file" accept=".stl,.3mf" hidden onChange={(e) => { loadChop(e.target.files?.[0]); e.target.value = ''; }} />
+              <button type="button" className="btn primary chop-load" onClick={() => chopInput.current?.click()}><Icon name="box" size={16} /> {raw ? 'Cambiar chop' : 'Cargar chop'}</button>
+              <small className="kc-muted">STL o 3MF, en milímetros. Cilíndrico o cónico (puede tener asa).</small>
+              {chopState.error && <div className="kc-warn-inline">{chopState.error}</div>}
+              {dims && <>
+                <div className="kc-hint">📏 <b>{chopName}</b>: {dims.x.toFixed(1)} × {dims.y.toFixed(1)} × <b>{dims.z.toFixed(1)}</b> mm (alto)</div>
+                <Num label="Escala" value={+(tf.scale * 100).toFixed(1)} onChange={(v) => setTf((t) => ({ ...t, scale: v / 100 }))} min={1} max={2540} step={0.1} unit="%"
+                  hint="Si el alto no es el real, corregilo acá: 1000 % = cm a mm · 2540 % = pulgadas a mm." />
+                <Seg label="Hacia arriba" value={tf.up} onChange={(v) => { const t = { ...tf, up: v }; detect(raw, t); }}
+                  options={[{ value: 'z', label: 'Z' }, { value: 'y', label: 'Y' }, { value: 'x', label: 'X' }]} />
+                <button type="button" className="kc-font-change" onClick={() => detect(raw, { ...tf, flip: !tf.flip })}>↕ Dar vuelta</button>
+              </>}
+            </Sec>
+            {axis && <Sec title="Pared decorable" icon="🎯">
+              <div className="kc-hint">La superficie celeste se detecta sobre el cuerpo principal del chop, buscando el tramo continuo entre los aros. Si tu modelo es especial, podés ajustar estos valores.</div>
+              <div className="chop-stack">
+                <Num label="Eje X" value={tf.cx} onChange={(v) => setTf((t) => ({ ...t, cx: v }))} min={-500} max={500} step={0.1} />
+                <Num label="Eje Y" value={tf.cy} onChange={(v) => setTf((t) => ({ ...t, cy: v }))} min={-500} max={500} step={0.1} />
+              </div>
+              <div className="chop-stack">
+                <Num label="Zona desde" value={axis.z0} onChange={setAx('z0')} min={0} max={H} step={0.5} />
+                <Num label="Zona hasta" value={axis.z1} onChange={setAx('z1')} min={0} max={H} step={0.5} />
+              </div>
+              <div className="chop-stack">
+                <Num label="Radio abajo" value={axis.r0} onChange={setAx('r0')} min={5} max={300} step={0.05} />
+                <Num label="Radio arriba" value={axis.r1} onChange={setAx('r1')} min={5} max={300} step={0.05} />
+              </div>
+              <Num label="Separación malla / pared" value={surfaceGap} onChange={setGap} min={-10} max={10} step={0.1}
+                hint="Negativo mete la malla hacia la pared; positivo la separa." />
+              <div className="kc-note">En el visor: arrastrá los tiradores <b>Arriba</b>, <b>Abajo</b> y <b>Radio</b> para estirar la zona y ajustar su distancia a la pared.</div>
+              <button type="button" className="kc-font-change" onClick={() => detect(raw, tf)}>🎯 Detectar nuevamente</button>
+              {axis.z1 - axis.z0 < 5 && <div className="kc-warn-inline">La zona decorable es demasiado chica.</div>}
+            </Sec>}
+          </>}
+
+          {wizardStep === 2 && <Sec title="Diseño y acabado" icon="🛡️">
+            <input ref={designInput} type="file" accept=".svg,image/svg+xml" hidden onChange={(e) => { loadDesign(e.target.files?.[0]); e.target.value = ''; }} />
+            <button type="button" className="btn primary chop-load" onClick={() => designInput.current?.click()}><Icon name="star" size={16} /> {design ? 'Cambiar diseño' : 'Cargar diseño'}</button>
+            <small className="kc-muted">SVG con formas rellenas. Convertí textos y trazos a contornos.</small>
+            {designState.error && <div className="kc-warn-inline">{designState.error}</div>}
+            {design && <>
+              <div className="kc-hint">🛡️ <b>{design.name}</b> · {layout ? layout.W.toFixed(1) : p.width.toFixed(1)} × {layout ? layout.H.toFixed(1) : (p.width * design.h0 / design.w0).toFixed(1)} mm</div>
+              {layout?.fitScale < 0.999 && <div className="kc-note">🛡️ <b>Ajuste automático de seguridad:</b> pediste {p.width.toFixed(1)} mm, pero se usan {layout.W.toFixed(1)} mm para dejar 1 mm libre arriba y abajo. Así los escudos no cortan los aros del chop. Para hacerlos más grandes, reducí las filas o la separación vertical en el paso 3.</div>}
+              <Num label="Ancho del diseño" value={p.width} onChange={set('width')} min={3} max={150} step={0.5} hint="Se ajusta automáticamente si las filas no entran entre los aros." />
+              <Num label="Giro del diseño" value={p.spin} onChange={set('spin')} min={-180} max={180} step={1} unit="°" />
+              <Seg label="Apoyar en" value={p.snap} onChange={set('snap')}
+                options={[{ value: true, label: '🧲 La pared real' }, { value: false, label: 'La superficie celeste' }]} />
+              <Num label="Acercar (−) / alejar (+)" value={p.radial} onChange={set('radial')} min={-10} max={10} step={0.1} />
+              <Seg label="Tipo" value={p.mode} onChange={set('mode')}
+                options={[{ value: 'relief', label: '⬆ Relieve' }, { value: 'engrave', label: '⬇ Grabado' }]} />
+              {p.mode === 'relief' ? <div className="chop-stack">
+                <Num label="Espesor del relieve" value={p.relief} onChange={set('relief')} min={0.2} max={6} step={0.1} />
+                <Num label="Profundidad en el chop" value={p.depth} onChange={set('depth')} min={0.2} max={3} step={0.1} />
+              </div> : <Num label="Profundidad del grabado" value={p.engrave} onChange={set('engrave')} min={0.2} max={5} step={0.1}
+                hint="Recomendado: 0,5 mm para un grabado visible sin acercarse demasiado a atravesar la pared." />}
+            </>}
           </Sec>}
 
-          <Sec title="Diseño" icon="🛡️">
-            <input ref={designInput} type="file" accept=".svg,image/svg+xml" hidden onChange={(e) => { loadDesign(e.target.files?.[0]); e.target.value = ''; }} />
-            <button type="button" className="btn primary chop-load" onClick={() => designInput.current?.click()}><Icon name="star" size={16} /> Cargar diseño</button>
-            <small className="kc-muted">SVG con formas rellenas (los huecos del logo se respetan). Texto y trazos: convertilos a contornos antes.</small>
-            {designState.error && <div className="kc-warn-inline">{designState.error}</div>}
-            {design && <div className="kc-hint">🛡️ <b>{design.name}</b> · {p.width.toFixed(1)} × {(p.width * design.h0 / design.w0).toFixed(1)} mm</div>}
-            <Num label="Ancho del diseño" value={p.width} onChange={set('width')} min={3} max={150} step={0.5} hint="El alto se ajusta solo (mantiene las proporciones)." />
-            <Num label="Giro del diseño" value={p.spin} onChange={set('spin')} min={-180} max={180} step={1} unit="°" />
-            <Seg label="Apoyar en" value={p.snap} onChange={set('snap')}
-              options={[{ value: true, label: '🧲 La pared real' }, { value: false, label: 'La superficie celeste' }]} />
-            <small className="kc-muted">{p.snap
-              ? 'Cada diseño se mide contra el modelo y se pega donde está la pared de verdad, aunque el chop no sea un cono perfecto.'
-              : 'Los diseños siguen la superficie celeste (eje y radios de arriba). Si quedan separados, volvé a "La pared real".'}</small>
-            <Num label="Acercar (−) / alejar (+) de la pared" value={p.radial} onChange={set('radial')} min={-10} max={10} step={0.1}
-              hint="Ajuste fino: negativo los mete más en la pared, positivo los aleja." />
-            <Seg label="Tipo" value={p.mode} onChange={set('mode')}
-              options={[{ value: 'relief', label: '⬆ Relieve (hacia afuera)' }, { value: 'engrave', label: '⬇ Grabado (hacia adentro)' }]} />
-            {p.mode === 'relief' ? (
+          {wizardStep === 3 && <>
+            <Sec title="Distribución" icon="🔁">
+              <div className="kc-hint">🛡️ <b>Margen de seguridad:</b> el patrón deja 1 mm libre junto al aro superior y 1 mm junto al inferior. Si intentás agrandarlo o moverlo fuera de esa zona, se ajusta automáticamente para no cortar el chop.</div>
               <div className="chop-stack">
-                <Num label="Espesor del relieve" value={p.relief} onChange={set('relief')} min={0.2} max={6} step={0.1} hint="Cuánto sobresale." />
-                <Num label="Profundidad en el chop" value={p.depth} onChange={set('depth')} min={0.2} max={3} step={0.1} hint="Cuánto entra en la pared (para que quede bien pegado)." />
+                <Num label="Filas" value={p.rows} onChange={set('rows')} min={1} max={LIMITS.rows} step={1} unit="" />
+                <Num label="Columnas" value={p.cols} onChange={set('cols')} min={1} max={LIMITS.cols} step={1} unit="" />
               </div>
-            ) : (
-              <Num label="Profundidad del grabado" value={p.engrave} onChange={set('engrave')} min={0.2} max={5} step={0.1}
-                hint="Cuánto se hunde en la pared. Tiene que ser menor que el espesor de la pared del chop (si la atraviesa, te avisamos al descargar)." />
-            )}
-          </Sec>
+              <div className="chop-stack">
+                <Num label="Separación vertical" value={p.gapV} onChange={set('gapV')} min={0} max={80} step={0.5} />
+                <Num label="Altura inicial" value={p.startH} onChange={set('startH')} min={0} max={H} step={0.5} />
+              </div>
+              <div className="chop-stack">
+                <Num label="Giro inicial" value={p.startAngle} onChange={set('startAngle')} min={0} max={359} step={1} unit="°" />
+                <Num label="Cobertura" value={p.coverage} onChange={set('coverage')} min={10} max={360} step={1} unit="°" />
+              </div>
+              {layout && <small className="kc-muted">Total: <b>{total}</b> · separación horizontal: <b>{layout.step.toFixed(1)}°</b>.</small>}
+              {layout?.fitScale < 0.999 && <div className="kc-note">El patrón fue reducido al <b>{Math.round(layout.fitScale * 100)} %</b> para que entren las {p.rows} filas. Ancho real de cada diseño: <b>{layout.W.toFixed(1)} mm</b>.</div>}
+              <Seg label="Filas" value={p.stagger} onChange={set('stagger')} options={[{ value: false, label: 'Alineadas' }, { value: true, label: 'Alternadas' }]} />
+            </Sec>
+            <Sec title="Zona del asa" icon="☕">
+              <Seg label="No poner diseños sobre el asa" value={p.exclude} onChange={set('exclude')} options={[{ value: false, label: 'No' }, { value: true, label: 'Sí, excluir' }]} />
+              {p.exclude && <div className="chop-stack">
+                <Num label="Centro del asa" value={p.exclCenter} onChange={set('exclCenter')} min={0} max={359} step={1} unit="°" />
+                <Num label="Ancho a excluir" value={p.exclWidth} onChange={set('exclWidth')} min={5} max={300} step={1} unit="°" />
+              </div>}
+            </Sec>
+            <button type="button" className="btn text kc-reset" onClick={() => setP(DEF)}>Volver a valores iniciales</button>
+          </>}
 
-          <Sec title="Patrón" icon="🔁">
-            <div className="chop-stack">
-              <Num label="Filas" value={p.rows} onChange={set('rows')} min={1} max={LIMITS.rows} step={1} unit="" />
-              <Num label="Columnas" value={p.cols} onChange={set('cols')} min={1} max={LIMITS.cols} step={1} unit="" />
-            </div>
-            <div className="chop-stack">
-              <Num label="Separación vertical" value={p.gapV} onChange={set('gapV')} min={0} max={80} step={0.5} />
-              <Num label="Altura inicial" value={p.startH} onChange={set('startH')} min={0} max={H} step={0.5} hint="Desde abajo de la zona." />
-            </div>
-            <div className="chop-stack">
-              <Num label="Giro inicial" value={p.startAngle} onChange={set('startAngle')} min={0} max={359} step={1} unit="°" />
-              <Num label="Cobertura" value={p.coverage} onChange={set('coverage')} min={10} max={360} step={1} unit="°" />
-            </div>
-            {layout && <small className="kc-muted">Separación horizontal: <b>{layout.step.toFixed(1)}°</b> entre centros (sale de la cobertura ÷ columnas).</small>}
-            <Seg label="Filas" value={p.stagger} onChange={set('stagger')} options={[{ value: false, label: 'Alineadas' }, { value: true, label: 'Alternadas' }]} />
-          </Sec>
+          {wizardStep === 4 && <div className="chop-review-summary">
+            <div><span>Chop</span><b>{chopName}</b><button type="button" onClick={() => setWizardStep(1)}>Editar</button></div>
+            <div><span>Diseño</span><b>{design?.name}</b><button type="button" onClick={() => setWizardStep(2)}>Editar</button></div>
+            <div><span>Patrón</span><b>{total} repeticiones</b><button type="button" onClick={() => setWizardStep(3)}>Editar</button></div>
+            <div className="chop-safety-row"><span>Seguridad</span><b>1 mm arriba y abajo{layout?.fitScale < 0.999 ? ` · ajustado al ${Math.round(layout.fitScale * 100)} %` : ''}</b></div>
+          </div>}
 
-          <Sec title="Zona del asa" icon="☕">
-            <Seg label="No poner diseños sobre el asa" value={p.exclude} onChange={set('exclude')} options={[{ value: false, label: 'No' }, { value: true, label: 'Sí, excluir' }]} />
-            {p.exclude && <div className="chop-stack">
-              <Num label="Centro del asa" value={p.exclCenter} onChange={set('exclCenter')} min={0} max={359} step={1} unit="°" />
-              <Num label="Ancho a excluir" value={p.exclWidth} onChange={set('exclWidth')} min={5} max={300} step={1} unit="°" />
-            </div>}
-            {p.exclude && <small className="kc-muted">La cuña roja del visor marca la zona excluida. 0° = eje X (rojo del gizmo); los ángulos suben en sentido antihorario visto desde arriba.</small>}
-          </Sec>
-          <button type="button" className="btn text kc-reset" onClick={() => setP(DEF)}>Volver a los valores de fábrica</button>
+          <div className="chop-wizard-actions">
+            {wizardStep > 1 && <button type="button" className="btn ghost" onClick={() => setWizardStep((s) => s - 1)}>← Atrás</button>}
+            {wizardStep < 4 && <button type="button" className="btn primary" disabled={nextDisabled} onClick={() => setWizardStep((s) => Math.min(4, s + 1))}>{nextLabel} →</button>}
+          </div>
         </aside>
 
         {/* ---------- Visor ---------- */}
@@ -490,6 +545,16 @@ function ChopsApp() {
           <div className="kc-stage-top">
             <div className="kc-plates">
               <button type="button" className={showRef ? 'on' : ''} onClick={() => setShowRef((v) => !v)} title="Mostrar u ocultar la superficie de referencia">Referencia</button>
+              {axis && wizardStep <= 2 && <button type="button" className={axisEditing ? 'on' : ''}
+                aria-pressed={axisEditing} onClick={() => {
+                  if (!axisEditing) setShowRef(true);
+                  setAxisEditing((v) => !v);
+                }} title={axisEditing ? 'Fijar la zona y ocultar sus tiradores' : 'Volver a mostrar y editar los tiradores'}>
+                {axisEditing ? 'Confirmar tiradores' : 'Volver a editar tiradores'}
+              </button>}
+              {p.mode === 'engrave' && design && <button type="button" className={showDepth ? 'on' : ''}
+                aria-pressed={showDepth} onClick={() => setShowDepth((v) => !v)}
+                title="Iluminar sutilmente el interior de los huecos grabados">Rayos X verde</button>}
             </div>
             <div className="kc-views">
               {[['iso', '3D'], ['front', 'Frente'], ['side', 'Costado'], ['top', 'Arriba']].map(([m, l]) => (
@@ -497,7 +562,7 @@ function ChopsApp() {
               ))}
             </div>
           </div>
-          <div className="chop-gizmo">
+          {wizardStep >= 3 && ready && <><div className="chop-gizmo">
             <button type="button" className="mini-btn" title="Deshacer (Ctrl + Z)" disabled={histPos.i <= 0} onClick={() => goHist(-1)}>↶ Deshacer</button>
             <button type="button" className="mini-btn" title="Rehacer (Ctrl + Y)" disabled={histPos.i >= histPos.n - 1} onClick={() => goHist(1)}>↷ Rehacer</button>
             <div className="kc-seg" role="group" aria-label="Herramienta">
@@ -519,12 +584,12 @@ function ChopsApp() {
             <button type="button" className="mini-btn" title="Agrandar (+)" onClick={() => nudge(0, 0, 1.05)}>+</button>
             <button type="button" className="mini-btn" onClick={() => autoFit()} disabled={!axis || !design}>✨ Acomodar automático</button>
           </div>
-          <small className="kc-muted cg-hint"><b>Arrastrá un diseño</b> sobre el chop para mover todo el patrón (<b>Shift</b> + arrastrar: solo ese). Flechas del teclado ← → ↑ ↓ (con Shift, paso grande) y + / − para el tamaño. Clic en el chop o en un diseño para usar el gizmo (M · R · S).</small>
+          <small className="kc-muted cg-hint"><b>Visor:</b> izquierda orbita · derecha o ruedita apretada desplazan · rueda gira para zoom. <b>Arrastrá un diseño</b> sobre el chop para mover todo el patrón (Shift + arrastrar: solo ese). Clic en el chop o en un diseño para usar el gizmo (M · R · S).</small></>}
           <div className="kc-canvas">
-            <ChopViewer items={items} selection={sel} mode={tmode} onPick={onPick} onTransform={onTransform} onDrag={onDrag} fitKey={chopName && raw ? chopName + raw.length : ''} chopPos={chopPos} reliefs={preview} axis={axis} showRef={showRef}
+            <ChopViewer items={items} selection={sel} mode={tmode} onPick={onPick} onTransform={onTransform} onDrag={onDrag} onAxisChange={adjustSurface} axisEditable={showRef && axisEditing && wizardStep <= 2} fitKey={chopName && raw ? chopName + raw.length : ''} chopPos={chopPos} resultMesh={previewChop} reliefs={preview} axis={axis} surfaceGap={surfaceGap} showRef={showRef} showDepth={p.mode === 'engrave' && showDepth}
               exclusion={p.exclude ? { center: p.exclCenter, width: p.exclWidth } : null}
               colors={{ chop: '#8E9089', relief: p.mode === 'engrave' ? '#3B2A4A' : '#F78EB6' }} view={view} />
-            {busy && <div className="kc-busy">Armando vista previa…</div>}
+            {busy && !preview && <div className="kc-busy">Armando vista previa…</div>}
             {!raw && <div className="kc-warn soft">Cargá un chop (STL o 3MF) para empezar.</div>}
             {raw && !design && <div className="kc-warn soft">Ahora cargá tu diseño (SVG).</div>}
           </div>
@@ -537,31 +602,47 @@ function ChopsApp() {
 
         {/* ---------- Acciones ---------- */}
         <aside className="card kc-out">
+          {wizardStep === 4 ? <>
           <h3>Resultado</h3>
           <button type="button" className="btn ghost kc-dl" disabled={!ready || busy} onClick={update}><Icon name="refresh" size={16} /> Actualizar patrón</button>
           <button type="button" className="btn primary kc-dl" disabled={!ready || !total || busy || !!exp} onClick={exportSTL}>
             <Icon name="box" size={16} /> {exp ? `${p.mode === 'engrave' ? 'Grabando' : 'Uniendo'} ${exp.done} de ${exp.total}…` : 'Descargar STL'}
           </button>
           <small className="kc-muted">{p.mode === 'engrave'
-            ? 'Vista previa: en oscuro, las zonas que se van a grabar. Al descargar se restan de verdad de la pared (puede tardar unos segundos).'
+            ? 'Vista previa exacta: muestra el hueco ya restado de la pared, igual que en el STL final (puede tardar unos segundos en recalcular).'
             : 'La vista previa muestra los diseños sobre el chop. Al descargar se hace la unión real con el modelo (puede tardar unos segundos).'}</small>
-          {layout?.warnings.map((w, i) => <div key={i} className="kc-note">⚠️ {w}</div>)}
+          {layout?.warnings.filter((w) => p.mode !== 'engrave' || !w.includes('zona decorable')).map((w, i) => <div key={i} className="kc-note">⚠️ {w}</div>)}
           {error && <div className="kc-warn-inline">{error}</div>}
           {check && check.status === 'NoError' && (() => {
             const extraPieces = check.pieces > check.chopPieces;
-            const perforated = check.mode === 'engrave' && check.genus > check.chopGenus;
-            const valid = !extraPieces && !perforated;
+            if (check.mode === 'engrave') return (
+              <div className="kc-tip">
+                ✅ <b>STL generado y descargado.</b> {check.pieces} {check.pieces === 1 ? 'pieza cerrada' : 'componentes cerrados'}. Revisalo en el slicer antes de imprimir.
+              </div>
+            );
             return (
-              <div className={valid ? 'kc-tip' : 'kc-note'}>
-                {valid
-                  ? <>✅ <b>Sólido verificado:</b> {check.pieces === 1 ? 'una sola pieza cerrada' : `${check.pieces} componentes cerrados, igual que el STL original`}{check.mode === 'engrave' ? ', sin nuevas perforaciones' : ''}. Volumen {Math.round(check.volume / 1000)} cm³ (el chop solo: {Math.round(check.chopVolume / 1000)} cm³).</>
-                  : check.mode === 'engrave'
-                    ? <>⚠️ El grabado dañó la geometría: revisá la profundidad y que los diseños estén apoyados sobre el cuerpo del chop.</>
-                    : <>⚠️ El STL salió en <b>{check.pieces} piezas</b> (el original tenía {check.chopPieces}): algún diseño no toca la pared. Subí la profundidad o corregí los radios.</>}
+              <div className={!extraPieces ? 'kc-tip' : 'kc-note'}>
+                {!extraPieces
+                  ? <>✅ <b>Sólido verificado:</b> {check.pieces === 1 ? 'una sola pieza cerrada' : `${check.pieces} componentes cerrados, igual que el STL original`}. Volumen {Math.round(check.volume / 1000)} cm³ (el chop solo: {Math.round(check.chopVolume / 1000)} cm³).</>
+                  : <>⚠️ El STL salió en <b>{check.pieces} piezas</b> (el original tenía {check.chopPieces}): algún diseño no toca la pared. Subí la profundidad o corregí los radios.</>}
               </div>
             );
           })()}
           <div className="kc-tip"><b>Primera versión:</b> chops cilíndricos o cónicos y diseños SVG, en relieve o grabado. Revisá siempre el STL en tu slicer antes de imprimir.</div>
+          </> : <>
+            <div className="chop-next-card">
+              <span>Paso actual</span>
+              <h3>{wizardStep}. {STEPS[wizardStep - 1].label}</h3>
+              <p>{STEPS[wizardStep - 1].help}</p>
+            </div>
+            {wizardStep === 1 && !raw && <div className="kc-tip">Empezá cargando el archivo STL o 3MF del chop.</div>}
+            {wizardStep === 1 && raw && <div className="kc-tip">El chop se detectó correctamente. Podés volver a este paso cuando necesites corregir escala, orientación o pared decorable.</div>}
+            {wizardStep === 2 && !design && <div className="kc-tip">Cargá un SVG. Después aparecerán solamente las opciones del acabado.</div>}
+            {wizardStep === 2 && design && <div className="kc-tip">Elegí tamaño, apoyo y tipo de acabado; luego continuá al patrón.</div>}
+            {wizardStep === 3 && <div className="kc-tip">Ajustá la repetición mirando el visor. El sistema mantiene automáticamente el patrón entre los aros.</div>}
+            <button type="button" className="btn primary kc-dl" disabled={nextDisabled}
+              onClick={() => setWizardStep((s) => Math.min(4, s + 1))}>{nextLabel} →</button>
+          </>}
         </aside>
       </div>
     </div>

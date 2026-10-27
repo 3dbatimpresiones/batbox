@@ -2,7 +2,7 @@
 // Worker del Personalizador de chops (no traba la página).
 //   { type:'chop', id, vert, tri }              → { type:'chop-ok', id, volume, tris } | error
 //   { type:'design', id, shapes, w0, h0 }       → { type:'design-ok', id }
-//   { type:'preview', id, p, axis }             → { type:'preview-ok', id, reliefs (malla), layout }
+//   { type:'preview', id, p, axis }             → { type:'preview-ok', id, reliefs, mesh?, layout }
 //   { type:'export', id, p, axis }              → progreso + { type:'export-ok', id, mesh, check }
 // =====================================================================
 import Module from 'manifold-3d';
@@ -43,10 +43,19 @@ self.onmessage = async (e) => {
         return;
       }
       if (msg.type === 'preview') {
-        // Vista previa liviana: cada diseño por separado (para moverlos en vivo), sin booleana.
-        const meshes = reliefs.map((r) => { const m = plain(r); r.delete(); return m; });
-        self.postMessage({ type: 'preview-ok', id: msg.id, layout, reliefs: meshes },
-          meshes.flatMap((m) => [m.vertProperties.buffer, m.triVerts.buffer]));
+        const meshes = reliefs.map(plain); // también sirven como zonas invisibles para seleccionar/arrastrar
+        if (msg.p.mode === 'engrave') {
+          // En grabado se muestra el hueco real: misma booleana que la exportación.
+          const { result } = combineAll(M, chop, reliefs, 'engrave');
+          reliefs.forEach((r) => r.delete());
+          const mesh = plain(result); result.delete();
+          self.postMessage({ type: 'preview-ok', id: msg.id, layout, reliefs: meshes, mesh },
+            [mesh.vertProperties.buffer, mesh.triVerts.buffer, ...meshes.flatMap((m) => [m.vertProperties.buffer, m.triVerts.buffer])]);
+        } else {
+          reliefs.forEach((r) => r.delete());
+          self.postMessage({ type: 'preview-ok', id: msg.id, layout, reliefs: meshes, mesh: null },
+            meshes.flatMap((m) => [m.vertProperties.buffer, m.triVerts.buffer]));
+        }
       } else {
         const { result, check } = combineAll(M, chop, reliefs, msg.p.mode, (done, total) => self.postMessage({ type: 'progress', id: msg.id, done, total }));
         reliefs.forEach((r) => r.delete());

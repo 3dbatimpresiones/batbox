@@ -196,6 +196,50 @@ export function radiusAt(pos, z) {
   return got.length ? got[Math.floor(got.length / 2)] : 0;
 }
 
+// Busca el tramo vertical más largo cuyo radio exterior sigue una recta (cilindro
+// o cono). Los aros producen saltos de radio y quedan fuera del tramo elegido.
+// Devuelve una zona levemente metida hacia adentro para no tocar sus bordes.
+export function detectWallZone(pos) {
+  const b = bounds(pos), H = b.maxZ - b.minZ;
+  const fallback = () => {
+    const z0 = b.minZ + H * 0.12, z1 = b.minZ + H * 0.88;
+    return { z0, z1, r0: radiusAt(pos, z0), r1: radiusAt(pos, z1), confidence: 0 };
+  };
+  if (!(H > 5)) return fallback();
+  const N = 81, samples = [];
+  for (let i = 0; i < N; i++) {
+    const z = b.minZ + H * (0.025 + 0.95 * i / (N - 1));
+    const r = radiusAt(pos, z);
+    if (r > 0) samples.push({ z, r });
+  }
+  if (samples.length < 20) return fallback();
+  const minCount = Math.max(10, Math.floor(samples.length * 0.18));
+  let best = null;
+  for (let a = 0; a <= samples.length - minCount; a++) {
+    for (let e = a + minCount - 1; e < samples.length; e++) {
+      const part = samples.slice(a, e + 1), n = part.length;
+      let sz = 0, sr = 0, szz = 0, szr = 0;
+      for (const q of part) { sz += q.z; sr += q.r; szz += q.z * q.z; szr += q.z * q.r; }
+      const den = n * szz - sz * sz;
+      if (Math.abs(den) < 1e-9) continue;
+      const slope = (n * szr - sz * sr) / den, intercept = (sr - slope * sz) / n;
+      let sum2 = 0, maxError = 0, meanR = 0;
+      for (const q of part) { const d = q.r - (intercept + slope * q.z); sum2 += d * d; maxError = Math.max(maxError, Math.abs(d)); meanR += q.r; }
+      const rms = Math.sqrt(sum2 / n), tolerance = Math.max(0.35, (meanR / n) * 0.012);
+      if (rms > tolerance * 0.55 || maxError > tolerance * 1.5) continue;
+      const span = part[n - 1].z - part[0].z;
+      if (!best || span > best.span + H * 0.005 || (Math.abs(span - best.span) <= H * 0.005 && rms < best.rms)) {
+        best = { a, e, span, rms };
+      }
+    }
+  }
+  if (!best || best.span < H * 0.2) return fallback();
+  const step = H * 0.95 / (N - 1), inset = Math.max(1, step * 0.8);
+  const z0 = samples[best.a].z + inset, z1 = samples[best.e].z - inset;
+  if (z1 - z0 < H * 0.15) return fallback();
+  return { z0, z1, r0: radiusAt(pos, z0), r1: radiusAt(pos, z1), confidence: Math.max(0, 1 - best.rms / 0.5) };
+}
+
 // ---------- SVG → contornos (en mm del SVG, centrados en 0,0; Y hacia arriba) ----------
 export function svgToShapes(text) {
   let data;
