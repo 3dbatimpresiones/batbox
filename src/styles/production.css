@@ -4,14 +4,14 @@
 .pp-head-actions .tool-feedback { margin-left: 0 !important; }
 .pp-tutorial-shade { position: fixed; z-index: 10000; inset: 0; pointer-events: none; background: rgba(5,10,35,.62); backdrop-filter: blur(4px); }
 .pp-tour-shades { position: fixed; z-index: 10000; inset: 0; pointer-events: none; }
-.pp-tour-shades i { position: fixed; display: block; background: rgba(5,10,35,.62); backdrop-filter: blur(4px) saturate(.72); }
+.pp-tour-shades i { position: fixed; display: block; background: rgba(5,10,35,.52); backdrop-filter: blur(4px) saturate(.72); }
 .pp-tutorial-backdrop { position: fixed; z-index: 10002; inset: 0; display: grid; padding: 16px; pointer-events: none; transition: padding .2s ease; }
 .pp-tour-top-left { align-items: start; justify-items: start; }
 .pp-tour-top-right { align-items: start; justify-items: end; }
 .pp-tour-bottom-left { align-items: end; justify-items: start; }
 .pp-tour-bottom-right { align-items: end; justify-items: end; }
 .pp-tutorial { width: min(400px,100%); overflow: visible; padding: 14px; border-radius: 18px; border: 1px solid rgba(93,218,219,.65); pointer-events: auto; background: linear-gradient(145deg,#20286e,#131d47); box-shadow: 0 24px 70px rgba(0,0,0,.55); }
-.pp-tour-spotlight { position: fixed; z-index: 10001; pointer-events: none; border: 3px solid #69f6f0; border-radius: 18px; background: transparent; box-shadow: 0 0 0 5px rgba(93,218,219,.18), 0 0 38px rgba(93,218,219,.68); transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease; }
+.pp-tour-spotlight { position: fixed; z-index: 10001; pointer-events: none; border: 3px solid #69f6f0; border-radius: 18px; background: rgba(255,255,255,.02); backdrop-filter: brightness(1.35) saturate(1.1) contrast(1.06); box-shadow: 0 0 0 5px rgba(93,218,219,.18), 0 0 38px rgba(93,218,219,.68); transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease; }
 .pp-tutorial-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--cyan); font-size: 10px; font-weight: 900; letter-spacing: .8px; }
 .pp-tutorial-top button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 10px; border: 1px solid var(--line); background: rgba(19,29,71,.55); color: #fff; }
 .pp-tutorial-progress { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; margin: 10px 0 14px; }
