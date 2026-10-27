@@ -54,8 +54,15 @@ function TutorialModal({ step, setStep, onClose, targetRect }) {
   const targetCenterX = targetRect ? targetRect.left + targetRect.width / 2 : viewportWidth / 2;
   const targetCenterY = targetRect ? targetRect.top + targetRect.height / 2 : viewportHeight / 2;
   const panelPosition = `${targetCenterY < viewportHeight / 2 ? 'bottom' : 'top'}-${targetCenterX < viewportWidth / 2 ? 'right' : 'left'}`;
+  const targetRight = targetRect ? targetRect.left + targetRect.width : 0;
+  const targetBottom = targetRect ? targetRect.top + targetRect.height : 0;
   return <>
-    <div className="pp-tutorial-shade" aria-hidden="true" />
+    {targetRect ? <div className="pp-tour-shades" aria-hidden="true">
+      <i style={{ left: 0, top: 0, width: '100vw', height: targetRect.top }} />
+      <i style={{ left: 0, top: targetRect.top, width: targetRect.left, height: targetRect.height }} />
+      <i style={{ left: targetRight, top: targetRect.top, width: Math.max(0, viewportWidth - targetRight), height: targetRect.height }} />
+      <i style={{ left: 0, top: targetBottom, width: '100vw', height: Math.max(0, viewportHeight - targetBottom) }} />
+    </div> : <div className="pp-tutorial-shade" aria-hidden="true" />}
     {targetRect && <div className="pp-tour-spotlight" style={targetRect} aria-hidden="true" />}
     <div className={`pp-tutorial-backdrop pp-tour-${panelPosition}`} role="presentation"><section className="pp-tutorial" role="dialog" aria-labelledby="pp-tutorial-title">
       <div className="pp-tutorial-top"><span>TUTORIAL GUIADO · {step + 1} DE {TUTORIAL_STEPS.length}</span><button type="button" onClick={onClose} aria-label="Cerrar tutorial"><Icon name="x" size={19} /></button></div>

@@ -2,14 +2,16 @@
 .pp-page .page-head .tool-feedback { margin-left: auto; }
 .pp-head-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .pp-head-actions .tool-feedback { margin-left: 0 !important; }
-.pp-tutorial-shade { position: fixed; z-index: 10000; inset: 0; pointer-events: none; background: rgba(5,10,35,.58); }
+.pp-tutorial-shade { position: fixed; z-index: 10000; inset: 0; pointer-events: none; background: rgba(5,10,35,.62); backdrop-filter: blur(4px); }
+.pp-tour-shades { position: fixed; z-index: 10000; inset: 0; pointer-events: none; }
+.pp-tour-shades i { position: fixed; display: block; background: rgba(5,10,35,.62); backdrop-filter: blur(4px) saturate(.72); }
 .pp-tutorial-backdrop { position: fixed; z-index: 10002; inset: 0; display: grid; padding: 16px; pointer-events: none; transition: padding .2s ease; }
 .pp-tour-top-left { align-items: start; justify-items: start; }
 .pp-tour-top-right { align-items: start; justify-items: end; }
 .pp-tour-bottom-left { align-items: end; justify-items: start; }
 .pp-tour-bottom-right { align-items: end; justify-items: end; }
-.pp-tutorial { width: min(400px,100%); max-height: min(320px,calc(100vh - 32px)); overflow: hidden; padding: 14px; border-radius: 18px; border: 1px solid rgba(93,218,219,.65); pointer-events: auto; background: linear-gradient(145deg,#20286e,#131d47); box-shadow: 0 24px 70px rgba(0,0,0,.55); }
-.pp-tour-spotlight { position: fixed; z-index: 10001; pointer-events: none; border: 3px solid #69f6f0; border-radius: 18px; background: rgba(93,218,219,.18); box-shadow: 0 0 0 5px rgba(93,218,219,.18), 0 0 38px rgba(93,218,219,.62); transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease; }
+.pp-tutorial { width: min(400px,100%); overflow: visible; padding: 14px; border-radius: 18px; border: 1px solid rgba(93,218,219,.65); pointer-events: auto; background: linear-gradient(145deg,#20286e,#131d47); box-shadow: 0 24px 70px rgba(0,0,0,.55); }
+.pp-tour-spotlight { position: fixed; z-index: 10001; pointer-events: none; border: 3px solid #69f6f0; border-radius: 18px; background: transparent; box-shadow: 0 0 0 5px rgba(93,218,219,.18), 0 0 38px rgba(93,218,219,.68); transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease; }
 .pp-tutorial-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--cyan); font-size: 10px; font-weight: 900; letter-spacing: .8px; }
 .pp-tutorial-top button { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border-radius: 10px; border: 1px solid var(--line); background: rgba(19,29,71,.55); color: #fff; }
 .pp-tutorial-progress { display: grid; grid-template-columns: repeat(7,1fr); gap: 5px; margin: 10px 0 14px; }
@@ -20,7 +22,7 @@
 .pp-tutorial-icon svg { width: 32px; height: 32px; }
 .pp-tutorial h2 { margin: 0 0 5px; color: #fff; font-size: 20px; line-height: 1.15; }
 .pp-tutorial p { margin: 0; color: #cbd5e1; font-size: 12px; line-height: 1.4; }
-.pp-tutorial ul { display: flex; flex-direction: column; gap: 6px; max-height: 112px; overflow-y: auto; padding: 10px; margin: 10px 0; list-style: none; border-radius: 13px; background: rgba(19,29,71,.45); }
+.pp-tutorial ul { display: flex; flex-direction: column; gap: 5px; padding: 9px; margin: 9px 0; list-style: none; border-radius: 13px; background: rgba(19,29,71,.45); }
 .pp-tutorial li { display: flex; align-items: flex-start; gap: 6px; color: #dbeafe; font-size: 11px; line-height: 1.35; }
 .pp-tutorial li svg { flex: none; margin-top: 1px; color: #6ee7b7; }
 .pp-tutorial-number { flex: none; min-width: 16px; margin-top: -1px; color: #fff; font-size: 13px; font-weight: 900; line-height: 1.35; }
@@ -28,17 +30,19 @@
 .pp-tutorial-actions > div { display: flex; gap: 8px; }
 .pp-tutorial-note { display: none; }
 @media (max-height: 720px) {
-  .pp-tutorial { max-height: min(220px,calc(100vh - 20px)); padding: 10px 12px; }
-  .pp-tutorial-top button { width: 28px; height: 28px; }
-  .pp-tutorial-progress { margin: 5px 0 7px; }
-  .pp-tutorial-body { gap: 8px; }
-  .pp-tutorial-icon { width: 40px; height: 40px; border-radius: 12px; }
-  .pp-tutorial-icon svg { width: 25px; height: 25px; }
-  .pp-tutorial h2 { margin-bottom: 2px; font-size: 16px; }
-  .pp-tutorial p { font-size: 10.5px; line-height: 1.25; }
-  .pp-tutorial ul { max-height: 62px; padding: 6px 8px; margin: 6px 0; }
-  .pp-tutorial li { font-size: 10px; line-height: 1.25; }
-  .pp-tutorial-actions .btn { min-height: 34px; padding: 7px 12px; }
+  .pp-tutorial { width: min(430px,100%); padding: 8px 10px; }
+  .pp-tutorial-top { font-size: 9px; }
+  .pp-tutorial-top button { width: 25px; height: 25px; }
+  .pp-tutorial-progress { margin: 3px 0 5px; }
+  .pp-tutorial-body { gap: 7px; }
+  .pp-tutorial-icon { width: 34px; height: 34px; border-radius: 10px; }
+  .pp-tutorial-icon svg { width: 22px; height: 22px; }
+  .pp-tutorial h2 { margin-bottom: 1px; font-size: 15px; }
+  .pp-tutorial p { font-size: 9.5px; line-height: 1.18; }
+  .pp-tutorial ul { gap: 3px; padding: 5px 7px; margin: 5px 0; }
+  .pp-tutorial li { font-size: 9px; line-height: 1.15; }
+  .pp-tutorial-number { min-width: 13px; font-size: 11px; }
+  .pp-tutorial-actions .btn { min-height: 30px; padding: 5px 10px; }
 }
 .pp-file-card { margin-bottom: 18px; }
 .pp-section-head, .pp-result-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
@@ -203,7 +207,7 @@
   .pp-tutorial-backdrop { justify-items: center; padding: 10px; }
   .pp-tour-top-left, .pp-tour-top-right { align-items: start; }
   .pp-tour-bottom-left, .pp-tour-bottom-right { align-items: end; }
-  .pp-tutorial { width: min(390px,100%); max-height: min(320px,calc(100vh - 20px)); padding: 12px; border-radius: 17px; }
+  .pp-tutorial { width: min(390px,100%); padding: 12px; border-radius: 17px; }
   .pp-tutorial-body { grid-template-columns: auto 1fr; }
   .pp-tutorial-icon { width: 50px; height: 50px; border-radius: 15px; }
   .pp-tutorial h2 { font-size: 18px; }
