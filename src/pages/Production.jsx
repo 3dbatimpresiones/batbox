@@ -49,8 +49,9 @@ function Field({ label, origin, error, children, hint }) {
 function TutorialModal({ step, setStep, onClose }) {
   const item = TUTORIAL_STEPS[step];
   const last = step === TUTORIAL_STEPS.length - 1;
-  return <div className="pp-tutorial-backdrop" role="presentation">
-    <section className="pp-tutorial" role="dialog" aria-labelledby="pp-tutorial-title">
+  return <>
+    <div className="pp-tutorial-shade" aria-hidden="true" />
+    <div className="pp-tutorial-backdrop" role="presentation"><section className="pp-tutorial" role="dialog" aria-labelledby="pp-tutorial-title">
       <div className="pp-tutorial-top"><span>TUTORIAL GUIADO · {step + 1} DE {TUTORIAL_STEPS.length}</span><button type="button" onClick={onClose} aria-label="Cerrar tutorial"><Icon name="x" size={19} /></button></div>
       <div className="pp-tutorial-progress">{TUTORIAL_STEPS.map((_, index) => <i key={index} className={index <= step ? 'done' : ''} />)}</div>
       <div className="pp-tutorial-body">
@@ -60,8 +61,8 @@ function TutorialModal({ step, setStep, onClose }) {
       <ul>{item.tips.map((tip, index) => <li key={tip}><Icon name="check" size={15} /><strong className="pp-tutorial-number">{index + 1}.</strong><span>{tip}</span></li>)}</ul>
       <div className="pp-tutorial-actions"><button type="button" className="btn ghost" onClick={onClose}>Saltar tutorial</button><div>{step > 0 && <button type="button" className="btn ghost" onClick={() => setStep(step - 1)}>Atrás</button>}<button type="button" className="btn primary" onClick={() => last ? onClose() : setStep(step + 1)}>{last ? 'Empezar a usar' : 'Siguiente'}</button></div></div>
       <small className="pp-tutorial-note">No vuelve a abrirse solo. Podés verlo nuevamente desde “Cómo usar”.</small>
-    </section>
-  </div>;
+    </section></div>
+  </>;
 }
 
 function TimeFields({ form, prefix = 'time', setField, error }) {
