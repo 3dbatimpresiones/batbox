@@ -49,10 +49,15 @@ function Field({ label, origin, error, children, hint }) {
 function TutorialModal({ step, setStep, onClose, targetRect }) {
   const item = TUTORIAL_STEPS[step];
   const last = step === TUTORIAL_STEPS.length - 1;
+  const viewportWidth = typeof window === 'undefined' ? 1200 : window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? 800 : window.innerHeight;
+  const targetCenterX = targetRect ? targetRect.left + targetRect.width / 2 : viewportWidth / 2;
+  const targetCenterY = targetRect ? targetRect.top + targetRect.height / 2 : viewportHeight / 2;
+  const panelPosition = `${targetCenterY < viewportHeight / 2 ? 'bottom' : 'top'}-${targetCenterX < viewportWidth / 2 ? 'right' : 'left'}`;
   return <>
     <div className="pp-tutorial-shade" aria-hidden="true" />
     {targetRect && <div className="pp-tour-spotlight" style={targetRect} aria-hidden="true" />}
-    <div className="pp-tutorial-backdrop" role="presentation"><section className="pp-tutorial" role="dialog" aria-labelledby="pp-tutorial-title">
+    <div className={`pp-tutorial-backdrop pp-tour-${panelPosition}`} role="presentation"><section className="pp-tutorial" role="dialog" aria-labelledby="pp-tutorial-title">
       <div className="pp-tutorial-top"><span>TUTORIAL GUIADO · {step + 1} DE {TUTORIAL_STEPS.length}</span><button type="button" onClick={onClose} aria-label="Cerrar tutorial"><Icon name="x" size={19} /></button></div>
       <div className="pp-tutorial-progress">{TUTORIAL_STEPS.map((_, index) => <i key={index} className={index <= step ? 'done' : ''} />)}</div>
       <div className="pp-tutorial-body">
