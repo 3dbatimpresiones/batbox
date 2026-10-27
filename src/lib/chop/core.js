@@ -36,9 +36,12 @@ export function buildReliefs(M, cs0, design, p, axis) {
   const lay = computeLayout(p, axis, design.h0 / design.w0);
   const s = p.width / design.w0;
   const cs = cs0.scale([s, s]);
-  const T = p.depth + p.relief;
+  // Relieve (hacia afuera): de -profundidad (dentro de la pared, para que pegue) a +espesor.
+  // Grabado (hacia adentro): de -profundidad del grabado a +0,4 mm (sale un poco afuera para cortar limpio).
+  const engrave = p.mode === 'engrave';
+  const below = engrave ? p.engrave : p.depth, above = engrave ? 0.4 : p.relief;
   const seg = Math.max(0.35, Math.min(1.2, p.width / 60));          // malla fina para que se curve parejo
-  const flat = M.Manifold.extrude(cs, T).translate([0, 0, -p.depth]).refineToLength(seg);
+  const flat = M.Manifold.extrude(cs, below + above).translate([0, 0, -below]).refineToLength(seg);
   cs.delete();
   const phi = slantOf(axis), cosP = Math.cos(phi), sinP = Math.sin(phi);
   const out = [];
@@ -60,21 +63,27 @@ export function buildReliefs(M, cs0, design, p, axis) {
   return { reliefs: out, layout: lay };
 }
 
-// Unión booleana final (chop + todos los relieves) y verificación del resultado.
-export function unionAll(M, chop, reliefs, onProgress) {
+// Operación booleana final y verificación del resultado.
+//   relieve: chop ∪ diseños   ·   grabado: chop − diseños
+export function combineAll(M, chop, tools, mode, onProgress) {
+  const engrave = mode === 'engrave';
   let acc = chop;
   const B = 8;
-  for (let i = 0; i < reliefs.length; i += B) {
-    const batch = reliefs.slice(i, i + B);
-    const next = M.Manifold.union([acc, ...batch]);
+  for (let i = 0; i < tools.length; i += B) {
+    const batch = tools.slice(i, i + B);
+    let next;
+    if (engrave) { const cut = M.Manifold.union(batch); next = M.Manifold.difference(acc, cut); cut.delete(); }
+    else next = M.Manifold.union([acc, ...batch]);
     if (acc !== chop) acc.delete();
     acc = next;
-    onProgress?.(Math.min(reliefs.length, i + B), reliefs.length);
+    onProgress?.(Math.min(tools.length, i + B), tools.length);
   }
   if (acc === chop) acc = M.Manifold.union([chop]);
   const status = acc.status();
   const parts = acc.decompose();
   const pieces = parts.length;
   parts.forEach((x) => x.delete());
-  return { result: acc, check: { status, pieces, volume: acc.volume(), chopVolume: chop.volume(), genus: acc.genus() } };
+  return { result: acc, check: { mode: engrave ? 'engrave' : 'relief', status, pieces, volume: acc.volume(), chopVolume: chop.volume(),
+    genus: acc.genus(), chopGenus: chop.genus() } };
 }
+export const unionAll = (M, chop, reliefs, onProgress) => combineAll(M, chop, reliefs, 'relief', onProgress);

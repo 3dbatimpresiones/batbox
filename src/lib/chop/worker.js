@@ -7,7 +7,7 @@
 // =====================================================================
 import Module from 'manifold-3d';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
-import { buildReliefs, chopFromMesh, designSection, unionAll } from './core.js';
+import { buildReliefs, chopFromMesh, combineAll, designSection } from './core.js';
 
 let M = null;
 const ready = Module({ locateFile: () => wasmUrl }).then((m) => { m.setup(); M = m; });
@@ -48,7 +48,7 @@ self.onmessage = async (e) => {
         const mesh = plain(all); all.delete();
         self.postMessage({ type: 'preview-ok', id: msg.id, layout, reliefs: mesh }, [mesh.vertProperties.buffer, mesh.triVerts.buffer]);
       } else {
-        const { result, check } = unionAll(M, chop, reliefs, (done, total) => self.postMessage({ type: 'progress', id: msg.id, done, total }));
+        const { result, check } = combineAll(M, chop, reliefs, msg.p.mode, (done, total) => self.postMessage({ type: 'progress', id: msg.id, done, total }));
         reliefs.forEach((r) => r.delete());
         const mesh = plain(result);
         result.delete();

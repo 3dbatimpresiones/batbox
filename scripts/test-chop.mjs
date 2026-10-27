@@ -2,7 +2,7 @@
 // Uso: node scripts/test-chop.mjs <carpeta-salida>
 import { mkdirSync, writeFileSync } from 'node:fs';
 import Module from 'manifold-3d';
-import { buildReliefs, chopFromMesh, designSection, unionAll } from '../src/lib/chop/core.js';
+import { buildReliefs, chopFromMesh, combineAll, designSection, unionAll } from '../src/lib/chop/core.js';
 import { computeLayout, rAt } from '../src/lib/chop/layout.js';
 import { toBinarySTL } from '../src/lib/keychain/exporters.js';
 import { orient, guessAxis, radiusAt, weld } from '../src/lib/chop/files.js';
@@ -76,6 +76,23 @@ for (const [name, r0, r1] of [['cilindro', 40, 40], ['cono', 34, 44]]) {
   ok(`${name}: el volumen creció (se sumó el relieve)`, check.volume > check.chopVolume + 12 * 300, `${check.chopVolume.toFixed(0)} → ${check.volume.toFixed(0)}`);
   writeFileSync(`${out}/chop-${name}.stl`, toBinarySTL([result]));
   result.delete();
+
+  // 2b. Grabado (hacia adentro): resta, una pieza, sin perforar (pared de 3 mm, grabado 1 mm)
+  {
+    const g = buildReliefs(M, cs, design, { ...base, mode: 'engrave', engrave: 1 }, axis);
+    const { result: gr, check: gc } = combineAll(M, chop, g.reliefs, 'engrave');
+    g.reliefs.forEach((r) => r.delete());
+    ok(`${name}: grabado → sólido válido en una pieza`, gc.status === 'NoError' && gc.pieces === 1, `${gc.pieces} piezas`);
+    ok(`${name}: grabado → el volumen bajó (se restó material)`, gc.volume < gc.chopVolume - 12 * 200, `${gc.chopVolume.toFixed(0)} → ${gc.volume.toFixed(0)}`);
+    ok(`${name}: grabado de 1 mm no perfora la pared (genus igual)`, gc.genus === gc.chopGenus, `${gc.chopGenus} → ${gc.genus}`);
+    writeFileSync(`${out}/chop-${name}-grabado.stl`, toBinarySTL([gr]));
+    gr.delete();
+    // Grabado más profundo que la pared (4 mm > 3 mm): se tiene que detectar
+    const d = buildReliefs(M, cs, design, { ...base, mode: 'engrave', engrave: 4 }, axis);
+    const { result: dr, check: dc } = combineAll(M, chop, d.reliefs, 'engrave');
+    d.reliefs.forEach((r) => r.delete()); dr.delete();
+    ok(`${name}: grabado que atraviesa la pared → se detecta`, dc.genus > dc.chopGenus || dc.pieces > 1, `genus ${dc.chopGenus} → ${dc.genus}, ${dc.pieces} piezas`);
+  }
 
   // 3. Filas alternadas
   const alt = computeLayout({ ...base, stagger: true }, axis, 1.2);

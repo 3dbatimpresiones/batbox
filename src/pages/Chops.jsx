@@ -17,7 +17,7 @@ import '../styles/keychains.css';
 // =====================================================================
 
 const DEF = { rows: 2, cols: 6, width: 25, gapV: 6, startH: 4, startAngle: 0, coverage: 360, stagger: false,
-  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2 };
+  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2, mode: 'relief', engrave: 0.8 };
 
 function useChopWorker() {
   const ref = useRef(null);
@@ -207,7 +207,11 @@ function ChopsApp() {
     try {
       const r = await call({ type: 'export', p, axis }, [], (done, total) => setExp({ done, total }));
       setCheck(r.check);
-      if (r.check.status !== 'NoError') throw new Error('La unión no dio un sólido válido (' + r.check.status + '). Probá con otra profundidad o revisá el modelo.');
+      if (r.check.status !== 'NoError') throw new Error('La operación no dio un sólido válido (' + r.check.status + '). Probá con otra profundidad o revisá el modelo.');
+      // Grabado: si atravesó la pared aparecen agujeros (sube el genus) o pedazos sueltos.
+      if (r.check.mode === 'engrave' && (r.check.genus > r.check.chopGenus || r.check.pieces > 1)) {
+        throw new Error('El grabado atraviesa la pared del chop (queda agujereado). Bajá la profundidad del grabado y volvé a descargar. No se descargó nada.');
+      }
       download(toBinarySTL([r.mesh]), `${chopName || 'chop'}-personalizado.stl`);
     } catch (e) { setError(e.message); }
     finally { setExp(null); }
@@ -225,7 +229,7 @@ function ChopsApp() {
           <h1>Personalizador de chops 3D</h1>
           <TrialChip />
         </div>
-        <p>Tu escudo o logo repetido en filas y columnas sobre la pared del chop, en relieve, listo para imprimir.</p>
+        <p>Tu escudo o logo repetido en filas y columnas sobre la pared del chop, en relieve o grabado, listo para imprimir.</p>
       </header>
 
       <div className="kc-layout">
@@ -271,10 +275,17 @@ function ChopsApp() {
             {designState.error && <div className="kc-warn-inline">{designState.error}</div>}
             {design && <div className="kc-hint">🛡️ <b>{design.name}</b> · {p.width.toFixed(1)} × {(p.width * design.h0 / design.w0).toFixed(1)} mm</div>}
             <Num label="Ancho del diseño" value={p.width} onChange={set('width')} min={3} max={150} step={0.5} hint="El alto se ajusta solo (mantiene las proporciones)." />
-            <div className="kc-two">
-              <Num label="Espesor del relieve" value={p.relief} onChange={set('relief')} min={0.2} max={6} step={0.1} hint="Cuánto sobresale." />
-              <Num label="Profundidad en el chop" value={p.depth} onChange={set('depth')} min={0.2} max={3} step={0.1} hint="Cuánto entra en la pared (para que quede bien pegado)." />
-            </div>
+            <Seg label="Tipo" value={p.mode} onChange={set('mode')}
+              options={[{ value: 'relief', label: '⬆ Relieve (hacia afuera)' }, { value: 'engrave', label: '⬇ Grabado (hacia adentro)' }]} />
+            {p.mode === 'relief' ? (
+              <div className="kc-two">
+                <Num label="Espesor del relieve" value={p.relief} onChange={set('relief')} min={0.2} max={6} step={0.1} hint="Cuánto sobresale." />
+                <Num label="Profundidad en el chop" value={p.depth} onChange={set('depth')} min={0.2} max={3} step={0.1} hint="Cuánto entra en la pared (para que quede bien pegado)." />
+              </div>
+            ) : (
+              <Num label="Profundidad del grabado" value={p.engrave} onChange={set('engrave')} min={0.2} max={5} step={0.1}
+                hint="Cuánto se hunde en la pared. Tiene que ser menor que el espesor de la pared del chop (si la atraviesa, te avisamos al descargar)." />
+            )}
           </Sec>
 
           <Sec title="Patrón" icon="🔁">
@@ -320,13 +331,13 @@ function ChopsApp() {
           <div className="kc-canvas">
             <ChopViewer chopPos={chopPos} reliefs={preview} axis={axis} showRef={showRef}
               exclusion={p.exclude ? { center: p.exclCenter, width: p.exclWidth } : null}
-              colors={{ chop: '#8E9089', relief: '#F78EB6' }} view={view} />
+              colors={{ chop: '#8E9089', relief: p.mode === 'engrave' ? '#3B2A4A' : '#F78EB6' }} view={view} />
             {busy && <div className="kc-busy">Armando vista previa…</div>}
             {!raw && <div className="kc-warn soft">Cargá un chop (STL o 3MF) para empezar.</div>}
             {raw && !design && <div className="kc-warn soft">Ahora cargá tu diseño (SVG).</div>}
           </div>
           <div className="kc-info">
-            {layout && <span>Total: <b>{total}</b> {total === 1 ? 'repetición' : 'repeticiones'}</span>}
+            {layout && <span>Total: <b>{total}</b> {total === 1 ? 'repetición' : 'repeticiones'} · {p.mode === 'engrave' ? 'grabado' : 'relieve'}</span>}
             {layout && <span>Diseño <b>{layout.W.toFixed(1)} × {layout.H.toFixed(1)} mm</b></span>}
             {axis && <span>Pared <b>Ø {(axis.r0 * 2).toFixed(1)} → {(axis.r1 * 2).toFixed(1)} mm</b></span>}
           </div>
@@ -337,19 +348,21 @@ function ChopsApp() {
           <h3>Resultado</h3>
           <button type="button" className="btn ghost kc-dl" disabled={!ready || busy} onClick={update}><Icon name="refresh" size={16} /> Actualizar patrón</button>
           <button type="button" className="btn primary kc-dl" disabled={!ready || !total || busy || !!exp} onClick={exportSTL}>
-            <Icon name="box" size={16} /> {exp ? `Uniendo ${exp.done} de ${exp.total}…` : 'Descargar STL'}
+            <Icon name="box" size={16} /> {exp ? `${p.mode === 'engrave' ? 'Grabando' : 'Uniendo'} ${exp.done} de ${exp.total}…` : 'Descargar STL'}
           </button>
-          <small className="kc-muted">La vista previa muestra los diseños sobre el chop. Al descargar se hace la unión real en una sola pieza (puede tardar unos segundos).</small>
+          <small className="kc-muted">{p.mode === 'engrave'
+            ? 'Vista previa: en oscuro, las zonas que se van a grabar. Al descargar se restan de verdad de la pared (puede tardar unos segundos).'
+            : 'La vista previa muestra los diseños sobre el chop. Al descargar se hace la unión real en una sola pieza (puede tardar unos segundos).'}</small>
           {layout?.warnings.map((w, i) => <div key={i} className="kc-note">⚠️ {w}</div>)}
           {error && <div className="kc-warn-inline">{error}</div>}
           {check && check.status === 'NoError' && (
             <div className={check.pieces === 1 ? 'kc-tip' : 'kc-note'}>
               {check.pieces === 1
-                ? <>✅ <b>Sólido verificado:</b> una sola pieza cerrada. Volumen {Math.round(check.volume / 1000)} cm³ (el chop solo: {Math.round(check.chopVolume / 1000)} cm³).</>
+                ? <>✅ <b>Sólido verificado:</b> una sola pieza cerrada{check.mode === 'engrave' ? ', sin perforar la pared' : ''}. Volumen {Math.round(check.volume / 1000)} cm³ (el chop solo: {Math.round(check.chopVolume / 1000)} cm³).</>
                 : <>⚠️ El STL salió en <b>{check.pieces} piezas</b>: algún diseño no toca la pared. Subí la profundidad o corregí los radios para que la superficie celeste coincida con el chop.</>}
             </div>
           )}
-          <div className="kc-tip"><b>Primera versión:</b> chops cilíndricos o cónicos y diseños SVG. El relieve se pega hacia afuera. Revisá siempre el STL en tu slicer antes de imprimir.</div>
+          <div className="kc-tip"><b>Primera versión:</b> chops cilíndricos o cónicos y diseños SVG, en relieve o grabado. Revisá siempre el STL en tu slicer antes de imprimir.</div>
         </aside>
       </div>
     </div>
