@@ -7,11 +7,11 @@
 // =====================================================================
 import Module from 'manifold-3d';
 import wasmUrl from 'manifold-3d/manifold.wasm?url';
-import { buildReliefs, chopFromMesh, combineAll, designSection } from './core.js';
+import { buildReliefs, chopFromMesh, combineAll, designSection, wallIndex } from './core.js';
 
 let M = null;
 const ready = Module({ locateFile: () => wasmUrl }).then((m) => { m.setup(); M = m; });
-let chop = null, cs = null, design = null;
+let chop = null, cs = null, design = null, wall = null;
 
 const plain = (manifold) => {
   const mesh = manifold.getMesh();
@@ -26,6 +26,7 @@ self.onmessage = async (e) => {
       if (chop) chop.delete();
       chop = null;
       chop = chopFromMesh(M, msg.vert, msg.tri);
+      wall = wallIndex(msg.vert, msg.tri);   // para apoyar cada diseño en la pared real
       self.postMessage({ type: 'chop-ok', id: msg.id, volume: chop.volume(), tris: chop.numTri() });
     } else if (msg.type === 'design') {
       if (cs) cs.delete();
@@ -36,7 +37,7 @@ self.onmessage = async (e) => {
     } else if (msg.type === 'preview' || msg.type === 'export') {
       if (!chop) throw new Error('Cargá primero el chop.');
       if (!cs) throw new Error('Cargá primero el diseño (SVG).');
-      const { reliefs, layout } = buildReliefs(M, cs, design, msg.p, msg.axis);
+      const { reliefs, layout } = buildReliefs(M, cs, design, msg.p, msg.axis, wall);
       if (!reliefs.length) {
         self.postMessage({ type: msg.type + '-ok', id: msg.id, layout, reliefs: null, mesh: null });
         return;

@@ -6,6 +6,8 @@
 // z0 (radio r0) a z1 (radio r1). Todo en milímetros.
 //   p = { rows, cols, width, gapV, startH, startAngle, coverage, stagger,
 //         exclude, exclCenter, exclWidth }
+//         spin (giro del diseño, °), radial (acercar −/alejar + de la pared, mm),
+//         overrides: { 'fila-col': { da (°), dh (mm), dr (mm), spin (°), s (escala) } }  ← diseños sueltos (Shift)
 //   axis = { z0, z1, r0, r1 }   ·   aspect = alto / ancho del diseño
 // =====================================================================
 
@@ -41,7 +43,10 @@ export function computeLayout(p, axis, aspect) {
       if (!full && off + halfDeg > p.coverage + 0.01) continue;   // alternadas en cobertura parcial: la última no entra
       const angle = wrap(p.startAngle + off);
       if (p.exclude && angDist(angle, p.exclCenter) < p.exclWidth / 2 + halfDeg) { inHandle++; continue; }
-      items.push({ row: i, col: j, angle, h, along, r });
+      const key = `${i}-${j}`, ov = p.overrides?.[key] || {};
+      const al = along + (ov.dh || 0), hh = axis.z0 + al * cos;
+      items.push({ key, row: i, col: j, angle: wrap(angle + (ov.da || 0)), h: hh, along: al, r: rAt(axis, hh),
+        dr: (p.radial || 0) + (ov.dr || 0), spin: (p.spin || 0) + (ov.spin || 0), s: ov.s || 1, loose: !!p.overrides?.[key] });
     }
   }
 

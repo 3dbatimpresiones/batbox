@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { toBinarySTL } from '../lib/keychain/exporters.js';
 import { computeLayout, LIMITS } from '../lib/chop/layout.js';
@@ -17,7 +18,9 @@ import '../styles/keychains.css';
 // =====================================================================
 
 const DEF = { rows: 2, cols: 6, width: 25, gapV: 6, startH: 4, startAngle: 0, coverage: 360, stagger: false,
-  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2, mode: 'relief', engrave: 0.8 };
+  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2, mode: 'relief', engrave: 0.8, snap: true, radial: 0, spin: 0, overrides: {} };
+const wrap360 = (a) => ((a % 360) + 360) % 360;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 function useChopWorker() {
   const ref = useRef(null);
@@ -114,7 +117,7 @@ function ChopsApp() {
   // Chop
   const [raw, setRaw] = useState(null);               // triángulos tal cual el archivo
   const [chopName, setChopName] = useState('');
-  const [tf, setTf] = useState({ up: 'z', flip: false, scale: 1, cx: 0, cy: 0 });
+  const [tf, setTf] = useState({ up: 'z', flip: false, scale: 1, cx: 0, cy: 0, q: null });
   const [axis, setAxis] = useState(null);             // { z0, z1, r0, r1 }
   const [chopState, setChopState] = useState({ ok: false, error: '' });
   // Diseño
@@ -124,6 +127,9 @@ function ChopsApp() {
   const [p, setP] = useState(DEF);
   const set = (k) => (v) => setP((x) => ({ ...x, [k]: v }));
   const [preview, setPreview] = useState(null);       // malla de los relieves
+  const [items, setItems] = useState([]);              // dónde quedó cada diseño (para el gizmo)
+  const [sel, setSel] = useState(null);                // { target: 'chop' | 'designs', key? }
+  const [tmode, setTmode] = useState('translate');     // translate · rotate · scale (como OrcaSlicer: M · R · S)
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [view, setView] = useState(null);
@@ -158,7 +164,8 @@ function ChopsApp() {
       const pos = /\.3mf$/i.test(file.name) ? parse3MF(buf) : parseSTL(buf);
       if (pos.length / 9 > MAX_TRIS) throw new Error(`El modelo tiene demasiados triángulos (${Math.round(pos.length / 9).toLocaleString('es-AR')}). Simplificalo a menos de ${MAX_TRIS.toLocaleString('es-AR')}.`);
       setRaw(pos); setChopName(file.name.replace(/\.(stl|3mf)$/i, ''));
-      detect(pos, { up: 'z', flip: false, scale: 1 });
+      detect(pos, { up: 'z', flip: false, scale: 1, q: null });
+      setP((x) => ({ ...x, overrides: {} })); setSel(null);
     } catch (e) { setRaw(null); setChopState({ ok: false, error: e.message }); }
   };
   const loadDesign = async (file) => {
@@ -195,8 +202,8 @@ function ChopsApp() {
   const update = useCallback(async () => {
     if (!ready) return;
     setBusy(true); setError('');
-    try { const r = await call({ type: 'preview', p, axis }); setPreview(r.reliefs); }
-    catch (e) { setError(e.message); setPreview(null); }
+    try { const r = await call({ type: 'preview', p, axis }); setPreview(r.reliefs); setItems(r.layout?.items || []); }
+    catch (e) { setError(e.message); setPreview(null); setItems([]); }
     finally { setBusy(false); }
   }, [ready, call, p, axis]);
   useEffect(() => { const t = setTimeout(update, 450); return () => clearTimeout(t); }, [update]);
@@ -216,6 +223,72 @@ function ChopsApp() {
     } catch (e) { setError(e.message); }
     finally { setExp(null); }
   };
+
+  // Teclas como en OrcaSlicer: M mover · R rotar · S escalar · Esc soltar
+  useEffect(() => {
+    const onKey = (e) => {
+      if (/input|textarea|select/i.test(e.target.tagName)) return;
+      const k = e.key.toLowerCase();
+      if (k === 'm') setTmode('translate'); else if (k === 'r') setTmode('rotate'); else if (k === 's') setTmode('scale');
+      else if (k === 'escape') setSel(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const onPick = (hit) => {
+    if (!hit) { setSel(null); return; }
+    if (hit.target === 'chop') setSel({ target: 'chop' });
+    else setSel(hit.shift && hit.key ? { target: 'designs', key: hit.key } : { target: 'designs', key: null });
+  };
+
+  const onTransform = ({ mode, selection, start, end, frame }) => {
+    if (!selection) return;
+    if (selection.target === 'chop') {
+      if (mode === 'translate') {
+        const d = end.pos.clone().sub(start.pos);
+        setTf((t) => ({ ...t, cx: +(t.cx - d.x).toFixed(2), cy: +(t.cy - d.y).toFixed(2) }));
+      } else if (mode === 'rotate') {
+        const dq = end.quat.clone().multiply(start.quat.clone().invert());
+        const q0 = tf.q ? new THREE.Quaternion(...tf.q) : new THREE.Quaternion();
+        const q = dq.multiply(q0);
+        detect(raw, { ...tf, q: [q.x, q.y, q.z, q.w] });          // girado: se vuelven a medir eje y radios
+      } else {
+        const k = Math.max(end.scale.x / start.scale.x, end.scale.y / start.scale.y, end.scale.z / start.scale.z, 0.05);
+        const k2 = Math.min(end.scale.x / start.scale.x, end.scale.y / start.scale.y, end.scale.z / start.scale.z);
+        const f = Math.abs(Math.log(k)) >= Math.abs(Math.log(k2)) ? k : k2;
+        detect(raw, { ...tf, scale: clamp(tf.scale * f, 0.01, 25.4) });
+      }
+      return;
+    }
+    // Diseños (todos juntos, o uno solo con Shift)
+    const key = selection.key;
+    const edit = (fn) => setP((x) => {
+      if (!key) return fn(x, null);
+      const ov = { da: 0, dh: 0, dr: 0, spin: 0, s: 1, ...(x.overrides[key] || {}) };
+      return { ...x, overrides: { ...x.overrides, [key]: fn(x, ov) } };
+    });
+    if (mode === 'translate') {
+      const d = end.pos.clone().sub(start.pos);
+      const du = d.dot(frame.tangent), dv = d.dot(frame.up), dw = d.dot(frame.radial);
+      const da = (du / Math.max(1, frame.r)) * (180 / Math.PI);
+      edit((x, ov) => (ov ? { ...ov, da: ov.da + da, dh: ov.dh + dv, dr: ov.dr + dw }
+        : { ...x, startAngle: +wrap360(x.startAngle + da).toFixed(1), startH: +Math.max(0, x.startH + dv).toFixed(1), radial: +clamp(x.radial + dw, -10, 10).toFixed(2) }));
+    } else if (mode === 'rotate') {
+      const dq = start.quat.clone().invert().multiply(end.quat);
+      const deg = 2 * Math.atan2(dq.z, dq.w) * (180 / Math.PI);
+      edit((x, ov) => (ov ? { ...ov, spin: ov.spin + deg } : { ...x, spin: +(((x.spin + deg + 180) % 360 + 360) % 360 - 180).toFixed(1) }));
+    } else {
+      const k = Math.max(end.scale.x / start.scale.x, end.scale.y / start.scale.y, 0.05);
+      edit((x, ov) => (ov ? { ...ov, s: clamp(ov.s * k, 0.2, 4) } : { ...x, width: +clamp(x.width * k, 3, 150).toFixed(1) }));
+    }
+  };
+  // Solo en `npm run dev`: acceso para las pruebas automáticas (Vite lo saca del build).
+  if (import.meta.env.DEV) window.__chop = { setSel, onTransform, p, tf, items, THREE };
+  const loose = Object.keys(p.overrides || {}).length;
+  const selLabel = !sel ? 'Nada (tocá el chop o un diseño)'
+    : sel.target === 'chop' ? 'El chop'
+      : sel.key ? `Solo el diseño de la fila ${+sel.key.split('-')[0] + 1}, columna ${+sel.key.split('-')[1] + 1}` : 'Todos los diseños juntos';
 
   const total = layout ? layout.items.length : 0;
   const setAx = (k) => (v) => setAxis((a) => ({ ...a, [k]: v }));
@@ -264,7 +337,7 @@ function ChopsApp() {
               <Num label="Radio abajo" value={axis.r0} onChange={setAx('r0')} min={5} max={300} step={0.05} />
               <Num label="Radio arriba" value={axis.r1} onChange={setAx('r1')} min={5} max={300} step={0.05} />
             </div>
-            <button type="button" className="kc-font-change" onClick={() => detect(raw, tf)}>🎯 Detectar eje y radios otra vez</button>
+            <button type="button" className="kc-font-change" onClick={() => detect(raw, tf)}>🎯 Detectar el centro por la base y los radios</button>
             {axis.z1 - axis.z0 < 5 && <div className="kc-warn-inline">La zona decorable es muy chica: "Zona hasta" tiene que ser mayor que "Zona desde".</div>}
           </Sec>}
 
@@ -275,6 +348,14 @@ function ChopsApp() {
             {designState.error && <div className="kc-warn-inline">{designState.error}</div>}
             {design && <div className="kc-hint">🛡️ <b>{design.name}</b> · {p.width.toFixed(1)} × {(p.width * design.h0 / design.w0).toFixed(1)} mm</div>}
             <Num label="Ancho del diseño" value={p.width} onChange={set('width')} min={3} max={150} step={0.5} hint="El alto se ajusta solo (mantiene las proporciones)." />
+            <Num label="Giro del diseño" value={p.spin} onChange={set('spin')} min={-180} max={180} step={1} unit="°" />
+            <Seg label="Apoyar en" value={p.snap} onChange={set('snap')}
+              options={[{ value: true, label: '🧲 La pared real' }, { value: false, label: 'La superficie celeste' }]} />
+            <small className="kc-muted">{p.snap
+              ? 'Cada diseño se mide contra el modelo y se pega donde está la pared de verdad, aunque el chop no sea un cono perfecto.'
+              : 'Los diseños siguen la superficie celeste (eje y radios de arriba). Si quedan separados, volvé a "La pared real".'}</small>
+            <Num label="Acercar (−) / alejar (+) de la pared" value={p.radial} onChange={set('radial')} min={-10} max={10} step={0.1}
+              hint="Ajuste fino: negativo los mete más en la pared, positivo los aleja." />
             <Seg label="Tipo" value={p.mode} onChange={set('mode')}
               options={[{ value: 'relief', label: '⬆ Relieve (hacia afuera)' }, { value: 'engrave', label: '⬇ Grabado (hacia adentro)' }]} />
             {p.mode === 'relief' ? (
@@ -328,8 +409,19 @@ function ChopsApp() {
               ))}
             </div>
           </div>
+          <div className="chop-gizmo">
+            <div className="kc-seg" role="group" aria-label="Herramienta">
+              {[['translate', 'Mover', 'M'], ['rotate', 'Rotar', 'R'], ['scale', 'Escalar', 'S']].map(([m, l, k]) => (
+                <button key={m} type="button" className={tmode === m ? 'on' : ''} onClick={() => setTmode(m)} title={`${l} (tecla ${k})`}>{l} <small>{k}</small></button>
+              ))}
+            </div>
+            <span className="cg-sel">Seleccionado: <b>{selLabel}</b></span>
+            {sel && <button type="button" className="mini-btn" onClick={() => setSel(null)}>Soltar</button>}
+            {loose > 0 && <button type="button" className="mini-btn" onClick={() => setP((x) => ({ ...x, overrides: {} }))}>Juntar de nuevo ({loose} {loose === 1 ? 'suelto' : 'sueltos'})</button>}
+          </div>
+          <small className="kc-muted cg-hint">Clic en el chop o en un diseño para moverlo con el gizmo. <b>Shift + clic</b> en un diseño: lo separás de los demás.</small>
           <div className="kc-canvas">
-            <ChopViewer chopPos={chopPos} reliefs={preview} axis={axis} showRef={showRef}
+            <ChopViewer items={items} selection={sel} mode={tmode} onPick={onPick} onTransform={onTransform} chopPos={chopPos} reliefs={preview} axis={axis} showRef={showRef}
               exclusion={p.exclude ? { center: p.exclCenter, width: p.exclWidth } : null}
               colors={{ chop: '#8E9089', relief: p.mode === 'engrave' ? '#3B2A4A' : '#F78EB6' }} view={view} />
             {busy && <div className="kc-busy">Armando vista previa…</div>}

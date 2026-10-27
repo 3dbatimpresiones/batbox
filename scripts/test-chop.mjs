@@ -2,7 +2,7 @@
 // Uso: node scripts/test-chop.mjs <carpeta-salida>
 import { mkdirSync, writeFileSync } from 'node:fs';
 import Module from 'manifold-3d';
-import { buildReliefs, chopFromMesh, combineAll, designSection, unionAll } from '../src/lib/chop/core.js';
+import { buildReliefs, chopFromMesh, combineAll, designSection, unionAll, wallIndex } from '../src/lib/chop/core.js';
 import { computeLayout, rAt } from '../src/lib/chop/layout.js';
 import { toBinarySTL } from '../src/lib/keychain/exporters.js';
 import { orient, guessAxis, radiusAt, weld } from '../src/lib/chop/files.js';
@@ -92,6 +92,31 @@ for (const [name, r0, r1] of [['cilindro', 40, 40], ['cono', 34, 44]]) {
     const { result: dr, check: dc } = combineAll(M, chop, d.reliefs, 'engrave');
     d.reliefs.forEach((r) => r.delete()); dr.delete();
     ok(`${name}: grabado que atraviesa la pared → se detecta`, dc.genus > dc.chopGenus || dc.pieces > 1, `genus ${dc.chopGenus} → ${dc.genus}, ${dc.pieces} piezas`);
+  }
+
+  // 2c. Pared real: radios mal cargados (+5 mm) → sin ajuste los logos flotan; con ajuste quedan pegados
+  {
+    const wall = wallIndex(vert, tri);
+    const bad = { ...axis, r0: axis.r0 + 5, r1: axis.r1 + 5 };
+    const a = buildReliefs(M, cs, design, { ...base, snap: false }, bad, wall);
+    const ra = combineAll(M, chop, a.reliefs, 'relief'); a.reliefs.forEach((r) => r.delete());
+    ok(`${name}: con radios mal cargados y SIN ajuste, los logos flotan (se detecta)`, ra.check.pieces > 1, `${ra.check.pieces} piezas`);
+    ra.result.delete();
+    const b = buildReliefs(M, cs, design, { ...base, snap: true }, bad, wall);
+    const rb = combineAll(M, chop, b.reliefs, 'relief'); b.reliefs.forEach((r) => r.delete());
+    ok(`${name}: CON "ajustar a la pared" quedan todos pegados (1 pieza)`, rb.check.pieces === 1 && b.layout.snapped === 12, `${rb.check.pieces} piezas, ${b.layout.snapped} ajustados`);
+    rb.result.delete();
+    // Acercar / alejar: alejar 3 mm despega los logos (y se detecta)
+    const c = buildReliefs(M, cs, design, { ...base, snap: true, radial: 3 }, axis, wall);
+    const rc = combineAll(M, chop, c.reliefs, 'relief'); c.reliefs.forEach((r) => r.delete());
+    ok(`${name}: alejar 3 mm los despega (control de acercamiento)`, rc.check.pieces > 1);
+    rc.result.delete();
+    // Un diseño suelto (Shift): se mueve solo ese
+    const L = computeLayout({ ...base, overrides: { '0-0': { da: 10, dh: 5, spin: 30, s: 0.5 } } }, axis, 1.2);
+    const moved = L.items.find((i) => i.key === '0-0'), other = L.items.find((i) => i.key === '0-1');
+    const L0 = computeLayout(base, axis, 1.2);
+    ok(`${name}: un diseño suelto se mueve/gira/escala solo`, Math.abs(moved.angle - L0.items[0].angle - 10) < 1e-9 && moved.spin === 30 && moved.s === 0.5
+      && other.angle === L0.items[1].angle && other.s === 1);
   }
 
   // 3. Filas alternadas

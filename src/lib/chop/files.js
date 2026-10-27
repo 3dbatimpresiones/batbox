@@ -71,12 +71,22 @@ export function weld(pos) {
 }
 
 // ---------- Orientación, escala y eje (el chop queda con el eje en x=y=0 y la base en z=0) ----------
-export function orient(pos, { up = 'z', flip = false, scale = 1, cx = 0, cy = 0 }) {
+// q = giro libre del gizmo (cuaternión [x, y, z, w]), se aplica después de "hacia arriba".
+export function orient(pos, { up = 'z', flip = false, scale = 1, cx = 0, cy = 0, q = null }) {
   const out = new Float32Array(pos.length);
+  // Matriz del cuaternión (si hay giro)
+  let R = null;
+  if (q) {
+    const [qx, qy, qz, qw] = q;
+    R = [1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qz * qw), 2 * (qx * qz + qy * qw),
+      2 * (qx * qy + qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz - qx * qw),
+      2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy)];
+  }
   for (let i = 0; i < pos.length; i += 3) {
     let x = pos[i], y = pos[i + 1], z = pos[i + 2];
     if (up === 'y') { const t = y; y = -z; z = t; } else if (up === 'x') { const t = x; x = -z; z = t; }
     if (flip) { z = -z; y = -y; }
+    if (R) { const X = R[0] * x + R[1] * y + R[2] * z, Y = R[3] * x + R[4] * y + R[5] * z, Z = R[6] * x + R[7] * y + R[8] * z; x = X; y = Y; z = Z; }
     out[i] = x * scale; out[i + 1] = y * scale; out[i + 2] = z * scale;
   }
   let minZ = Infinity;
@@ -96,15 +106,71 @@ export function bounds(pos) {
   return b;
 }
 
-// Eje: centro de la base (el 5 % más bajo del modelo), donde el asa casi nunca llega.
-export function guessAxis(pos) {
-  const b = bounds(pos), lim = b.minZ + (b.maxZ - b.minZ) * 0.05;
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (let i = 0; i < pos.length; i += 3) if (pos[i + 2] <= lim) {
-    minX = Math.min(minX, pos[i]); maxX = Math.max(maxX, pos[i]); minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
+// Corte de la malla con un plano horizontal: puntos del contorno a la altura z.
+export function slicePoints(pos, z) {
+  const out = [];
+  for (let i = 0; i < pos.length; i += 9) {
+    for (let e = 0; e < 3; e++) {
+      const a = i + e * 3, b = i + ((e + 1) % 3) * 3;
+      const za = pos[a + 2], zb = pos[b + 2];
+      if ((za - z) * (zb - z) > 0 || za === zb) continue;
+      const t = (z - za) / (zb - za);
+      out.push([pos[a] + (pos[b] - pos[a]) * t, pos[a + 1] + (pos[b + 1] - pos[a + 1]) * t]);
+    }
   }
-  if (!Number.isFinite(minX)) return { cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2 };
-  return { cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+  return out;
+}
+
+// Círculo que mejor pasa por los puntos (mínimos cuadrados, método de Kåsa).
+function fitCircle(pts) {
+  let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, sxz = 0, syz = 0, sz = 0;
+  for (const [x, y] of pts) { const z = x * x + y * y; sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; sxz += x * z; syz += y * z; sz += z; }
+  const n = pts.length;
+  // [sxx sxy sx][a]   [sxz]
+  // [sxy syy sy][b] = [syz]   → centro (a/2, b/2)
+  // [sx  sy  n ][c]   [sz ]
+  const A = [[sxx, sxy, sx, sxz], [sxy, syy, sy, syz], [sx, sy, n, sz]];
+  for (let c = 0; c < 3; c++) {
+    let piv = c; for (let r = c + 1; r < 3; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    [A[c], A[piv]] = [A[piv], A[c]];
+    if (Math.abs(A[c][c]) < 1e-12) return null;
+    for (let r = 0; r < 3; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let k = c; k < 4; k++) A[r][k] -= f * A[c][k]; }
+  }
+  const a = A[0][3] / A[0][0], b = A[1][3] / A[1][1], c = A[2][3] / A[2][2];
+  const cx = a / 2, cy = b / 2;
+  return { cx, cy, r: Math.sqrt(Math.max(0, c + cx * cx + cy * cy)) };
+}
+
+// Eje del chop: el centro del CÍRCULO DE LA BASE. Corta el chop cerca de la base,
+// se queda con el borde exterior (un punto por sector) y descarta los sectores
+// que sobresalen (el asa) antes de ajustar el círculo.
+export function guessAxis(pos) {
+  const b = bounds(pos), H = b.maxZ - b.minZ;
+  let c = { cx: (b.minX + b.maxX) / 2, cy: (b.minY + b.maxY) / 2 };
+  for (const f of [0.03, 0.06, 0.1]) {
+    const pts = slicePoints(pos, b.minZ + H * f);
+    if (pts.length < 12) continue;
+    // Punto de partida: el centro de los puntos del corte (no el de la caja, que el asa corre).
+    c = { cx: pts.reduce((t, q) => t + q[0], 0) / pts.length, cy: pts.reduce((t, q) => t + q[1], 0) / pts.length };
+    for (let it = 0; it < 4; it++) {
+      const sec = new Array(72).fill(null);
+      for (const [x, y] of pts) {
+        const r = Math.hypot(x - c.cx, y - c.cy);
+        const k = Math.floor(((Math.atan2(y - c.cy, x - c.cx) + Math.PI) / (2 * Math.PI)) * 72) % 72;
+        if (!sec[k] || r > sec[k].r) sec[k] = { x, y, r };
+      }
+      const ring = sec.filter(Boolean);
+      const med = ring.map((p) => p.r).sort((m, n) => m - n)[Math.floor(ring.length / 2)];
+      // 1.ª vuelta: todo el borde; después, solo los sectores cerca del radio típico (sin el asa)
+      const good = ring.filter((p) => it === 0 || Math.abs(p.r - med) < med * 0.08).map((p) => [p.x, p.y]);
+      if (good.length < 8) break;
+      const fit = fitCircle(good);
+      if (!fit) break;
+      c = { cx: fit.cx, cy: fit.cy, r: fit.r };
+    }
+    if (c.r) return c;
+  }
+  return c;
 }
 
 // Radio exterior a una altura: se corta la malla con un plano (como un slicer) y,
