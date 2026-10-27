@@ -132,7 +132,7 @@ for (const [name, r0, r1] of [['cilindro', 40, 40], ['cono', 34, 44]]) {
   ok(`${name}: cobertura 180° / 4 columnas = 45° y todo dentro del arco`, half.step === 45 && half.items.every((i) => i.angle > 0 && i.angle < 180), half.items.map((i) => i.angle).join(','));
   // 6. Filas que no entran en la zona → se avisan
   const tall = computeLayout({ ...base, rows: 10 }, axis, 1.2);
-  ok(`${name}: las filas que no entran se descartan con aviso`, tall.items.length < 60 && tall.warnings.some((w) => /fuera de la zona/.test(w)));
+  ok(`${name}: las filas que se pasan de la zona NO desaparecen (se ven, con aviso)`, tall.items.length === 60 && tall.items.some((i) => i.out) && tall.warnings.some((w) => /se pasan? de la zona/.test(w)));
   chop.delete();
 }
 console.log(`\nResultado: ${pass} OK, ${fail} fallas`);

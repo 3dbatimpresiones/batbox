@@ -179,3 +179,7 @@
 .chop .cg-sel b { color: #fff; }
 .chop .cg-hint { display: block; margin: 0 0 8px; }
 .chop .chop-gizmo .mini-btn { width: auto; padding: 0 10px; white-space: nowrap; }
+
+.chop .chop-stack { display: flex; flex-direction: column; gap: 12px; }
+.chop .chop-pad { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.chop .chop-pad .mini-btn { width: auto; min-width: 34px; padding: 0 9px; font-size: 13px; }

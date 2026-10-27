@@ -34,9 +34,9 @@ function frameOf(it) {
   return { pos: new THREE.Vector3(radial.x * it.r, radial.y * it.r, it.h), quat: new THREE.Quaternion().setFromRotationMatrix(m), radial, tangent, up };
 }
 
-export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef, colors, view, items, selection, mode, onPick, onTransform }) {
+export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef, colors, view, items, selection, mode, onPick, onTransform, onDrag, fitKey }) {
   const cb = useRef({});
-  cb.current = { onPick, onTransform, items, selection, mode };
+  cb.current = { onPick, onTransform, onDrag, items, selection, mode, axis };
   const box = useRef(null);
   const st = useRef(null);
 
@@ -84,9 +84,63 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     scene.add(tc.getHelper());
     // Clic (sin arrastrar) para elegir qué se transforma
     const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
-    let down = null;
-    const onDown = (e) => { down = { x: e.clientX, y: e.clientY }; };
+    let down = null, drag = null;
+    const toNdc = (e) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+    };
+    // Punto del rayo sobre el cilindro de radio r (eje Z): para arrastrar sobre la pared
+    const onCylinder = (r) => {
+      const o = ray.ray.origin, d = ray.ray.direction;
+      const A = d.x * d.x + d.y * d.y, B = 2 * (o.x * d.x + o.y * d.y), C = o.x * o.x + o.y * o.y - r * r;
+      const disc = B * B - 4 * A * C;
+      if (A < 1e-9 || disc < 0) return null;
+      const t = (-B - Math.sqrt(disc)) / (2 * A);
+      return t > 0 ? o.clone().addScaledVector(d, t) : null;
+    };
+    const nearest = (pt) => {
+      let best = null, bd = Infinity;
+      for (const it of cb.current.items || []) { const d = frameOf(it).pos.distanceToSquared(pt); if (d < bd) { bd = d; best = it; } }
+      return best;
+    };
+    const onDown = (e) => {
+      down = { x: e.clientX, y: e.clientY };
+      if (tc.axis || e.button !== 0) return;
+      toNdc(e);
+      const hit = ray.intersectObjects(content.children, false)[0];
+      if (hit?.object.name !== 'reliefs') return;
+      // Agarró un diseño: se arrastra sobre la pared (todos, o solo ese con Shift)
+      const it = nearest(hit.point);
+      const p0 = onCylinder(it.r);
+      if (!p0) return;
+      drag = { it, r: it.r, a0: Math.atan2(p0.y, p0.x), z0: p0.z, shift: e.shiftKey, moved: false, mesh: hit.object };
+      controls.enabled = false;
+    };
+    const onMove = (e) => {
+      if (!drag) return;
+      if (!drag.moved && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 4) return;
+      drag.moved = true;
+      toNdc(e);
+      const p = onCylinder(drag.r);
+      if (!p) return;
+      let da = Math.atan2(p.y, p.x) - drag.a0;
+      if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
+      drag.da = da; drag.dz = p.z - drag.z0;
+      // Vista en vivo: todo el patrón gira y sube (un diseño solo se ve al soltar)
+      if (!drag.shift) { drag.mesh.rotation.z = da; drag.mesh.position.z = drag.dz; }
+      renderer.domElement.style.cursor = 'grabbing';
+    };
+    const endDrag = () => {
+      if (!drag) return false;
+      const d = drag; drag = null;
+      controls.enabled = true; renderer.domElement.style.cursor = '';
+      if (!d.moved) return false;
+      cb.current.onDrag?.({ key: d.shift ? d.it.key : null, da: (d.da || 0) * (180 / Math.PI), dh: d.dz || 0 });
+      return true;
+    };
     const onPickUp = (e) => {
+      if (endDrag()) { down = null; return; }
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 || tc.dragging || tc.axis) { down = null; return; }
       down = null;
       const rect = renderer.domElement.getBoundingClientRect();
@@ -105,6 +159,7 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       } else fn?.({ target: 'chop' });
     };
     renderer.domElement.addEventListener('pointerdown', onDown);
+    renderer.domElement.addEventListener('pointermove', onMove);
     renderer.domElement.addEventListener('pointerup', onPickUp);
     const gizmo = new ViewHelper(camera, renderer.domElement);
     gizmo.setLabels('X', 'Y', 'Z');
@@ -134,6 +189,7 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose(); gizmo.dispose(); tc.dispose();
       renderer.domElement.removeEventListener('pointerup', onUp);
       renderer.domElement.removeEventListener('pointerdown', onDown);
+      renderer.domElement.removeEventListener('pointermove', onMove);
       renderer.domElement.removeEventListener('pointerup', onPickUp);
       scene.traverse((o) => { o.geometry?.dispose(); });
       renderer.dispose(); el.removeChild(renderer.domElement);
@@ -181,7 +237,8 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     tc.attach(proxy);
   }, [selection, mode, items, chopPos]);
   // Encuadra al cargar un chop nuevo
-  useEffect(() => { if (chopPos) aim('iso'); }, [chopPos]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Encuadra solo al cargar un chop nuevo (no cada vez que se lo mueve o gira)
+  useEffect(() => { if (fitKey) aim('iso'); }, [fitKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Superficie de referencia (cono/cilindro translúcido) y zona del asa (cuña roja)
   useEffect(() => {

@@ -17,8 +17,8 @@ import '../styles/keychains.css';
 // La vista previa y el STL usan la misma distribución (lib/chop/layout.js).
 // =====================================================================
 
-const DEF = { rows: 2, cols: 6, width: 25, gapV: 6, startH: 4, startAngle: 0, coverage: 360, stagger: false,
-  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2, mode: 'relief', engrave: 0.8, snap: true, radial: 0, spin: 0, overrides: {} };
+const DEF = { rows: 3, cols: 6, width: 25, gapV: 6, startH: 4, startAngle: 0, coverage: 360, stagger: false,
+  exclude: false, exclCenter: 90, exclWidth: 70, depth: 0.6, relief: 1.2, mode: 'engrave', engrave: 0.8, snap: true, radial: 0, spin: 0, overrides: {} };
 const wrap360 = (a) => ((a % 360) + 360) % 360;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
@@ -290,6 +290,58 @@ function ChopsApp() {
     : sel.target === 'chop' ? 'El chop'
       : sel.key ? `Solo el diseño de la fila ${+sel.key.split('-')[0] + 1}, columna ${+sel.key.split('-')[1] + 1}` : 'Todos los diseños juntos';
 
+  // Armado automático: llena la zona decorable, centrado (al cargar o con el botón).
+  const autoFit = useCallback((ax = axis, d = design) => {
+    if (!ax || !d) return;
+    const r = Math.min(ax.r0, ax.r1), zone = Math.max(5, ax.z1 - ax.z0), aspect = d.h0 / d.w0;
+    setP((x) => {
+      const cols = x.cols || 6, gap = 6;
+      // Ancho: ~55 % del espacio de cada columna, pero que entren al menos 2 filas.
+      let width = Math.min((2 * Math.PI * r / cols) * 0.55, (zone - gap) / 2 / aspect);
+      width = +clamp(width, 6, 120).toFixed(1);
+      const H = width * aspect;
+      const rows = clamp(Math.floor((zone + gap) / (H + gap)), 1, 6);
+      const used = rows * H + (rows - 1) * gap;
+      return { ...x, width, rows, gapV: gap, startH: +Math.max(0, (zone - used) / 2).toFixed(1), startAngle: 0, spin: 0, radial: 0, overrides: {} };
+    });
+  }, [axis, design]);
+  const fitted = useRef('');
+  useEffect(() => {
+    const k = chopName + '|' + (design?.name || '');
+    if (axis && design && fitted.current !== k) { fitted.current = k; autoFit(axis, design); }
+  }, [axis, design, chopName, autoFit]);
+
+  // Mover con flechitas (y + / −): lo seleccionado, o todo el patrón si no hay nada elegido.
+  const nudge = useCallback((da, dh, ds = 1) => {
+    const key = sel?.target === 'designs' ? sel.key : null;
+    setP((x) => {
+      if (!key) return { ...x, startAngle: +wrap360(x.startAngle + da).toFixed(1), startH: +Math.max(0, x.startH + dh).toFixed(1), width: +clamp(x.width * ds, 3, 150).toFixed(1) };
+      const ov = { da: 0, dh: 0, dr: 0, spin: 0, s: 1, ...(x.overrides[key] || {}) };
+      return { ...x, overrides: { ...x.overrides, [key]: { ...ov, da: ov.da + da, dh: ov.dh + dh, s: clamp(ov.s * ds, 0.2, 4) } } };
+    });
+  }, [sel]);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (/input|textarea|select/i.test(e.target.tagName) || sel?.target === 'chop') return;
+      const big = e.shiftKey;
+      const map = { ArrowLeft: [-(big ? 10 : 2), 0], ArrowRight: [big ? 10 : 2, 0], ArrowUp: [0, big ? 5 : 1], ArrowDown: [0, -(big ? 5 : 1)] };
+      if (map[e.key]) { e.preventDefault(); nudge(map[e.key][0], map[e.key][1]); }
+      else if (e.key === '+' || e.key === '=') nudge(0, 0, 1.05);
+      else if (e.key === '-') nudge(0, 0, 1 / 1.05);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [nudge, sel]);
+  // Arrastre con el mouse sobre el chop
+  const onDrag = ({ key, da, dh }) => {
+    if (key) setSel({ target: 'designs', key }); else setSel({ target: 'designs', key: null });
+    setP((x) => {
+      if (!key) return { ...x, startAngle: +wrap360(x.startAngle + da).toFixed(1), startH: +Math.max(0, x.startH + dh).toFixed(1) };
+      const ov = { da: 0, dh: 0, dr: 0, spin: 0, s: 1, ...(x.overrides[key] || {}) };
+      return { ...x, overrides: { ...x.overrides, [key]: { ...ov, da: ov.da + da, dh: ov.dh + dh } } };
+    });
+  };
+
   const total = layout ? layout.items.length : 0;
   const setAx = (k) => (v) => setAxis((a) => ({ ...a, [k]: v }));
   const H = dims ? dims.z : 300;
@@ -325,15 +377,15 @@ function ChopsApp() {
 
           {axis && <Sec title="Eje y zona decorable" icon="🎯">
             <div className="kc-hint">La superficie celeste del visor tiene que coincidir con la pared del chop. El radio se mide sin el asa.</div>
-            <div className="kc-two">
+            <div className="chop-stack">
               <Num label="Eje X" value={tf.cx} onChange={(v) => setTf((t) => ({ ...t, cx: v }))} min={-500} max={500} step={0.1} />
               <Num label="Eje Y" value={tf.cy} onChange={(v) => setTf((t) => ({ ...t, cy: v }))} min={-500} max={500} step={0.1} />
             </div>
-            <div className="kc-two">
+            <div className="chop-stack">
               <Num label="Zona desde" value={axis.z0} onChange={setAx('z0')} min={0} max={H} step={0.5} />
               <Num label="Zona hasta" value={axis.z1} onChange={setAx('z1')} min={0} max={H} step={0.5} />
             </div>
-            <div className="kc-two">
+            <div className="chop-stack">
               <Num label="Radio abajo" value={axis.r0} onChange={setAx('r0')} min={5} max={300} step={0.05} />
               <Num label="Radio arriba" value={axis.r1} onChange={setAx('r1')} min={5} max={300} step={0.05} />
             </div>
@@ -359,7 +411,7 @@ function ChopsApp() {
             <Seg label="Tipo" value={p.mode} onChange={set('mode')}
               options={[{ value: 'relief', label: '⬆ Relieve (hacia afuera)' }, { value: 'engrave', label: '⬇ Grabado (hacia adentro)' }]} />
             {p.mode === 'relief' ? (
-              <div className="kc-two">
+              <div className="chop-stack">
                 <Num label="Espesor del relieve" value={p.relief} onChange={set('relief')} min={0.2} max={6} step={0.1} hint="Cuánto sobresale." />
                 <Num label="Profundidad en el chop" value={p.depth} onChange={set('depth')} min={0.2} max={3} step={0.1} hint="Cuánto entra en la pared (para que quede bien pegado)." />
               </div>
@@ -370,15 +422,15 @@ function ChopsApp() {
           </Sec>
 
           <Sec title="Patrón" icon="🔁">
-            <div className="kc-two">
+            <div className="chop-stack">
               <Num label="Filas" value={p.rows} onChange={set('rows')} min={1} max={LIMITS.rows} step={1} unit="" />
               <Num label="Columnas" value={p.cols} onChange={set('cols')} min={1} max={LIMITS.cols} step={1} unit="" />
             </div>
-            <div className="kc-two">
+            <div className="chop-stack">
               <Num label="Separación vertical" value={p.gapV} onChange={set('gapV')} min={0} max={80} step={0.5} />
               <Num label="Altura inicial" value={p.startH} onChange={set('startH')} min={0} max={H} step={0.5} hint="Desde abajo de la zona." />
             </div>
-            <div className="kc-two">
+            <div className="chop-stack">
               <Num label="Giro inicial" value={p.startAngle} onChange={set('startAngle')} min={0} max={359} step={1} unit="°" />
               <Num label="Cobertura" value={p.coverage} onChange={set('coverage')} min={10} max={360} step={1} unit="°" />
             </div>
@@ -388,7 +440,7 @@ function ChopsApp() {
 
           <Sec title="Zona del asa" icon="☕">
             <Seg label="No poner diseños sobre el asa" value={p.exclude} onChange={set('exclude')} options={[{ value: false, label: 'No' }, { value: true, label: 'Sí, excluir' }]} />
-            {p.exclude && <div className="kc-two">
+            {p.exclude && <div className="chop-stack">
               <Num label="Centro del asa" value={p.exclCenter} onChange={set('exclCenter')} min={0} max={359} step={1} unit="°" />
               <Num label="Ancho a excluir" value={p.exclWidth} onChange={set('exclWidth')} min={5} max={300} step={1} unit="°" />
             </div>}
@@ -419,9 +471,19 @@ function ChopsApp() {
             {sel && <button type="button" className="mini-btn" onClick={() => setSel(null)}>Soltar</button>}
             {loose > 0 && <button type="button" className="mini-btn" onClick={() => setP((x) => ({ ...x, overrides: {} }))}>Juntar de nuevo ({loose} {loose === 1 ? 'suelto' : 'sueltos'})</button>}
           </div>
-          <small className="kc-muted cg-hint">Clic en el chop o en un diseño para moverlo con el gizmo. <b>Shift + clic</b> en un diseño: lo separás de los demás.</small>
+          <div className="chop-pad">
+            <span className="cg-sel">Acomodar:</span>
+            <button type="button" className="mini-btn" title="Girar a la izquierda (←)" onClick={() => nudge(-2, 0)}>◀</button>
+            <button type="button" className="mini-btn" title="Girar a la derecha (→)" onClick={() => nudge(2, 0)}>▶</button>
+            <button type="button" className="mini-btn" title="Subir (↑)" onClick={() => nudge(0, 1)}>▲</button>
+            <button type="button" className="mini-btn" title="Bajar (↓)" onClick={() => nudge(0, -1)}>▼</button>
+            <button type="button" className="mini-btn" title="Achicar (−)" onClick={() => nudge(0, 0, 1 / 1.05)}>−</button>
+            <button type="button" className="mini-btn" title="Agrandar (+)" onClick={() => nudge(0, 0, 1.05)}>+</button>
+            <button type="button" className="mini-btn" onClick={() => autoFit()} disabled={!axis || !design}>✨ Acomodar automático</button>
+          </div>
+          <small className="kc-muted cg-hint"><b>Arrastrá un diseño</b> sobre el chop para mover todo el patrón (<b>Shift</b> + arrastrar: solo ese). Flechas del teclado ← → ↑ ↓ (con Shift, paso grande) y + / − para el tamaño. Clic en el chop o en un diseño para usar el gizmo (M · R · S).</small>
           <div className="kc-canvas">
-            <ChopViewer items={items} selection={sel} mode={tmode} onPick={onPick} onTransform={onTransform} chopPos={chopPos} reliefs={preview} axis={axis} showRef={showRef}
+            <ChopViewer items={items} selection={sel} mode={tmode} onPick={onPick} onTransform={onTransform} onDrag={onDrag} fitKey={chopName && raw ? chopName + raw.length : ''} chopPos={chopPos} reliefs={preview} axis={axis} showRef={showRef}
               exclusion={p.exclude ? { center: p.exclCenter, width: p.exclWidth } : null}
               colors={{ chop: '#8E9089', relief: p.mode === 'engrave' ? '#3B2A4A' : '#F78EB6' }} view={view} />
             {busy && <div className="kc-busy">Armando vista previa…</div>}

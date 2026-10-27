@@ -34,7 +34,7 @@ export function computeLayout(p, axis, aspect) {
     const along = p.startH + H / 2 + i * (H + p.gapV);
     const h = axis.z0 + along * cos;
     const top = axis.z0 + (along + H / 2) * cos, bottom = axis.z0 + (along - H / 2) * cos;
-    if (bottom < axis.z0 - 0.01 || top > axis.z1 + 0.01) { outOfZone += cols; continue; }
+    const outside = bottom < axis.z0 - 0.01 || top > axis.z1 + 0.01;   // se pasa: se ve igual, con aviso
     const r = rAt(axis, h);
     const halfDeg = ((W / 2) / r) * (180 / Math.PI);
     const shift = p.stagger && i % 2 === 1 ? step / 2 : 0;
@@ -45,7 +45,8 @@ export function computeLayout(p, axis, aspect) {
       if (p.exclude && angDist(angle, p.exclCenter) < p.exclWidth / 2 + halfDeg) { inHandle++; continue; }
       const key = `${i}-${j}`, ov = p.overrides?.[key] || {};
       const al = along + (ov.dh || 0), hh = axis.z0 + al * cos;
-      items.push({ key, row: i, col: j, angle: wrap(angle + (ov.da || 0)), h: hh, along: al, r: rAt(axis, hh),
+      if (outside) outOfZone++;
+      items.push({ key, out: outside, row: i, col: j, angle: wrap(angle + (ov.da || 0)), h: hh, along: al, r: rAt(axis, hh),
         dr: (p.radial || 0) + (ov.dr || 0), spin: (p.spin || 0) + (ov.spin || 0), s: ov.s || 1, loose: !!p.overrides?.[key] });
     }
   }
@@ -55,7 +56,7 @@ export function computeLayout(p, axis, aspect) {
   const widthDeg = (W / r0) * (180 / Math.PI);
   if (widthDeg > step + 0.01) warnings.push('Los diseños se tocan o se superponen de costado: bajá el ancho, las columnas o subí la cobertura.');
   if (widthDeg > 120) warnings.push('El diseño es muy ancho para este radio: se va a deformar mucho al curvarse.');
-  if (outOfZone) warnings.push(`${outOfZone} ${outOfZone === 1 ? 'diseño queda' : 'diseños quedan'} fuera de la zona decorable (filas que no entran en altura).`);
+  if (outOfZone) warnings.push(`${outOfZone} ${outOfZone === 1 ? 'diseño queda' : 'diseños se pasan'} de la zona decorable (se ven igual: revisá que sigan sobre la pared del chop).`);
   if (inHandle) warnings.push(`${inHandle} ${inHandle === 1 ? 'diseño se saltea' : 'diseños se saltean'} por la zona del asa.`);
   if (items.length > LIMITS.total) warnings.push(`Máximo ${LIMITS.total} diseños por chop.`);
 
