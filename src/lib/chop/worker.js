@@ -43,11 +43,10 @@ self.onmessage = async (e) => {
         return;
       }
       if (msg.type === 'preview') {
-        // Vista previa liviana: los relieves juntos, sin booleana (la unión real se hace al exportar).
-        const all = M.Manifold.compose(reliefs);
-        reliefs.forEach((r) => r.delete());
-        const mesh = plain(all); all.delete();
-        self.postMessage({ type: 'preview-ok', id: msg.id, layout, reliefs: mesh }, [mesh.vertProperties.buffer, mesh.triVerts.buffer]);
+        // Vista previa liviana: cada diseño por separado (para moverlos en vivo), sin booleana.
+        const meshes = reliefs.map((r) => { const m = plain(r); r.delete(); return m; });
+        self.postMessage({ type: 'preview-ok', id: msg.id, layout, reliefs: meshes },
+          meshes.flatMap((m) => [m.vertProperties.buffer, m.triVerts.buffer]));
       } else {
         const { result, check } = combineAll(M, chop, reliefs, msg.p.mode, (done, total) => self.postMessage({ type: 'progress', id: msg.id, done, total }));
         reliefs.forEach((r) => r.delete());

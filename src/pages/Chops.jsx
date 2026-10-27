@@ -166,6 +166,7 @@ function ChopsApp() {
       setRaw(pos); setChopName(file.name.replace(/\.(stl|3mf)$/i, ''));
       detect(pos, { up: 'z', flip: false, scale: 1, q: null });
       setP((x) => ({ ...x, overrides: {} })); setSel(null);
+      hist.current = { stack: [], i: -1 }; setHistPos({ i: -1, n: 0 });
     } catch (e) { setRaw(null); setChopState({ ok: false, error: e.message }); }
   };
   const loadDesign = async (file) => {
@@ -342,6 +343,41 @@ function ChopsApp() {
     });
   };
 
+  // ---------- Deshacer / rehacer (Ctrl + Z · Ctrl + Y o Ctrl + Shift + Z) ----------
+  // Guarda patrón, chop (orientación, escala, posición) y eje. Los cambios seguidos
+  // (por ejemplo, mover un deslizador) se juntan en un solo paso.
+  const hist = useRef({ stack: [], i: -1 });
+  const [histPos, setHistPos] = useState({ i: -1, n: 0 });
+  useEffect(() => {
+    if (!axis) return undefined;
+    const t = setTimeout(() => {
+      const h = hist.current, snap = JSON.stringify({ p, tf, axis });
+      if (h.stack[h.i] === snap) return;
+      h.stack = h.stack.slice(0, h.i + 1).concat(snap).slice(-150);
+      h.i = h.stack.length - 1;
+      setHistPos({ i: h.i, n: h.stack.length });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [p, tf, axis]);
+  const goHist = useCallback((dir) => {
+    const h = hist.current, j = h.i + dir;
+    if (j < 0 || j >= h.stack.length) return;
+    h.i = j;
+    const snap = JSON.parse(h.stack[j]);
+    setP(snap.p); setTf(snap.tf); setAxis(snap.axis);
+    setHistPos({ i: h.i, n: h.stack.length });
+  }, []);
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.target.tagName === 'TEXTAREA') return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); goHist(-1); }
+      else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); goHist(1); }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [goHist]);
+
   const total = layout ? layout.items.length : 0;
   const setAx = (k) => (v) => setAxis((a) => ({ ...a, [k]: v }));
   const H = dims ? dims.z : 300;
@@ -462,6 +498,8 @@ function ChopsApp() {
             </div>
           </div>
           <div className="chop-gizmo">
+            <button type="button" className="mini-btn" title="Deshacer (Ctrl + Z)" disabled={histPos.i <= 0} onClick={() => goHist(-1)}>↶ Deshacer</button>
+            <button type="button" className="mini-btn" title="Rehacer (Ctrl + Y)" disabled={histPos.i >= histPos.n - 1} onClick={() => goHist(1)}>↷ Rehacer</button>
             <div className="kc-seg" role="group" aria-label="Herramienta">
               {[['translate', 'Mover', 'M'], ['rotate', 'Rotar', 'R'], ['scale', 'Escalar', 'S']].map(([m, l, k]) => (
                 <button key={m} type="button" className={tmode === m ? 'on' : ''} onClick={() => setTmode(m)} title={`${l} (tecla ${k})`}>{l} <small>{k}</small></button>

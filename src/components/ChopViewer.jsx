@@ -34,8 +34,31 @@ function frameOf(it) {
   return { pos: new THREE.Vector3(radial.x * it.r, radial.y * it.r, it.h), quat: new THREE.Quaternion().setFromRotationMatrix(m), radial, tangent, up };
 }
 
+// Mueve en vivo los diseños (sin recalcular): da (rad) alrededor del eje, dz (mm) en altura,
+// dr (mm) hacia afuera, spin (rad) sobre sí mismo y k (escala). key = solo ese diseño.
+function applyLive(content, live, axis) {
+  // En un cono, al subir el diseño la pared se abre: se corre hacia afuera lo mismo.
+  const slope = axis ? (axis.r1 - axis.r0) / Math.max(1e-6, axis.z1 - axis.z0) : 0;
+  for (const m of content.children) {
+    if (m.name !== 'reliefs') continue;
+    const it = m.userData.it;
+    if (!live || (live.key && it.key !== live.key)) { m.matrix.identity(); m.matrixAutoUpdate = false; continue; }
+    const f = frameOf(it);
+    const local = new THREE.Matrix4().makeTranslation(f.pos.x, f.pos.y, f.pos.z)
+      .multiply(new THREE.Matrix4().makeRotationAxis(f.radial, live.spin || 0))
+      .multiply(new THREE.Matrix4().makeScale(live.k || 1, live.k || 1, live.k || 1))
+      .multiply(new THREE.Matrix4().makeTranslation(-f.pos.x, -f.pos.y, -f.pos.z));
+    const dr = (live.dr || 0) + (live.dz || 0) * slope;
+    const out = new THREE.Matrix4().makeTranslation(f.radial.x * dr, f.radial.y * dr, 0);
+    m.matrix.copy(new THREE.Matrix4().makeRotationZ(live.da || 0).multiply(new THREE.Matrix4().makeTranslation(0, 0, live.dz || 0)).multiply(out).multiply(local));
+    m.matrixAutoUpdate = false; m.matrixWorldNeedsUpdate = true;
+  }
+}
+const fmt = (v, d = 1) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d).replace('.', ',');
+
 export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef, colors, view, items, selection, mode, onPick, onTransform, onDrag, fitKey }) {
   const cb = useRef({});
+  const liveRef = useRef(null);
   cb.current = { onPick, onTransform, onDrag, items, selection, mode, axis };
   const box = useRef(null);
   const st = useRef(null);
@@ -69,6 +92,19 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     const helpers = new THREE.Group(); scene.add(helpers);
     // Gizmo de transformación (mover / rotar / escalar) sobre un objeto "proxy"
     const proxy = new THREE.Object3D(); scene.add(proxy);
+    const showLive = (live) => {
+      const el2 = liveRef.current; if (!el2) return;
+      if (!live) { el2.hidden = true; return; }
+      const parts = [];
+      if (live.da) parts.push(`↔ ${fmt(live.da * 180 / Math.PI)}°`);
+      if (live.dz) parts.push(`↕ ${fmt(live.dz)} mm`);
+      if (live.dr) parts.push(`${live.dr < 0 ? '⇥ hacia la pared' : '⇤ hacia afuera'} ${fmt(live.dr)} mm`);
+      if (live.spin) parts.push(`⟳ ${fmt(live.spin * 180 / Math.PI)}°`);
+      if (live.k && Math.abs(live.k - 1) > 1e-3) parts.push(`⤢ ×${live.k.toFixed(2).replace('.', ',')}`);
+      if (live.chop) parts.push(live.chop);
+      el2.textContent = (live.key ? 'Este diseño: ' : live.chop ? 'Chop: ' : 'Patrón: ') + (parts.join(' · ') || 'sin cambios');
+      el2.hidden = false;
+    };
     const tc = new TransformControls(camera, renderer.domElement);
     tc.setSize(0.9);
     tc.addEventListener('dragging-changed', (e) => {
@@ -76,10 +112,32 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       const st0 = st.current;
       if (e.value) st0.start = { pos: proxy.position.clone(), quat: proxy.quaternion.clone(), scale: proxy.scale.clone() };
       else if (st0.start) {
+        showLive(null);
         const { onTransform: fn, selection: sel } = cb.current;
         fn?.({ mode: tc.mode, selection: sel, start: st0.start, end: { pos: proxy.position.clone(), quat: proxy.quaternion.clone(), scale: proxy.scale.clone() }, frame: st0.frame });
         st0.start = null;
       }
+    });
+    tc.addEventListener('objectChange', () => {
+      const st0 = st.current; if (!st0?.start) return;
+      const sel = cb.current.selection, start = st0.start;
+      if (sel?.target === 'chop') {
+        const chopMesh = content.children.find((o) => o.name === 'chop');
+        if (chopMesh) { chopMesh.position.copy(proxy.position).sub(start.pos); chopMesh.quaternion.copy(proxy.quaternion.clone().multiply(start.quat.clone().invert())); chopMesh.scale.copy(proxy.scale).divide(start.scale); }
+        const d = proxy.position.clone().sub(start.pos);
+        showLive({ chop: tc.mode === 'translate' ? `X ${fmt(d.x)} · Y ${fmt(d.y)} mm` : tc.mode === 'scale' ? `×${(proxy.scale.x / start.scale.x).toFixed(2)}` : 'girando' });
+        return;
+      }
+      const f = st0.frame; if (!f) return;
+      const live = { key: sel?.key || null };
+      if (tc.mode === 'translate') {
+        const d = proxy.position.clone().sub(start.pos);
+        live.da = d.dot(f.tangent) / Math.max(1, f.r); live.dz = d.dot(f.up); live.dr = d.dot(f.radial);
+      } else if (tc.mode === 'rotate') {
+        const dq = start.quat.clone().invert().multiply(proxy.quaternion);
+        live.spin = 2 * Math.atan2(dq.z, dq.w);
+      } else live.k = Math.max(proxy.scale.x / start.scale.x, proxy.scale.y / start.scale.y, 0.05);
+      applyLive(content, live, cb.current.axis); showLive(live);
     });
     scene.add(tc.getHelper());
     // Clic (sin arrastrar) para elegir qué se transforma
@@ -111,11 +169,13 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       const hit = ray.intersectObjects(content.children, false)[0];
       if (hit?.object.name !== 'reliefs') return;
       // Agarró un diseño: se arrastra sobre la pared (todos, o solo ese con Shift)
-      const it = nearest(hit.point);
+      const it = hit.object.userData.it || nearest(hit.point);
       const p0 = onCylinder(it.r);
       if (!p0) return;
       drag = { it, r: it.r, a0: Math.atan2(p0.y, p0.x), z0: p0.z, shift: e.shiftKey, moved: false, mesh: hit.object };
       controls.enabled = false;
+      e.stopImmediatePropagation();                              // la cámara no gira mientras se arrastra un diseño
+      renderer.domElement.setPointerCapture?.(e.pointerId);
     };
     const onMove = (e) => {
       if (!drag) return;
@@ -127,14 +187,15 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       let da = Math.atan2(p.y, p.x) - drag.a0;
       if (da > Math.PI) da -= 2 * Math.PI; else if (da < -Math.PI) da += 2 * Math.PI;
       drag.da = da; drag.dz = p.z - drag.z0;
-      // Vista en vivo: todo el patrón gira y sube (un diseño solo se ve al soltar)
-      if (!drag.shift) { drag.mesh.rotation.z = da; drag.mesh.position.z = drag.dz; }
+      // Vista en vivo: el patrón (o ese diseño solo) se mueve mientras arrastrás
+      const live = { key: drag.shift ? drag.it.key : null, da, dz: drag.dz };
+      applyLive(content, live, cb.current.axis); showLive(live);
       renderer.domElement.style.cursor = 'grabbing';
     };
     const endDrag = () => {
       if (!drag) return false;
       const d = drag; drag = null;
-      controls.enabled = true; renderer.domElement.style.cursor = '';
+      controls.enabled = true; renderer.domElement.style.cursor = ''; showLive(null);
       if (!d.moved) return false;
       cb.current.onDrag?.({ key: d.shift ? d.it.key : null, da: (d.da || 0) * (180 / Math.PI), dh: d.dz || 0 });
       return true;
@@ -152,13 +213,11 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
       const { onPick: fn, items: its } = cb.current;
       if (!hit) { fn?.(null); return; }
       if (hit.object.name === 'reliefs' && its?.length) {
-        // ¿Qué diseño se tocó? El centro más cercano al punto.
-        let best = null, bd = Infinity;
-        for (const it of its) { const f = frameOf(it); const d = f.pos.distanceToSquared(hit.point); if (d < bd) { bd = d; best = it; } }
+        const best = hit.object.userData.it || nearest(hit.point);
         fn?.({ target: 'designs', key: best?.key, shift: e.shiftKey });
       } else fn?.({ target: 'chop' });
     };
-    renderer.domElement.addEventListener('pointerdown', onDown);
+    renderer.domElement.addEventListener('pointerdown', onDown, true);   // antes que la órbita de la cámara
     renderer.domElement.addEventListener('pointermove', onMove);
     renderer.domElement.addEventListener('pointerup', onPickUp);
     const gizmo = new ViewHelper(camera, renderer.domElement);
@@ -185,10 +244,11 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     };
     loop();
     st.current = { renderer, scene, camera, controls, content, helpers, gizmo, tc, proxy };
+    if (import.meta.env.DEV) window.__chopViewer = st.current; // solo para pruebas en `npm run dev`
     return () => {
       cancelAnimationFrame(raf); ro.disconnect(); controls.dispose(); gizmo.dispose(); tc.dispose();
       renderer.domElement.removeEventListener('pointerup', onUp);
-      renderer.domElement.removeEventListener('pointerdown', onDown);
+      renderer.domElement.removeEventListener('pointerdown', onDown, true);
       renderer.domElement.removeEventListener('pointermove', onMove);
       renderer.domElement.removeEventListener('pointerup', onPickUp);
       scene.traverse((o) => { o.geometry?.dispose(); });
@@ -212,8 +272,11 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     const s = st.current; if (!s) return;
     s.content.traverse((o) => o.geometry?.dispose()); s.content.clear();
     if (chopPos) { const m = new THREE.Mesh(soupGeometry(chopPos), new THREE.MeshStandardMaterial({ color: colors.chop, roughness: 0.6 })); m.name = 'chop'; s.content.add(m); }
-    if (reliefs) { const m = new THREE.Mesh(meshGeometry(reliefs), new THREE.MeshStandardMaterial({ color: colors.relief, roughness: 0.45 })); m.name = 'reliefs'; s.content.add(m); }
-  }, [chopPos, reliefs, colors.chop, colors.relief]);
+    if (reliefs?.length) {
+      const mat = new THREE.MeshStandardMaterial({ color: colors.relief, roughness: 0.45 });
+      reliefs.forEach((r, i) => { const m = new THREE.Mesh(meshGeometry(r), mat); m.name = 'reliefs'; m.userData.it = items?.[i] || null; s.content.add(m); });
+    }
+  }, [chopPos, reliefs, colors.chop, colors.relief]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gizmo: dónde se ubica y cómo se ve según lo elegido y el modo (como OrcaSlicer)
   useEffect(() => {
@@ -268,5 +331,9 @@ export default function ChopViewer({ chopPos, reliefs, axis, exclusion, showRef,
     }
   }, [axis, exclusion, showRef]);
 
-  return <div className="kc-viewer chop-viewer" ref={box} tabIndex={0} />;
+  return (
+    <div className="kc-viewer chop-viewer" ref={box} tabIndex={0}>
+      <div className="chop-live" ref={liveRef} hidden />
+    </div>
+  );
 }
