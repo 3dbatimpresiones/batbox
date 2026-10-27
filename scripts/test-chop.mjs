@@ -2,7 +2,7 @@
 // Uso: node scripts/test-chop.mjs <carpeta-salida>
 import { mkdirSync, writeFileSync } from 'node:fs';
 import Module from 'manifold-3d';
-import { buildReliefs, chopFromMesh, combineAll, designSection, unionAll, wallIndex } from '../src/lib/chop/core.js';
+import { buildReliefs, chopFromMesh, combineAll, designSection, unionAll, wallIndex, wallRadius } from '../src/lib/chop/core.js';
 import { computeLayout, rAt } from '../src/lib/chop/layout.js';
 import { toBinarySTL } from '../src/lib/keychain/exporters.js';
 import { orient, guessAxis, radiusAt, weld } from '../src/lib/chop/files.js';
@@ -91,12 +91,30 @@ for (const [name, r0, r1] of [['cilindro', 40, 40], ['cono', 34, 44]]) {
     const d = buildReliefs(M, cs, design, { ...base, mode: 'engrave', engrave: 4 }, axis);
     const { result: dr, check: dc } = combineAll(M, chop, d.reliefs, 'engrave');
     d.reliefs.forEach((r) => r.delete()); dr.delete();
-    ok(`${name}: grabado que atraviesa la pared → se detecta`, dc.genus > dc.chopGenus || dc.pieces > 1, `genus ${dc.chopGenus} → ${dc.genus}, ${dc.pieces} piezas`);
+    ok(`${name}: grabado que atraviesa la pared → se detecta`, dc.genus > dc.chopGenus || dc.pieces > dc.chopPieces, `genus ${dc.chopGenus} → ${dc.genus}, ${dc.pieces} piezas`);
+
+    // Un STL puede traer adornos o partes cerradas separadas: no son un error nuevo del grabado.
+    if (name === 'cilindro') {
+      const ornament = M.Manifold.cube([4, 4, 4]).translate([100, 100, 0]);
+      const multi = M.Manifold.union([chop, ornament]);
+      ornament.delete();
+      const mg = buildReliefs(M, cs, design, { ...base, mode: 'engrave', engrave: 1 }, axis);
+      const mr = combineAll(M, multi, mg.reliefs, 'engrave');
+      mg.reliefs.forEach((r) => r.delete());
+      ok('grabado conserva las piezas que ya tenía el STL sin dar falso error',
+        mr.check.chopPieces === 2 && mr.check.pieces === 2 && mr.check.genus === mr.check.chopGenus,
+        `${mr.check.chopPieces} → ${mr.check.pieces} piezas`);
+      mr.result.delete(); multi.delete();
+    }
   }
 
   // 2c. Pared real: radios mal cargados (+5 mm) → sin ajuste los logos flotan; con ajuste quedan pegados
   {
     const wall = wallIndex(vert, tri);
+    const expectedAtHandle = r0 + (r1 - r0) * 0.5;
+    const measuredAtHandle = wallRadius(wall, 60, 0, expectedAtHandle);
+    ok(`${name}: la pared real ignora el asa`, Math.abs(measuredAtHandle - expectedAtHandle) < 0.7,
+      `${measuredAtHandle.toFixed(2)} mm (esperado ${expectedAtHandle.toFixed(2)})`);
     const bad = { ...axis, r0: axis.r0 + 5, r1: axis.r1 + 5 };
     const a = buildReliefs(M, cs, design, { ...base, snap: false }, bad, wall);
     const ra = combineAll(M, chop, a.reliefs, 'relief'); a.reliefs.forEach((r) => r.delete());

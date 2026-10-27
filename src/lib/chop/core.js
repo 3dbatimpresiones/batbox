@@ -42,13 +42,13 @@ export function wallIndex(vert, tri) {
   }
   return { vert, tri, zMin, bins };
 }
-// Radio de la pared exterior a la altura z y ángulo a (rad): corta la malla con un plano
-// y busca el punto más lejano del eje en esa dirección. null si no hay pared ahí.
-export function wallRadius(idx, z, a) {
+// Radio de la pared exterior a la altura z y ángulo a (rad): corta la malla con un plano.
+// Con un radio esperado elige la intersección más cercana, para ignorar el asa y salientes.
+export function wallRadius(idx, z, a, expected = null) {
   const k = Math.floor(z - idx.zMin), list = idx.bins[k];
   if (!list) return null;
   const dx = Math.cos(a), dy = Math.sin(a), V = idx.vert, T = idx.tri;
-  let best = null;
+  let best = null, bestDistance = Infinity;
   for (const t of list) {
     const pts = [];
     for (let e = 0; e < 3; e++) {
@@ -64,18 +64,22 @@ export function wallRadius(idx, z, a) {
     const den = dx * ey - dy * ex;
     if (Math.abs(den) < 1e-12) continue;
     const r = (pts[0] * ey - pts[1] * ex) / den, s = (pts[0] * dy - pts[1] * dx) / den;
-    if (r > 0 && s >= -1e-9 && s <= 1 + 1e-9 && (best === null || r > best)) best = r;
+    if (r > 0 && s >= -1e-9 && s <= 1 + 1e-9) {
+      const distance = Number.isFinite(expected) ? Math.abs(r - expected) : -r;
+      if (distance < bestDistance) { best = r; bestDistance = distance; }
+    }
   }
   return best;
 }
 // Radio donde apoyar un diseño: mide la pared en el centro y cerca de los 4 bordes.
 // Relieve: el más chico (así toca la pared en todo su contorno y se hunde un poco donde sobresale).
 // Grabado: el más grande (así corta la pared en todo el diseño).
-export function snapRadius(idx, it, W, H, cosP, engrave) {
+export function snapRadius(idx, it, W, H, cosP, sinP, engrave) {
   const rs = [];
   const a0 = (it.angle * Math.PI) / 180;
   for (const [fu, fw] of [[0, 0], [-0.4, 0], [0.4, 0], [0, -0.4], [0, 0.4]]) {
-    const r = wallRadius(idx, it.h + fw * H * cosP, a0 + (fu * W) / it.r);
+    const expected = it.r + fw * H * sinP;
+    const r = wallRadius(idx, it.h + fw * H * cosP, a0 + (fu * W) / it.r, expected);
     if (r) rs.push(r);
   }
   if (!rs.length) return null;
@@ -111,7 +115,7 @@ export function buildReliefs(M, cs0, design, p, axis, wall) {
     const a0 = (it.angle * Math.PI) / 180;
     // Pared real: el diseño se apoya donde está la pared de verdad (no en el cono ideal).
     if (wall && p.snap !== false) {
-      const r = snapRadius(wall, it, lay.W * it.s, lay.H * it.s, cosP, engrave);
+      const r = snapRadius(wall, it, lay.W * it.s, lay.H * it.s, cosP, sinP, engrave);
       if (r) { it.r = r; snapped++; }
     }
     it.r += it.dr || 0;
@@ -137,6 +141,9 @@ export function buildReliefs(M, cs0, design, p, axis, wall) {
 //   relieve: chop ∪ diseños   ·   grabado: chop − diseños
 export function combineAll(M, chop, tools, mode, onProgress) {
   const engrave = mode === 'engrave';
+  const chopParts = chop.decompose();
+  const chopPieces = chopParts.length;
+  chopParts.forEach((x) => x.delete());
   let acc = chop;
   const B = 8;
   for (let i = 0; i < tools.length; i += B) {
@@ -153,7 +160,7 @@ export function combineAll(M, chop, tools, mode, onProgress) {
   const parts = acc.decompose();
   const pieces = parts.length;
   parts.forEach((x) => x.delete());
-  return { result: acc, check: { mode: engrave ? 'engrave' : 'relief', status, pieces, volume: acc.volume(), chopVolume: chop.volume(),
+  return { result: acc, check: { mode: engrave ? 'engrave' : 'relief', status, pieces, chopPieces, volume: acc.volume(), chopVolume: chop.volume(),
     genus: acc.genus(), chopGenus: chop.genus() } };
 }
 export const unionAll = (M, chop, reliefs, onProgress) => combineAll(M, chop, reliefs, 'relief', onProgress);

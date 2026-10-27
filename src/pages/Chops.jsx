@@ -217,7 +217,7 @@ function ChopsApp() {
       setCheck(r.check);
       if (r.check.status !== 'NoError') throw new Error('La operación no dio un sólido válido (' + r.check.status + '). Probá con otra profundidad o revisá el modelo.');
       // Grabado: si atravesó la pared aparecen agujeros (sube el genus) o pedazos sueltos.
-      if (r.check.mode === 'engrave' && (r.check.genus > r.check.chopGenus || r.check.pieces > 1)) {
+      if (r.check.mode === 'engrave' && (r.check.genus > r.check.chopGenus || r.check.pieces > r.check.chopPieces)) {
         throw new Error('El grabado atraviesa la pared del chop (queda agujereado). Bajá la profundidad del grabado y volvé a descargar. No se descargó nada.');
       }
       download(toBinarySTL([r.mesh]), `${chopName || 'chop'}-personalizado.stl`);
@@ -544,16 +544,23 @@ function ChopsApp() {
           </button>
           <small className="kc-muted">{p.mode === 'engrave'
             ? 'Vista previa: en oscuro, las zonas que se van a grabar. Al descargar se restan de verdad de la pared (puede tardar unos segundos).'
-            : 'La vista previa muestra los diseños sobre el chop. Al descargar se hace la unión real en una sola pieza (puede tardar unos segundos).'}</small>
+            : 'La vista previa muestra los diseños sobre el chop. Al descargar se hace la unión real con el modelo (puede tardar unos segundos).'}</small>
           {layout?.warnings.map((w, i) => <div key={i} className="kc-note">⚠️ {w}</div>)}
           {error && <div className="kc-warn-inline">{error}</div>}
-          {check && check.status === 'NoError' && (
-            <div className={check.pieces === 1 ? 'kc-tip' : 'kc-note'}>
-              {check.pieces === 1
-                ? <>✅ <b>Sólido verificado:</b> una sola pieza cerrada{check.mode === 'engrave' ? ', sin perforar la pared' : ''}. Volumen {Math.round(check.volume / 1000)} cm³ (el chop solo: {Math.round(check.chopVolume / 1000)} cm³).</>
-                : <>⚠️ El STL salió en <b>{check.pieces} piezas</b>: algún diseño no toca la pared. Subí la profundidad o corregí los radios para que la superficie celeste coincida con el chop.</>}
-            </div>
-          )}
+          {check && check.status === 'NoError' && (() => {
+            const extraPieces = check.pieces > check.chopPieces;
+            const perforated = check.mode === 'engrave' && check.genus > check.chopGenus;
+            const valid = !extraPieces && !perforated;
+            return (
+              <div className={valid ? 'kc-tip' : 'kc-note'}>
+                {valid
+                  ? <>✅ <b>Sólido verificado:</b> {check.pieces === 1 ? 'una sola pieza cerrada' : `${check.pieces} componentes cerrados, igual que el STL original`}{check.mode === 'engrave' ? ', sin nuevas perforaciones' : ''}. Volumen {Math.round(check.volume / 1000)} cm³ (el chop solo: {Math.round(check.chopVolume / 1000)} cm³).</>
+                  : check.mode === 'engrave'
+                    ? <>⚠️ El grabado dañó la geometría: revisá la profundidad y que los diseños estén apoyados sobre el cuerpo del chop.</>
+                    : <>⚠️ El STL salió en <b>{check.pieces} piezas</b> (el original tenía {check.chopPieces}): algún diseño no toca la pared. Subí la profundidad o corregí los radios.</>}
+              </div>
+            );
+          })()}
           <div className="kc-tip"><b>Primera versión:</b> chops cilíndricos o cónicos y diseños SVG, en relieve o grabado. Revisá siempre el STL en tu slicer antes de imprimir.</div>
         </aside>
       </div>
