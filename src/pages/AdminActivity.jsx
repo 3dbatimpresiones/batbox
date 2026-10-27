@@ -23,7 +23,7 @@ const SORTS = [
 const SORT_NOTE = { minutes_total: 'de uso en total', minutes_cotizador: 'en el Cotizador', minutes_batbox: 'en BATBOX', minutes_juego: 'jugando Maker Tycoon' };
 const APPS = [['minutes_cotizador', 'b-cot', 'Cotizador'], ['minutes_batbox', 'b-bb', 'BATBOX'], ['minutes_juego', 'b-game', 'Juego']];
 const SECTION = {
-  inicio: 'Inicio', tools: 'Herramientas', academy: 'Tutoriales', wiki: 'WikiBAT', media: 'Multimedia', library: 'Recursos',
+  inicio: 'Inicio', tools: 'Herramientas', academy: 'Tutoriales', wiki: 'WikiBAT', media: 'Multimedia', library: 'Recursos', produccion: 'Planificador de producción',
   community: 'Comunidad', club: 'Makers Club', acceso: 'Mi cuenta', admin: 'Panel admin', buscar: 'Búsqueda', ver: 'viendo un contenido',
 };
 const REFRESH = 30 * 1000;

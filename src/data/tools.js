@@ -60,6 +60,17 @@ export const TOOLS = [
     featured: true,
   },
   {
+    id: 'planificador-produccion-3d',
+    name: 'Planificador de producción 3D',
+    description: 'Calculá tandas, horas, consumo por color, reserva de material y reparto entre impresoras desde un G-code, un 3MF laminado o con carga manual.',
+    icon: 'clock',
+    category: 'Producción',
+    status: 'available',
+    access: 'free',
+    url: '#/produccion',
+    featured: true,
+  },
+  {
     id: 'peso-de-carretes-vacios',
     name: 'Peso de Carretes Vacíos',
     description: 'Base de datos comunitaria de bobinas vacías: buscá tu marca y calculá cuánto filamento te queda.',

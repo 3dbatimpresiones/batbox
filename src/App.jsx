@@ -18,6 +18,7 @@ import Feedback from './pages/Feedback.jsx';
 const Keychains = lazy(() => import('./pages/Keychains.jsx'));
 // El Personalizador de chops también trae el motor 3D: se descarga solo al abrirlo.
 const Chops = lazy(() => import('./pages/Chops.jsx'));
+const Production = lazy(() => import('./pages/Production.jsx'));
 const Loading = () => <div className="empty"><div className="spinner" /></div>;
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
@@ -38,6 +39,7 @@ function Page({ route }) {
     case 'pedidos': return <Orders />;
     case 'llaveros': return <Suspense fallback={<Loading />}><Keychains /></Suspense>;
     case 'chops': return <Suspense fallback={<Loading />}><Chops /></Suspense>;
+    case 'produccion': return <Suspense fallback={<Loading />}><Production /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;
     case 'sugerencias': return <Feedback source={query.source || ''} />;
