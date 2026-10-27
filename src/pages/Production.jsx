@@ -34,7 +34,7 @@ const TUTORIAL_STEPS = [
   { icon: 'calculator', targets: ['[data-tour="order"]'], title: 'Definí el pedido y las impresoras', text: 'Ingresá unidades solicitadas, piezas por cama e impresoras equivalentes. El planificador calcula tandas, excedentes y duración.', tips: ['Las impresoras del mismo cálculo deben tener rendimiento y sistema equivalentes.', 'Podés elegir camas completas o una última cama parcial.'] },
   { icon: 'refresh', targets: ['[data-tour="filaments"]'], title: 'Elegí el sistema multicolor correcto', text: 'AMS y multicabezal no desperdician material de la misma manera.', tips: ['AMS: conserva purga y torre identificadas.', 'Multicabezal: no inventa purga; solo cuenta cebado o torre informados.'] },
   { icon: 'shield', targets: ['[data-tour="reserve"]', '[data-tour="order"]'], title: '¿Qué es el margen de reserva?', text: 'Es material extra de seguridad agregado al consumo calculado. Un margen del 10 % transforma 1,000 kg necesarios en 1,100 kg recomendados.', tips: ['Cubre fallas, purgas, restos de bobina, calibraciones y pequeñas diferencias reales.', 'No agrega piezas ni tiempo: solo aumenta el filamento recomendado.', 'Para trabajos confiables, 10 % es un buen punto de partida.'] },
-  { icon: 'check', targets: ['[data-tour="results"]', '[data-tour="calculate"]'], title: 'Leé el plan de compra', text: 'El resultado separa consumo exacto de compra comercial. Cada color se redondea a bobinas completas de 1 kg.', tips: ['Cargá tu stock para comprar solamente el faltante.', 'Copiá el resumen para WhatsApp o exportalo como CSV.'] },
+  { icon: 'check', targets: ['[data-tour="results"]', '[data-tour="calculate"]'], title: 'Calculá y leé el plan de compra', text: 'Tocá “Calcular producción”. El resultado separa consumo exacto de compra comercial y redondea cada color a bobinas completas de 1 kg.', tips: ['Cargá tu stock para comprar solamente el faltante.', 'Revisá los kilos y las bobinas necesarias por cada color.', 'Copiá el resumen para WhatsApp o exportalo como CSV.'] },
 ];
 
 function Origin({ value }) {
@@ -46,11 +46,12 @@ function Field({ label, origin, error, children, hint }) {
   return <label className={'pp-field' + (error ? ' error' : '')}><span>{label}<Origin value={origin} /></span>{children}{hint && <small>{hint}</small>}{error && <em>{error}</em>}</label>;
 }
 
-function TutorialModal({ step, setStep, onClose }) {
+function TutorialModal({ step, setStep, onClose, targetRect }) {
   const item = TUTORIAL_STEPS[step];
   const last = step === TUTORIAL_STEPS.length - 1;
   return <>
     <div className="pp-tutorial-shade" aria-hidden="true" />
+    {targetRect && <div className="pp-tour-spotlight" style={targetRect} aria-hidden="true" />}
     <div className="pp-tutorial-backdrop" role="presentation"><section className="pp-tutorial" role="dialog" aria-labelledby="pp-tutorial-title">
       <div className="pp-tutorial-top"><span>TUTORIAL GUIADO · {step + 1} DE {TUTORIAL_STEPS.length}</span><button type="button" onClick={onClose} aria-label="Cerrar tutorial"><Icon name="x" size={19} /></button></div>
       <div className="pp-tutorial-progress">{TUTORIAL_STEPS.map((_, index) => <i key={index} className={index <= step ? 'done' : ''} />)}</div>
@@ -154,6 +155,7 @@ export default function Production() {
   const [errors, setErrors] = useState({});
   const [tutorialOpen, setTutorialOpen] = useState(() => localStorage.getItem(TUTORIAL_STORAGE) !== 'seen');
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [tourRect, setTourRect] = useState(null);
 
   const closeTutorial = () => { localStorage.setItem(TUTORIAL_STORAGE, 'seen'); setTutorialOpen(false); };
   const openTutorial = () => { setTutorialStep(0); setTutorialOpen(true); };
@@ -161,19 +163,35 @@ export default function Production() {
   useEffect(() => { localStorage.setItem(STORAGE, JSON.stringify({ form, result })); }, [form, result]);
   useEffect(() => {
     if (!tutorialOpen) return undefined;
-    const previous = document.body.style.overflow;
     const onKey = (event) => { if (event.key === 'Escape') closeTutorial(); };
-    document.body.style.overflow = 'hidden'; window.addEventListener('keydown', onKey);
-    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', onKey); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [tutorialOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (!tutorialOpen) return undefined;
+    if (!tutorialOpen) { setTourRect(null); return undefined; }
     const item = TUTORIAL_STEPS[tutorialStep];
     const target = item.targets.map((selector) => document.querySelector(selector)).find(Boolean);
-    if (!target) return undefined;
-    target.classList.add('pp-tour-target');
-    const timer = window.setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' }), 80);
-    return () => { window.clearTimeout(timer); target.classList.remove('pp-tour-target'); };
+    if (!target) { setTourRect(null); return undefined; }
+    const updateRect = () => {
+      const rect = target.getBoundingClientRect();
+      const padding = 6;
+      const left = Math.max(8, rect.left - padding);
+      const top = Math.max(8, rect.top - padding);
+      const right = Math.min(window.innerWidth - 8, rect.right + padding);
+      const bottom = Math.min(window.innerHeight - 8, rect.bottom + padding);
+      setTourRect({ left, top, width: Math.max(0, right - left), height: Math.max(0, bottom - top) });
+    };
+    updateRect();
+    const timer = window.setTimeout(() => { target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' }); updateRect(); }, 80);
+    const settled = window.setTimeout(updateRect, 700);
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(updateRect) : null;
+    observer?.observe(target);
+    window.addEventListener('scroll', updateRect, true);
+    window.addEventListener('resize', updateRect);
+    return () => {
+      window.clearTimeout(timer); window.clearTimeout(settled); observer?.disconnect();
+      window.removeEventListener('scroll', updateRect, true); window.removeEventListener('resize', updateRect);
+    };
   }, [tutorialOpen, tutorialStep, file, result]);
 
   const setField = (key, value, originKey = key) => setForm((old) => ({ ...old, [key]: value, origins: { ...old.origins, [originKey]: 'manual' } }));
@@ -246,7 +264,7 @@ export default function Production() {
   const reset = () => { setForm({ ...DEFAULT, filaments: [blankFilament()] }); setResult(null); setErrors({}); setFile(null); setPartialFile(null); setCompanionState({ busy: false, error: '' }); localStorage.removeItem(STORAGE); };
 
   return <div className="pp-page">
-    {tutorialOpen && <TutorialModal step={tutorialStep} setStep={setTutorialStep} onClose={closeTutorial} />}
+    {tutorialOpen && <TutorialModal step={tutorialStep} setStep={setTutorialStep} onClose={closeTutorial} targetRect={tourRect} />}
     <PageHead icon="clock" label="HERRAMIENTAS · BATBOX" title="Planificador de producción 3D" text="Calculá tandas, horas, filamentos, reserva y reparto entre impresoras a partir de un laminado o con carga manual.">
       <div className="pp-head-actions"><button type="button" className="btn ghost sm" onClick={openTutorial}><Icon name="book" size={15} /> Cómo usar</button><FeedbackButton source="planificador-produccion" /></div>
     </PageHead>
