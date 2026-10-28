@@ -11,7 +11,7 @@ const SplitViewer = forwardRef(function SplitViewer({ parts, selected, hidden, m
   useEffect(() => { clickRef.current = onFaceClick; addRef.current = onNodeAdd; moveRef.current = onNodeMove; selectNodeRef.current = onNodeSelect; regionModeRef.current = regionMode; nodeModeRef.current = nodeMode; }, [onFaceClick, onNodeAdd, onNodeMove, onNodeSelect, regionMode, nodeMode]);
   useImperativeHandle(ref, () => ({ fit: () => state.current?.fit(), view: (axis) => state.current?.view(axis) }), []);
   useEffect(() => {
-    const el = host.current, renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace;
+    const el = host.current, renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; el.appendChild(renderer.domElement);
     const scene = new THREE.Scene(); scene.background = new THREE.Color('#11152a');
     const persp = new THREE.PerspectiveCamera(40, 1, .1, 100000), ortho = new THREE.OrthographicCamera(-100, 100, 100, -100, .1, 100000);
     const controls = new OrbitControls(persp, renderer.domElement); controls.enableDamping = true; controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.PAN };
