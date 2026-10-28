@@ -7,7 +7,7 @@ function makeGeometry(p, palette = []) { const g = new THREE.BufferGeometry(); g
 function selectionGeometry(part, mask) { const index = []; for (let f = 0; f < mask.length; f++) if (mask[f]) index.push(part.tri[f * 3], part.tri[f * 3 + 1], part.tri[f * 3 + 2]); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(part.vert, 3)); g.setIndex(index); g.computeVertexNormals(); return g; }
 
 const SplitViewer = forwardRef(function SplitViewer({ parts, selected, hidden, mode, projection, exploded, plane, palette = [], regionSelection, regionMode = false, onFaceClick, perimeter, nodeMode = false, selectedNode = -1, onNodeSelect, onNodeAdd, onNodeMove }, ref) {
-  const host = useRef(null), state = useRef(null), lastParts = useRef(parts), clickRef = useRef(onFaceClick), addRef = useRef(onNodeAdd), moveRef = useRef(onNodeMove), selectNodeRef = useRef(onNodeSelect), regionModeRef = useRef(regionMode), nodeModeRef = useRef(nodeMode);
+  const host = useRef(null), state = useRef(null), lastParts = useRef(null), clickRef = useRef(onFaceClick), addRef = useRef(onNodeAdd), moveRef = useRef(onNodeMove), selectNodeRef = useRef(onNodeSelect), regionModeRef = useRef(regionMode), nodeModeRef = useRef(nodeMode);
   useEffect(() => { clickRef.current = onFaceClick; addRef.current = onNodeAdd; moveRef.current = onNodeMove; selectNodeRef.current = onNodeSelect; regionModeRef.current = regionMode; nodeModeRef.current = nodeMode; }, [onFaceClick, onNodeAdd, onNodeMove, onNodeSelect, regionMode, nodeMode]);
   useImperativeHandle(ref, () => ({ fit: () => state.current?.fit(), view: (axis) => state.current?.view(axis) }), []);
   useEffect(() => {
