@@ -7,7 +7,8 @@ import { calculateProduction, COLOR_SYSTEM_LABELS, formatDuration, formatGrams, 
 import { mergePlateStats, parseProductionFile } from '../lib/production/parser.js';
 import '../styles/production.css';
 
-const STORAGE = 'bb-production-planner-v1';
+const STORAGE = 'bb-production-planner-v2';
+const LEGACY_STORAGE = 'bb-production-planner-v1';
 const TUTORIAL_STORAGE = 'bb-production-tutorial-v1';
 const palette = ['#EF4444', '#FFFFFF', '#111827', '#5DDADB', '#FBBF24', '#A78BFA'];
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -172,6 +173,7 @@ export default function Production() {
   const closeTutorial = () => { localStorage.setItem(TUTORIAL_STORAGE, 'seen'); setTutorialOpen(false); };
   const openTutorial = () => { setTutorialStep(0); setTutorialOpen(true); };
 
+  useEffect(() => { localStorage.removeItem(LEGACY_STORAGE); }, []);
   useEffect(() => { localStorage.setItem(STORAGE, JSON.stringify({ form, result })); }, [form, result]);
   useEffect(() => {
     if (!tutorialOpen) return undefined;
