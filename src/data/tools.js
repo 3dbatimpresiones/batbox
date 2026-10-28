@@ -71,6 +71,17 @@ export const TOOLS = [
     featured: true,
   },
   {
+    id: 'rodillos-texturizadores',
+    name: 'Creador de rodillos texturizadores',
+    description: 'Diseñá rodillos huecos con texturas continuas para cerámica, plastilina, arcilla polimérica y materiales similares. Vista 3D y STL listo para imprimir.',
+    icon: 'box',
+    category: 'Modelado',
+    status: 'available',
+    access: 'club',
+    url: '#/rodillos',
+    featured: true,
+  },
+  {
     id: 'peso-de-carretes-vacios',
     name: 'Peso de Carretes Vacíos',
     description: 'Base de datos comunitaria de bobinas vacías: buscá tu marca y calculá cuánto filamento te queda.',
