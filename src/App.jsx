@@ -20,6 +20,7 @@ const Keychains = lazy(() => import('./pages/Keychains.jsx'));
 const Chops = lazy(() => import('./pages/Chops.jsx'));
 const Production = lazy(() => import('./pages/Production.jsx'));
 const Rollers = lazy(() => import('./pages/Rollers.jsx'));
+const Split = lazy(() => import('./pages/Split.jsx'));
 const Loading = () => <div className="empty"><div className="spinner" /></div>;
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
@@ -42,6 +43,7 @@ function Page({ route }) {
     case 'chops': return <Suspense fallback={<Loading />}><Chops /></Suspense>;
     case 'produccion': return <Suspense fallback={<Loading />}><Production /></Suspense>;
     case 'rodillos': return <Suspense fallback={<Loading />}><Rollers /></Suspense>;
+    case 'separador': return <Suspense fallback={<Loading />}><Split /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;
     case 'sugerencias': return <Feedback source={query.source || ''} />;

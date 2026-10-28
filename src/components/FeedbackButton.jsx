@@ -6,6 +6,7 @@ export const FEEDBACK_TOOLS = {
   'personalizador-chops': { label: 'Personalizador de chops 3D', back: '#/chops' },
   'planificador-produccion': { label: 'Planificador de producción 3D', back: '#/produccion' },
   'rodillos-texturizadores': { label: 'Creador de rodillos texturizadores', back: '#/rodillos' },
+  'batsplit-3d': { label: 'BATSplit 3D', back: '#/separador' },
   'peso-carretes-vacios': { label: 'Peso de Carretes Vacíos', back: 'https://3dbatimpresiones.github.io/dbcarretesvacios/' },
   'huecos-pines': { label: 'Creador de Huecos para Pines', back: '#/tools' },
   'cotizador-pro': { label: 'Cotizador 3DBAT PRO 2.0', back: 'https://3dbatimpresiones.github.io/cotizador-3dbat-pro/' },

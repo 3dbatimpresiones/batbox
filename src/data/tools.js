@@ -82,6 +82,17 @@ export const TOOLS = [
     featured: true,
   },
   {
+    id: 'batsplit-3d',
+    name: 'BATSplit 3D',
+    description: 'Importá STL, OBJ o 3MF y separalo por cuerpos, regiones, planos o contornos editables con nodos. Exportá cada pieza como STL o todas juntas en ZIP.',
+    icon: 'box',
+    category: 'Modelado',
+    status: 'available',
+    access: 'club',
+    url: '#/separador',
+    featured: true,
+  },
+  {
     id: 'peso-de-carretes-vacios',
     name: 'Peso de Carretes Vacíos',
     description: 'Base de datos comunitaria de bobinas vacías: buscá tu marca y calculá cuánto filamento te queda.',
