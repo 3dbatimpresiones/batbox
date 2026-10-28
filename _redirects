@@ -1,0 +1,4 @@
+# Cloudflare Pages (Hostinger usa .htaccess). Direcciones del sitio viejo de 3dbat.com.ar.
+/sobre-mi    /#sobre-mi            301
+/comunidad   /batbox/#/community   301
+/proyectos   /                     301

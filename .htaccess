@@ -1,0 +1,35 @@
+# Hostinger (Apache/LiteSpeed). Cloudflare Pages ignora este archivo.
+# Las direcciones del sitio viejo de 3dbat.com.ar siguen funcionando:
+# llevan a la sección equivalente de la web nueva (301 = cambio permanente, Google lo actualiza).
+RewriteEngine On
+RewriteRule ^sobre-mi/?$ /#sobre-mi [R=301,NE,L]
+RewriteRule ^comunidad/?$ /batbox/#/community [R=301,NE,L]
+RewriteRule ^proyectos/?$ / [R=301,L]
+
+# Motor 3D del Creador de Llaveros (BATBOX): el navegador lo compila más rápido con su tipo correcto.
+AddType application/wasm .wasm
+
+# Cabeceras de seguridad (auditoría 2026-10-22)
+<IfModule mod_headers.c>
+  # Solo HTTPS durante 1 año (el navegador no vuelve a intentar http://)
+  Header always set Strict-Transport-Security "max-age=31536000"
+  # Nadie puede mostrar la web dentro de un marco de otra página (clickjacking)
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Content-Security-Policy "frame-ancestors 'self'; upgrade-insecure-requests"
+  # El navegador no "adivina" tipos de archivo
+  Header always set X-Content-Type-Options "nosniff"
+  # A otras webs solo se les manda el dominio, no la página exacta
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # Sin cámara, micrófono, ubicación ni pagos
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+  # Las páginas (index.html de la portada y de BATBOX) se revisan siempre: así cada
+  # publicación se ve al instante sin Ctrl+F5. Los archivos de assets/ tienen el
+  # nombre con huella (cambia en cada versión), así que se pueden guardar mucho tiempo.
+  <FilesMatch "\.html?$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  <If "%{REQUEST_URI} =~ m#/assets/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+</IfModule>
