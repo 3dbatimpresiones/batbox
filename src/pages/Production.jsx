@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import FeedbackButton from '../components/FeedbackButton.jsx';
+import AccessPanel from '../components/AccessPanel.jsx';
 import Icon from '../components/Icon.jsx';
 import { Options, PageHead } from '../components/ui.jsx';
 import { calculateProduction, COLOR_SYSTEM_LABELS, formatDuration, formatGrams, formatNumber } from '../lib/production/calculator.js';
@@ -156,7 +157,7 @@ function downloadCsv(form, result) {
 }
 
 export default function Production() {
-  const { notify } = useAuth();
+  const { notify, isMember, access } = useAuth();
   const fileRef = useRef(null), partialFileRef = useRef(null), companionRef = useRef(null);
   const [form, setForm] = useState(safeSaved);
   const [file, setFile] = useState(null), [plate, setPlate] = useState(0);
@@ -169,7 +170,7 @@ export default function Production() {
   const [tutorialOpen, setTutorialOpen] = useState(() => localStorage.getItem(TUTORIAL_STORAGE) !== 'seen');
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tourRect, setTourRect] = useState(null);
-  const [guidedMode, setGuidedMode] = useState(true);
+  const [guidedMode, setGuidedMode] = useState(false);
   const [plannerStep, setPlannerStep] = useState(0);
 
   const closeTutorial = () => { localStorage.setItem(TUTORIAL_STORAGE, 'seen'); setTutorialOpen(false); };
@@ -278,6 +279,9 @@ export default function Production() {
     setErrors({}); setResult(next); if (guidedMode) setPlannerStep(4); notify('ok', 'Plan de producción calculado.');
   };
   const reset = () => { setForm({ ...DEFAULT, filaments: [blankFilament()] }); setResult(null); setErrors({}); setFile(null); setPartialFile(null); setCompanionState({ busy: false, error: '' }); localStorage.removeItem(STORAGE); };
+
+  if (access === 'loading') return <div className="empty"><div className="spinner" /></div>;
+  if (!isMember) return <div className="club-locked"><div className="club-locked-head"><div className="section-label">MAKERS CLUB · HERRAMIENTA</div><h1>Planificador de producción 3D</h1><p>Calculá tandas, horas, filamentos, reserva y reparto entre impresoras desde un G-code, un 3MF o con carga manual.</p><FeedbackButton source="planificador-produccion" /></div><AccessPanel intro="Herramienta privada para miembros del Makers Club" /></div>;
 
   return <div className="pp-page">
     {tutorialOpen && <TutorialModal step={tutorialStep} setStep={setTutorialStep} onClose={closeTutorial} targetRect={tourRect} />}

@@ -66,7 +66,7 @@ export const TOOLS = [
     icon: 'clock',
     category: 'Producción',
     status: 'available',
-    access: 'free',
+    access: 'club',
     url: '#/produccion',
     featured: true,
   },
