@@ -2,6 +2,23 @@
 .pp-page .page-head .tool-feedback { margin-left: auto; }
 .pp-head-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 .pp-head-actions .tool-feedback { margin-left: 0 !important; }
+.pp-guided-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 18px; background: rgba(19,29,71,.55); }
+.pp-guided-toggle { display: flex; align-items: center; gap: 10px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 13px; background: rgba(10,17,49,.7); color: #fff; text-align: left; }
+.pp-guided-toggle.active { border-color: var(--cyan); background: rgba(93,218,219,.14); box-shadow: 0 0 0 3px rgba(93,218,219,.08); }
+.pp-guided-toggle svg { color: var(--cyan); }
+.pp-guided-toggle span { display: flex; flex-direction: column; gap: 2px; }
+.pp-guided-toggle b { font-size: 13px; }
+.pp-guided-toggle small { color: var(--muted); font-size: 10px; }
+.pp-guided-progress { display: flex; align-items: center; gap: 13px; color: #fff; font-size: 12px; }
+.pp-guided-progress span { display: flex; gap: 6px; }
+.pp-guided-progress button { width: 29px; height: 29px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: rgba(10,17,49,.72); color: var(--muted); font-size: 11px; font-weight: 900; }
+.pp-guided-progress button.done { border-color: rgba(93,218,219,.55); color: var(--cyan); }
+.pp-guided-progress button.active { border-color: var(--cyan); background: var(--cyan); color: #10183f; box-shadow: 0 0 18px rgba(93,218,219,.28); }
+.pp-stage-hidden { display: none !important; }
+.pp-form-grid.guided { grid-template-columns: 1fr; }
+.pp-step-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.pp-step-actions .btn { display: inline-flex; align-items: center; gap: 7px; }
+.pp-result-back { margin: 0 0 14px; padding: 0 0 12px; border-top: 0; border-bottom: 1px solid var(--line); }
 .pp-tutorial-shade { position: fixed; z-index: 10000; inset: 0; pointer-events: none; background: rgba(5,10,35,.62); backdrop-filter: blur(4px); }
 .pp-tour-shades { position: fixed; z-index: 10000; inset: 0; pointer-events: none; }
 .pp-tour-shades i { position: fixed; display: block; background: rgba(5,10,35,.52); backdrop-filter: blur(4px) saturate(.72); }
@@ -204,6 +221,12 @@
   .pp-companion .btn { width: 100%; }
   .pp-material-plan-head, .pp-material-total { align-items: flex-start; flex-direction: column; }
   .pp-material-plan article { grid-template-columns: 1fr; }
+  .pp-guided-bar { align-items: stretch; flex-direction: column; }
+  .pp-guided-toggle { justify-content: center; }
+  .pp-guided-progress { justify-content: space-between; }
+  .pp-guided-progress b { white-space: nowrap; }
+  .pp-step-actions { align-items: stretch; flex-direction: column-reverse; }
+  .pp-step-actions .btn { justify-content: center; width: 100%; }
   .pp-tutorial-backdrop { justify-items: center; padding: 10px; }
   .pp-tour-top-left, .pp-tour-top-right { align-items: start; }
   .pp-tour-bottom-left, .pp-tour-bottom-right { align-items: end; }

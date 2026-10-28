@@ -169,6 +169,8 @@ export default function Production() {
   const [tutorialOpen, setTutorialOpen] = useState(() => localStorage.getItem(TUTORIAL_STORAGE) !== 'seen');
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tourRect, setTourRect] = useState(null);
+  const [guidedMode, setGuidedMode] = useState(true);
+  const [plannerStep, setPlannerStep] = useState(0);
 
   const closeTutorial = () => { localStorage.setItem(TUTORIAL_STORAGE, 'seen'); setTutorialOpen(false); };
   const openTutorial = () => { setTutorialStep(0); setTutorialOpen(true); };
@@ -273,7 +275,7 @@ export default function Production() {
   const calculate = () => {
     const next = calculateProduction(input);
     if (!next.ok) { setErrors(next.errors); setResult(null); notify('err', 'Revisá los campos marcados antes de calcular.'); return; }
-    setErrors({}); setResult(next); notify('ok', 'Plan de producción calculado.');
+    setErrors({}); setResult(next); if (guidedMode) setPlannerStep(4); notify('ok', 'Plan de producción calculado.');
   };
   const reset = () => { setForm({ ...DEFAULT, filaments: [blankFilament()] }); setResult(null); setErrors({}); setFile(null); setPartialFile(null); setCompanionState({ busy: false, error: '' }); localStorage.removeItem(STORAGE); };
 
@@ -283,18 +285,27 @@ export default function Production() {
       <div className="pp-head-actions"><button type="button" className="btn ghost sm" onClick={openTutorial}><Icon name="book" size={15} /> Cómo usar</button><FeedbackButton source="planificador-produccion" /></div>
     </PageHead>
 
-    <FilePanel info={file} selected={plate} setSelected={setPlate} onFile={(f) => load(f)} busy={fileState.busy} error={fileState.error} inputRef={fileRef} companionRef={companionRef} onCompanion={loadCompanion} companionState={companionState} />
+    <div className="pp-guided-bar">
+      <button type="button" className={'pp-guided-toggle' + (guidedMode ? ' active' : '')} aria-pressed={guidedMode} onClick={() => setGuidedMode((value) => !value)}><Icon name={guidedMode ? 'check' : 'grid'} size={17} /><span><b>Paso por paso</b><small>{guidedMode ? 'Activado · una etapa a la vez' : 'Desactivado · vista completa'}</small></span></button>
+      {guidedMode && <div className="pp-guided-progress"><b>Paso {plannerStep + 1} de 5</b><span>{['Archivo', 'Pedido', 'Modalidad', 'Filamentos', 'Resultado'].map((label, index) => <button type="button" key={label} className={index === plannerStep ? 'active' : index < plannerStep ? 'done' : ''} onClick={() => setPlannerStep(index)} aria-label={`Ir a ${label}`}>{index + 1}</button>)}</span></div>}
+    </div>
 
-    <div className="pp-form-grid">
-      <section className="card pp-card" data-tour="order">
+    <div className={guidedMode && plannerStep !== 0 ? 'pp-stage-hidden' : ''}>
+      <FilePanel info={file} selected={plate} setSelected={setPlate} onFile={(f) => load(f)} busy={fileState.busy} error={fileState.error} inputRef={fileRef} companionRef={companionRef} onCompanion={loadCompanion} companionState={companionState} />
+      {guidedMode && <div className="pp-step-actions"><span /><button type="button" className="btn primary" onClick={() => setPlannerStep(1)}>Siguiente: pedido <Icon name="arrow-right" size={16} /></button></div>}
+    </div>
+
+    <div className={'pp-form-grid' + (guidedMode ? ' guided' : '')}>
+      <section className={'card pp-card' + (guidedMode && plannerStep !== 1 ? ' pp-stage-hidden' : '')} data-tour="order">
         <div className="pp-section-head"><div><div className="section-label">1 · PEDIDO</div><h2>Datos del trabajo</h2></div></div>
         <div className="pp-two"><Field label="Nombre del trabajo" origin={form.origins.jobName}><input value={form.jobName} onChange={(e) => setField('jobName', e.target.value)} placeholder="Ej.: Pedido de tapas" /></Field><Field label="Cliente (opcional)" origin={form.origins.client}><input value={form.client} onChange={(e) => setField('client', e.target.value)} placeholder="Nombre o empresa" /></Field></div>
         <div className="pp-three"><Field label="Unidades solicitadas" origin={form.origins.quantity} error={errors.quantity}><input type="number" min="1" step="1" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} /></Field><Field label="Piezas por cama" origin={form.origins.piecesPerBed} error={errors.piecesPerBed} hint="Confirmalo manualmente; no contamos mallas."><input type="number" min="1" step="1" value={form.piecesPerBed} onChange={(e) => setField('piecesPerBed', e.target.value)} /></Field><Field label="Impresoras equivalentes" origin={form.origins.printers} error={errors.printers}><input type="number" min="1" step="1" value={form.printers} onChange={(e) => setField('printers', e.target.value)} /></Field></div>
         <TimeFields form={form} setField={setField} error={errors.bedSeconds} />
         <Field label="Margen de reserva" error={errors.reservePct}><div className="pp-reserve"><Options value={form.reserveMode} onChange={(value) => setForm((old) => ({ ...old, reserveMode: value }))} options={[{ value: '0', label: '0 %' }, { value: '5', label: '5 %' }, { value: '10', label: '10 %' }, { value: 'custom', label: 'Otro' }]} />{form.reserveMode === 'custom' && <div className="pp-unit"><input type="number" min="0" max="500" value={form.customReserve} onChange={(e) => setField('customReserve', e.target.value, 'reserve')} /><b>%</b></div>}</div><div className="pp-reserve-help" data-tour="reserve"><Icon name="shield" size={17} /><span><b>Es material extra de seguridad.</b> Cubre fallas, purgas, calibraciones y restos de bobina. Con {formatNumber(reservePct || 0, 0)} %, cada 1 kg calculado recomienda <strong>{formatNumber(1 + (reservePct || 0) / 100, 2)} kg</strong>. No cambia piezas ni tiempo.</span></div></Field>
+        {guidedMode && <div className="pp-step-actions"><button type="button" className="btn ghost" onClick={() => setPlannerStep(0)}>Anterior</button><button type="button" className="btn primary" onClick={() => setPlannerStep(2)}>Siguiente: modalidad <Icon name="arrow-right" size={16} /></button></div>}
       </section>
 
-      <section className="card pp-card pp-mode-card">
+      <section className={'card pp-card pp-mode-card' + (guidedMode && plannerStep !== 2 ? ' pp-stage-hidden' : '')}>
         <div className="pp-section-head"><div><div className="section-label">2 · MODALIDAD</div><h2>Última cama</h2></div></div>
         <Options value={form.mode} onChange={(value) => setForm((old) => ({ ...old, mode: value }))} options={[{ value: 'full', label: 'Camas completas' }, { value: 'partial', label: 'Última cama parcial' }]} />
         <p className="pp-help">{form.mode === 'full' ? 'Se imprimen camas iguales hasta completar el pedido. Puede haber excedentes.' : 'Las camas completas se suman con una última cama que contiene solo el resto.'}</p>
@@ -306,10 +317,11 @@ export default function Production() {
           </>}
         </>}
         {form.mode === 'partial' && remainder === 0 && <div className="pp-alert info">El pedido no tiene resto: ambas modalidades dan exactamente el mismo resultado.</div>}
+        {guidedMode && <div className="pp-step-actions"><button type="button" className="btn ghost" onClick={() => setPlannerStep(1)}>Anterior</button><button type="button" className="btn primary" onClick={() => setPlannerStep(3)}>Siguiente: filamentos <Icon name="arrow-right" size={16} /></button></div>}
       </section>
     </div>
 
-    <section className="card pp-card pp-filaments" data-tour="filaments">
+    <section className={'card pp-card pp-filaments' + (guidedMode && plannerStep !== 3 ? ' pp-stage-hidden' : '')} data-tour="filaments">
       <div className="pp-section-head"><div><div className="section-label">3 · FILAMENTOS <Origin value={form.origins.filaments} /></div><h2>Consumo por cama</h2></div><button type="button" className="btn ghost sm" onClick={() => setForm((old) => ({ ...old, filaments: [...old.filaments, blankFilament(old.filaments.length)] }))}>+ Agregar filamento</button></div>
       <div className="pp-color-system">
         <Field label="Sistema de impresión multicolor" origin={form.origins.colorSystem}>
@@ -343,9 +355,10 @@ export default function Production() {
       </div>)}</div>
     </section>
 
-    <div className="pp-calc-actions" data-tour="calculate"><button type="button" className="btn primary big" onClick={calculate}><Icon name="calculator" size={19} /> Calcular producción</button><button type="button" className="btn ghost" onClick={reset}>Restablecer</button></div>
+    <div className={'pp-calc-actions' + (guidedMode && plannerStep !== 3 ? ' pp-stage-hidden' : '')} data-tour="calculate">{guidedMode && <button type="button" className="btn ghost" onClick={() => setPlannerStep(2)}>Anterior</button>}<button type="button" className="btn primary big" onClick={calculate}><Icon name="calculator" size={19} /> Calcular producción</button><button type="button" className="btn ghost" onClick={reset}>Restablecer</button></div>
 
-    {result?.ok && <section className="pp-results" data-tour="results">
+    {result?.ok && (!guidedMode || plannerStep === 4) && <section className="pp-results" data-tour="results">
+      {guidedMode && <div className="pp-step-actions pp-result-back"><button type="button" className="btn ghost" onClick={() => setPlannerStep(3)}>Anterior: filamentos</button><span /></div>}
       <div className="pp-result-head"><div><div className="section-label">RESULTADO</div><h2>{form.jobName || 'Plan de producción'}{form.client ? ` · ${form.client}` : ''}</h2></div><div className="pp-result-actions"><button className="btn ghost sm" onClick={async () => { await navigator.clipboard.writeText(resultSummary(form, result)); notify('ok', 'Resumen copiado para WhatsApp.'); }}><Icon name="message" size={15} /> Copiar resumen</button><button className="btn ghost sm" onClick={() => downloadCsv(form, result)}><Icon name="grid" size={15} /> Exportar CSV</button></div></div>
       <div className="pp-system-result"><span>Sistema considerado</span><b>{result.colorSystemLabel}</b></div>
       {result.estimatedPartial && <div className="pp-alert">⚠️ {result.colorSystem === 'ams' ? 'En la cama parcial se escaló el material del modelo y se mantuvo fija la purga/torre identificada. Si el archivo no separa esos gramos, el resultado sigue siendo aproximado.' : 'No se aplicó ninguna purga propia de AMS. El cálculo solo mantiene como gasto fijo el cebado o torre que figure informado; el resto se escala proporcionalmente.'} El tiempo puede variar por calentamiento y cambios de herramienta.</div>}
