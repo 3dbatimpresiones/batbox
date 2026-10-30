@@ -88,7 +88,13 @@ ok('iman y suavizado no desplazan las anclas', changedTrace.positions.every((p, 
 const topGraph = meshGraph(cube);
 ok('cada tramo visible recorre aristas reales', topTrace.segments.every((seg) => seg.slice(1).every((v, i) => topGraph.faces.has([seg[i], v].sort((x, y) => x - y).join(':')))));
 const tracedMask = maskInsideLoop(cube, topTrace.route, cubeTop[0]);
-ok('el recorrido visible separa la region usada por el corte', cubeTop.every((f) => tracedMask[f]) && tracedMask.reduce((x, y) => x + y, 0) === 2);
+const curved = partFrom(M.Manifold.sphere(20, 32), 'Esfera');
+const curvedData = faceData(curved), curvedSeed = Array.from({ length: curved.tri.length / 3 }, (_, i) => i).reduce((best, f) => curvedData.normal[f * 3 + 2] > curvedData.normal[best * 3 + 2] ? f : best, 0);
+const curvedRegion = selectRegion(curved, curvedSeed, 'angle', 35);
+const curvedNodes = nodesFromRegion(curved, curvedRegion.mask, 15);
+const curvedTrace = traceLoop(curved, curvedNodes, 60, 35);
+ok('el contorno sobre superficie curva conserva anclas baricéntricas', curvedTrace.valid && curvedNodes.every((n) => baryPosition(curved, n).every(Number.isFinite)));
+ok('el contorno curvo cierra sin falsos cruces', curvedTrace.route[0] === curvedTrace.route.at(-1) && curvedTrace.crossings.length === 0);ok('el recorrido visible separa la region usada por el corte', cubeTop.every((f) => tracedMask[f]) && tracedMask.reduce((x, y) => x + y, 0) === 2);
 ok('extraer región produce dos sólidos imprimibles', vs.printable && vr.printable);
 ok('región y base conservan el volumen', Math.abs(vs.volume + vr.volume - info.volume) < .05);
 ok('profundidad de región plana coincide con el volumen esperado', Math.abs(vs.volume - 40 * 30 * 4) < .1);
