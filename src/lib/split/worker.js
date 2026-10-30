@@ -87,6 +87,13 @@ self.onmessage = async ({ data: msg }) => {
       let count = 0, area = 0; for (let i = 0; i < r.mask.length; i++) if (r.mask[i]) { count++; area += data.area[i]; }
       selection = { index: msg.index, mask: r.mask, seed: msg.face }; perimeter = null;
       const mask = new Uint8Array(r.mask); self.postMessage({ type: 'selection', id: msg.id, index: msg.index, face: msg.face, mask, count, area, color: r.color }, [mask.buffer]);
+    } else if (msg.type === 'invert-region') {
+      if (!selection || selection.index !== msg.index) throw new Error('Elegí una región antes de invertirla.');
+      const p = parts[msg.index]; let data = faceCache.get(p); if (!data) { data = faceData(p); faceCache.set(p, data); }
+      const mask = new Uint8Array(selection.mask.length); let count = 0, area = 0;
+      for (let i = 0; i < mask.length; i++) if (!selection.mask[i]) { mask[i] = 1; count++; area += data.area[i]; }
+      selection = { ...selection, mask }; perimeter = null;
+      self.postMessage({ type: 'selection', id: msg.id, index: msg.index, face: selection.seed, mask, count, area, color: null }, [mask.buffer]);
     } else if (msg.type === 'clear-region') {
       selection = null; perimeter = null; self.postMessage({ type: 'selection', id: msg.id, index: -1, mask: null, count: 0, area: 0, color: null });
     } else if (msg.type === 'suggest-perimeter') {
