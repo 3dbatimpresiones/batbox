@@ -155,6 +155,48 @@ export function merge(parts) {
   return { vert, tri, col };
 }
 
+// Aplica una rotacion alrededor del centro geometrico de la pieza. Se usa desde
+// el gizmo del visor y transforma la malla real: los cortes y la exportacion
+// reciben exactamente la misma orientacion que ve el usuario.
+export function rotatePart(part, quaternion) {
+  const [qx, qy, qz, qw] = quaternion;
+  const ql = Math.hypot(qx, qy, qz, qw);
+  if (!Number.isFinite(ql) || ql < 1e-8) throw new Error('La rotacion recibida no es valida.');
+  const x = qx / ql, y = qy / ql, z = qz / ql, w = qw / ql;
+  const b = bounds(part.vert), cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
+  const vert = new Float32Array(part.vert.length);
+  for (let i = 0; i < part.vert.length; i += 3) {
+    const px = part.vert[i] - cx, py = part.vert[i + 1] - cy, pz = part.vert[i + 2] - cz;
+    const tx = 2 * (y * pz - z * py), ty = 2 * (z * px - x * pz), tz = 2 * (x * py - y * px);
+    vert[i] = px + w * tx + (y * tz - z * ty) + cx;
+    vert[i + 1] = py + w * ty + (z * tx - x * tz) + cy;
+    vert[i + 2] = pz + w * tz + (x * ty - y * tx) + cz;
+  }
+  return { ...part, vert, tri: new Uint32Array(part.tri), col: part.col ? new Uint16Array(part.col) : null };
+}
+
+export function translatePart(part, delta) {
+  if (!delta?.every(Number.isFinite)) throw new Error('El desplazamiento recibido no es válido.');
+  const vert = new Float32Array(part.vert.length);
+  for (let i = 0; i < part.vert.length; i += 3) { vert[i] = part.vert[i] + delta[0]; vert[i + 1] = part.vert[i + 1] + delta[1]; vert[i + 2] = part.vert[i + 2] + delta[2]; }
+  return { ...part, vert, tri: new Uint32Array(part.tri), col: part.col ? new Uint16Array(part.col) : null };
+}
+
+export function placePartOnBed(part) {
+  const b = bounds(part.vert);
+  return translatePart(part, [-(b.min[0] + b.max[0]) / 2, -(b.min[1] + b.max[1]) / 2, -b.min[2]]);
+}
+
+// Centra el conjunto completo, no cada pieza por separado, para conservar la
+// disposición relativa del 3MF y apoyarlo sobre Z=0 como hace un slicer.
+export function centerAssemblyOnBed(parts) {
+  if (!parts.length) return [];
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (const part of parts) { const b = bounds(part.vert); for (let k = 0; k < 3; k++) { min[k] = Math.min(min[k], b.min[k]); max[k] = Math.max(max[k], b.max[k]); } }
+  const delta = [-(min[0] + max[0]) / 2, -(min[1] + max[1]) / 2, -min[2]];
+  return parts.map((part) => translatePart(part, delta));
+}
+
 // Resumen para mostrar y validar (sin manifold).
 export function analyze(part) {
   const nVert = part.vert.length / 3;
@@ -211,9 +253,36 @@ export function cutByPlane(M, part, normal, point) {
   try {
     const [a, b] = man.splitByPlane(n, offset);
     const out = [a, b].map((m) => (m.isEmpty() ? null : fromManifold(m, id, cap)));
+    if (out.some((q) => { if (!q) return false; const info = analyze(q); return !info.closed || info.components !== 1 || info.open || info.nonManifold || info.flipped || !(info.volume > 1e-6); })) throw new Error('El corte por plano produjo una pieza abierta, separada o no-manifold.');
     a.delete(); b.delete();
     return out;
   } finally { man.delete(); }
+}
+
+// Respaldo para archivos abiertos o no-manifold. Recorta cada triángulo sin
+// exigir un volumen válido. No inventa tapas: el resultado se marca luego como
+// malla a reparar, pero el usuario puede separar, inspeccionar y exportar.
+export function cutByPlaneLoose(part, normal, point) {
+  const len = Math.hypot(...normal) || 1, n = normal.map((v) => v / len);
+  const plane = n[0] * point[0] + n[1] * point[1] + n[2] * point[2], eps = 1e-7;
+  const clipSide = (sign) => {
+    const vert = [], tri = [], col = [];
+    const push = (p) => { const i = vert.length / 3; vert.push(p[0], p[1], p[2]); return i; };
+    for (let f = 0; f < part.tri.length / 3; f++) {
+      let poly = [0, 1, 2].map((k) => { const i = part.tri[f * 3 + k] * 3, p = [part.vert[i], part.vert[i + 1], part.vert[i + 2]]; return { p, d: sign * (n[0] * p[0] + n[1] * p[1] + n[2] * p[2] - plane) }; });
+      const out = [];
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length], ain = a.d >= -eps, bin = b.d >= -eps;
+        if (ain) out.push(a);
+        if (ain !== bin) { const t = a.d / (a.d - b.d); out.push({ p: [a.p[0] + (b.p[0] - a.p[0]) * t, a.p[1] + (b.p[1] - a.p[1]) * t, a.p[2] + (b.p[2] - a.p[2]) * t], d: 0 }); }
+      }
+      if (out.length < 3) continue;
+      const base = push(out[0].p);
+      for (let i = 1; i + 1 < out.length; i++) { tri.push(base, push(out[i].p), push(out[i + 1].p)); if (part.col) col.push(part.col[f]); }
+    }
+    return tri.length ? { vert: Float32Array.from(vert), tri: Uint32Array.from(tri), col: part.col ? Uint16Array.from(col) : null } : null;
+  };
+  return [clipSide(1), clipSide(-1)];
 }
 
 export function dominantColor(col) {

@@ -37,7 +37,7 @@ export function nodesFromRegion(part, mask, wanted = 8) {
   const loop = boundaryLoops(part, mask)[0]; if (!loop) throw new Error('La región no tiene un contorno cerrado utilizable.');
   const lengths = [], cumulative = [0]; let total = 0;
   for (const [a, b] of loop) { const ia = a * 3, ib = b * 3, len = Math.hypot(part.vert[ib] - part.vert[ia], part.vert[ib + 1] - part.vert[ia + 1], part.vert[ib + 2] - part.vert[ia + 2]); lengths.push(len); total += len; cumulative.push(total); }
-  const count = clamp(Math.round(wanted), 3, Math.min(12, loop.length)), nodes = [];
+  const count = clamp(Math.round(wanted), 3, Math.min(30, loop.length)), nodes = [];
   for (let n = 0; n < count; n++) {
     const d = total * n / count; let e = 0; while (e + 1 < cumulative.length && cumulative[e + 1] <= d) e++;
     const [a, b, face] = loop[e], t = lengths[e] ? (d - cumulative[e]) / lengths[e] : 0, tri = Array.from(part.tri.subarray(face * 3, face * 3 + 3));
@@ -54,6 +54,25 @@ export function meshGraph(part) {
 }
 
 function nearestFaceVertex(part, node) { const p = baryPosition(part, node), f = node.face * 3; let best = part.tri[f], dist = Infinity; for (let k = 0; k < 3; k++) { const v = part.tri[f + k], i = v * 3, d = (part.vert[i] - p[0]) ** 2 + (part.vert[i + 1] - p[1]) ** 2 + (part.vert[i + 2] - p[2]) ** 2; if (d < dist) { dist = d; best = v; } } return best; }
+
+function faceVertices(part, node) {
+  const f = node.face * 3;
+  return [part.tri[f], part.tri[f + 1], part.tri[f + 2]];
+}
+
+function pathBetweenNodes(graph, part, from, to, magnet, smooth) {
+  const a = baryPosition(part, from), b = baryPosition(part, to);
+  let best = null;
+  for (const va of faceVertices(part, from)) for (const vb of faceVertices(part, to)) {
+    const path = shortestPath(graph, va, vb, magnet, smooth, part);
+    if (!path) continue;
+    const ia = va * 3, ib = vb * 3;
+    const cost = Math.hypot(part.vert[ia] - a[0], part.vert[ia + 1] - a[1], part.vert[ia + 2] - a[2]) +
+      Math.hypot(part.vert[ib] - b[0], part.vert[ib + 1] - b[1], part.vert[ib + 2] - b[2]) * 0.5;
+    if (!best || cost < best.cost) best = { path, cost };
+  }
+  return best?.path || null;
+}
 
 class Heap { constructor() { this.a = []; } push(x) { let i = this.a.push(x) - 1; while (i) { const p = (i - 1) >> 1; if (this.a[p][0] <= x[0]) break; this.a[i] = this.a[p]; i = p; } this.a[i] = x; } pop() { const root = this.a[0], x = this.a.pop(); if (this.a.length) { let i = 0; while (true) { let c = i * 2 + 1; if (c >= this.a.length) break; if (c + 1 < this.a.length && this.a[c + 1][0] < this.a[c][0]) c++; if (this.a[c][0] >= x[0]) break; this.a[i] = this.a[c]; i = c; } this.a[i] = x; } return root; } }
 
@@ -73,10 +92,23 @@ export function shortestPath(graph, start, end, magnet = 60, smooth = 0, part = 
 
 export function traceLoop(part, nodes, magnet = 60, smooth = 35, graph = null) {
   if (nodes.length < 3) throw new Error('El contorno necesita al menos tres nodos.'); const g = graph || meshGraph(part), anchors = nodes.map((n) => nearestFaceVertex(part, n)), segments = [], route = [];
-  for (let i = 0; i < nodes.length; i++) { const seg = shortestPath(g, anchors[i], anchors[(i + 1) % nodes.length], magnet, smooth, part); if (!seg) throw new Error(`No se pudo resolver el tramo ${i + 1}.`); segments.push(seg); route.push(...(i ? seg.slice(1) : seg)); }
-  if (route[0] !== route[route.length - 1]) route.push(route[0]); const seen = new Set(); let selfCross = false; for (let i = 0; i < route.length - 1; i++) { if (seen.has(route[i]) && route[i] !== route[i - 1]) selfCross = true; seen.add(route[i]); }
+  for (let i = 0; i < nodes.length; i++) { const seg = pathBetweenNodes(g, part, nodes[i], nodes[(i + 1) % nodes.length], magnet, smooth); if (!seg) throw new Error(`No se pudo resolver el tramo ${i + 1}.`); segments.push(seg); route.push(...(i ? seg.slice(1) : seg)); }
+  if (route[0] !== route[route.length - 1]) route.push(route[0]);
+  // Un vértice compartido por dos tramos consecutivos es un cierre normal del
+  // recorrido, no un cruce. El cierre final también repite deliberadamente el
+  // primer vértice. Solo marcamos un cruce cuando un vértice reaparece en el
+  // interior del lazo, separado de su aparición anterior por al menos un tramo.
+  const firstUse = new Map(), edgeUse = new Map(), crossings = []; let selfCross = false;
+  for (let i = 0; i < route.length - 1; i++) {
+    const v = route[i], prev = firstUse.get(v);
+    if (prev != null && i - prev > 1) { selfCross = true; crossings.push({ vertex: v, first: prev, second: i }); }
+    if (prev == null) firstUse.set(v, i);
+    const edge = edgeKey(route[i], route[i + 1]), edgePrev = edgeUse.get(edge);
+    if (edgePrev != null && i - edgePrev > 1) { selfCross = true; crossings.push({ edge, first: edgePrev, second: i }); }
+    if (edgePrev == null) edgeUse.set(edge, i);
+  }
   const positions = segments.map((seg, i) => { const data = []; data.push(...baryPosition(part, nodes[i])); for (const v of seg.slice(1, -1)) data.push(part.vert[v * 3], part.vert[v * 3 + 1], part.vert[v * 3 + 2]); data.push(...baryPosition(part, nodes[(i + 1) % nodes.length])); return Float32Array.from(data); });
-  return { nodes, anchors, route, segments, positions, valid: !selfCross, problems: selfCross ? ['El recorrido se cruza o vuelve sobre un vértice.'] : [] };
+  return { nodes, anchors, route, segments, positions, crossings, valid: !selfCross, problems: selfCross ? [`El recorrido vuelve sobre ${crossings.length} vértice${crossings.length === 1 ? '' : 's'} interior${crossings.length === 1 ? '' : 'es'}.`] : [] };
 }
 
 export function maskInsideLoop(part, route, seedFace) {
