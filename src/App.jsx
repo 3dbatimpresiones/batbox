@@ -43,7 +43,8 @@ function Page({ route }) {
     case 'chops': return <Suspense fallback={<Loading />}><Chops /></Suspense>;
     case 'produccion': return <Suspense fallback={<Loading />}><Production /></Suspense>;
     case 'rodillos': return <Suspense fallback={<Loading />}><Rollers /></Suspense>;
-    case 'separador': return <Suspense fallback={<Loading />}><Split /></Suspense>;
+    case 'separador':
+    case 'split': return <Suspense fallback={<Loading />}><Split /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;
     case 'sugerencias': return <Feedback source={query.source || ''} />;
