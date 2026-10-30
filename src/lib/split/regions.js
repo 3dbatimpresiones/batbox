@@ -70,7 +70,6 @@ export function selectRegion(part, seed, mode = 'angle', angle = 35, cached = nu
         if (dot >= cos) { mask[n] = 1; queue[tail++] = n; }
       }
     }
-    fillEnclosedIslands(mask, data);
     let count = 0; totalArea = 0; for (let f = 0; f < nf; f++) if (mask[f]) { count++; totalArea += data.area[f]; }
     return { mask, count, area: totalArea, color };
   }
@@ -86,7 +85,6 @@ export function selectRegion(part, seed, mode = 'angle', angle = 35, cached = nu
       if (accept) { mask[n] = 1; queue[tail++] = n; }
     }
   }
-  fillEnclosedIslands(mask, data);
   let count = 0; totalArea = 0; for (let f = 0; f < nf; f++) if (mask[f]) { count++; totalArea += data.area[f]; }
   return { mask, count, area: totalArea, color: mode === 'color' ? color : null };
 }
@@ -102,7 +100,6 @@ export function selectBrush(part, seed, radius = 3, cached = null) {
     mask[f] = 1; count++; area += data.area[f];
     for (let e = 0; e < 3; e++) { const n = data.adjacent[f * 3 + e]; if (n >= 0 && !seen[n]) { seen[n] = 1; queue.push(n); } }
   }
-  fillEnclosedIslands(mask, data);
   count = 0; area = 0; for (let f = 0; f < nf; f++) if (mask[f]) { count++; area += data.area[f]; }
   return { mask, count, area, color: null };
 }
