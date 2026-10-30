@@ -103,7 +103,7 @@ self.onmessage = async ({ data: msg }) => {
       sendPerimeter(msg.id, perimeter);
     } else if (msg.type === 'trace-perimeter') {
       const p = parts[msg.index]; if (!p) throw new Error('La pieza elegida ya no existe.'); const graph = graphCache.get(p) || meshGraph(p); graphCache.set(p, graph);
-      const traced = traceLoop(p, msg.nodes, msg.magnet, msg.smooth, graph), seed = msg.seed ?? selection?.seed ?? msg.nodes[0].face, mask = maskInsideLoop(p, traced.route, seed); perimeter = { ...traced, mask, index: msg.index, seed };
+      const traced = traceLoop(p, msg.nodes, msg.magnet, msg.smooth, graph), seed = msg.seed ?? selection?.seed ?? null, mask = maskInsideLoop(p, traced.route, seed); perimeter = { ...traced, mask, index: msg.index, seed };
       sendPerimeter(msg.id, perimeter);
     } else if (msg.type === 'cut-perimeter') {
       if (!perimeter || perimeter.index !== msg.index || !perimeter.valid) throw new Error('El contorno no está listo para cortar.');

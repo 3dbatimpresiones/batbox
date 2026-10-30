@@ -113,7 +113,24 @@ export function traceLoop(part, nodes, magnet = 60, smooth = 35, graph = null) {
 
 export function maskInsideLoop(part, route, seedFace) {
   const data = faceData(part), barrier = new Set(); for (let i = 0; i + 1 < route.length; i++) barrier.add(edgeKey(route[i], route[i + 1]));
-  const mask = new Uint8Array(part.tri.length / 3), queue = new Uint32Array(mask.length); let head = 0, tail = 1; queue[0] = seedFace; mask[seedFace] = 1;
+  const mask = new Uint8Array(part.tri.length / 3);
+  // Sin una región previa no hay una cara interior fiable: el primer nodo está
+  // sobre el borde. En ese caso hallamos los componentes que deja la barrera y
+  // elegimos el menor, que corresponde al detalle delimitado en el flujo de
+  // separación. La UI puede invertir esta decisión sin alterar la malla.
+  if (!(seedFace >= 0 && seedFace < mask.length)) {
+    const seen = new Uint8Array(mask.length); let best = null;
+    for (let start = 0; start < mask.length; start++) {
+      if (seen[start]) continue;
+      const queue = [start], faces = []; let head = 0, area = 0; seen[start] = 1;
+      while (head < queue.length) { const f = queue[head++]; faces.push(f); area += data.area[f]; for (let e = 0; e < 3; e++) { const a = part.tri[f * 3 + e], b = part.tri[f * 3 + (e + 1) % 3], n = data.adjacent[f * 3 + e]; if (!barrier.has(edgeKey(a, b)) && n >= 0 && !seen[n]) { seen[n] = 1; queue.push(n); } } }
+      if (!best || area < best.area) best = { faces, area };
+    }
+    if (!best || best.faces.length === mask.length) throw new Error('El contorno no separa la superficie. Ajustá los nodos.');
+    for (const f of best.faces) mask[f] = 1;
+    return mask;
+  }
+  const queue = new Uint32Array(mask.length); let head = 0, tail = 1; queue[0] = seedFace; mask[seedFace] = 1;
   while (head < tail) { const f = queue[head++]; for (let e = 0; e < 3; e++) { const a = part.tri[f * 3 + e], b = part.tri[f * 3 + (e + 1) % 3]; if (barrier.has(edgeKey(a, b))) continue; const n = data.adjacent[f * 3 + e]; if (n >= 0 && !mask[n]) { mask[n] = 1; queue[tail++] = n; } } }
   if (tail === mask.length) throw new Error('El contorno no separa la superficie. Ajustá los nodos.'); return mask;
 }
