@@ -436,3 +436,58 @@
   background: linear-gradient(135deg, rgba(247,142,182,.14), rgba(19,29,71,.9) 50%, rgba(93,218,219,.14)); border: 2px solid #F78EB6; animation: featPill 4.5s ease-in-out infinite; }
 .feat-banner b { color: #fff; }
 @media (prefers-reduced-motion: reduce) { .feat-banner { animation-duration: 4.5s !important; animation-iteration-count: infinite !important; } }
+
+/* ===== BATPARTNERS · Patrocinadores ===== */
+.pt-page { max-width: 1100px; }
+.pt-disc { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.45; color: #cbd5e1;
+  background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.35); } .pt-disc svg { flex: none; margin-top: 2px; color: var(--warn); } .pt-disc b { color: #fff; }
+.pt-section { display: flex; flex-direction: column; gap: 10px; }
+.pt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.pt-card { display: flex; gap: 14px; padding: 14px; border-radius: 18px; min-width: 0; align-items: center; transition: border-color .15s, transform .15s; }
+.pt-card:hover { border-color: var(--cyan); transform: translateY(-2px); }
+.pt-card-in { min-width: 0; display: flex; flex-direction: column; gap: 6px; } .pt-card h3 { margin: 0; font-size: 17px; color: #fff; }
+.pt-card p { margin: 0; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.pt-ben { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; color: var(--pink); }
+.pt-logo { flex: none; border-radius: 18px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #f4f6ff; border: 1px solid rgba(255,255,255,.25); }
+.pt-logo img { width: 100%; height: 100%; object-fit: contain; padding: 8px; display: block; }
+.pt-logo span { font-weight: 800; font-size: 28px; color: var(--dark); }
+.pt-detail { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.pt-head { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; } .pt-head-txt { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 1 1 260px; }
+.pt-head h1 { margin: 0; font-size: 28px; } .pt-tag { margin: 0; color: var(--muted); }
+.pt-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pt-benefits { display: flex; flex-direction: column; gap: 10px; }
+.pt-benefit { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 14px 16px; border-radius: 16px; }
+.pt-benefit.locked { border-style: dashed; } .pt-b-main { min-width: 0; flex: 1 1 220px; } .pt-b-main p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.pt-b-act { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pt-code { font-family: ui-monospace, Consolas, monospace; font-weight: 800; letter-spacing: 1px; padding: 9px 14px; border-radius: 12px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center;
+  color: var(--dark); background: var(--cyan); border: 2px dashed var(--dark); }
+.pt-strip { display: flex; flex-direction: column; gap: 10px; }
+.pt-strip-row { display: flex; gap: 14px; overflow-x: auto; padding: 6px 2px 10px; scrollbar-width: thin; }
+.pt-strip-item { flex: none; width: 104px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: #e2e8f0; }
+.pt-strip-item:hover { color: var(--cyan); } .pt-strip-item small { color: var(--pink); font-weight: 800; font-size: 10px; letter-spacing: .5px; text-transform: uppercase; }
+.ap-form { gap: 12px; } .ap-logo { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ap-item { display: flex; flex-direction: row; align-items: center; gap: 14px; } .ap-item-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ap-benefits { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); } .ap-row { padding: 6px 0; border-top: 1px solid var(--line); gap: 8px; }
+.ap-row code { padding: 1px 8px; border-radius: 8px; background: rgba(93,218,219,.14); color: var(--cyan); font-size: 12px; }
+@media (max-width: 560px) { .pt-grid { grid-template-columns: minmax(0, 1fr); } .pt-head { flex-direction: column; align-items: flex-start; } .ap-item { flex-wrap: wrap; } }
+
+/* Banner de patrocinadores arriba de BATBOX (Inicio) */
+.pt-banner { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 17px; padding-bottom: 14px; position: relative; z-index: 1; }
+.pt-banner::after { content: ''; position: absolute; left: 50%; bottom: 0; width: min(280px, 60%); height: 1px; transform: translateX(-50%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent); }
+.pt-banner-label { font-size: 11px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: #94a3b8; }
+.pt-banner-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; }
+.pt-banner-item { display: inline-flex; align-items: center; gap: 8px; padding: 2px 4px; font-size: 14px; font-weight: 700; color: #e2e8f0; transition: color .2s; }
+.pt-banner-item:hover { color: var(--cyan); }
+.pt-banner-item .pt-logo { border-radius: 50%; }
+.pt-banner-more { font-size: 12px; font-weight: 700; color: var(--cyan); padding: 4px 8px; }
+@media (max-width: 560px) { .pt-banner-item span { display: none; } .pt-banner-item { padding: 4px; } }
+.pt-logo.bare { background: transparent; border-color: transparent; border-radius: 0; overflow: visible; }
+.pt-logo.bare img { padding: 0; filter: drop-shadow(0 2px 8px rgba(0,0,0,.35)); }
+.pt-banner-item .pt-logo.bare { border-radius: 0; }
+.ap-order { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.ap-order button { width: 28px; height: 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color: #e2e8f0; font-size: 11px; cursor: pointer; }
+.ap-order button:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+.ap-order button:disabled { opacity: .3; cursor: default; }
+/* Banner: los logos sin fondo conservan su proporción (los apaisados se ven más grandes) */
+.pt-banner-item .pt-logo.bare { width: auto !important; height: 52px !important; }
+.pt-banner-item .pt-logo.bare img { width: auto; max-width: 150px; height: 100%; }

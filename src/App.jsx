@@ -25,6 +25,7 @@ const Feed = lazy(() => import('./pages/Feed.jsx'));
 const Forum = lazy(() => import('./pages/Forum.jsx'));
 const MapMaker = lazy(() => import('./pages/MapMaker.jsx'));
 const Gallery = lazy(() => import('./pages/Gallery.jsx'));
+const Partners = lazy(() => import('./pages/Partners.jsx'));
 const Loading = () => <div className="empty"><div className="spinner" /></div>;
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
@@ -58,6 +59,7 @@ function Page({ route }) {
     case 'batfeed': return parts[1] === 'perfil' ? <Suspense fallback={<Loading />}><Feed route={route} /></Suspense> : <Redirect to="/galeria" />;
     case 'batforum': return <Suspense fallback={<Loading />}><Forum route={route} /></Suspense>;
     case 'mapa': return <Suspense fallback={<Loading />}><MapMaker /></Suspense>;
+    case 'patrocinadores': return <Suspense fallback={<Loading />}><Partners route={route} /></Suspense>;
     case 'galeria': return <Suspense fallback={<Loading />}><Gallery route={route} /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;

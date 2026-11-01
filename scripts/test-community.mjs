@@ -54,3 +54,9 @@ t('galería: formatos y utilidades', () => {
   assert.equal(api.formatBytes(10), '1 KB');
 });
 console.log(`\n${n} OK (total con galería)`);
+
+t('patrocinadores: tipos y estados = los de la base (054)', () => {
+  assert.deepEqual(api.PARTNER_TYPES.map((x) => x.value).sort(), ['creadores', 'disenadores', 'filamentos', 'herramientas', 'impresoras', 'insumos', 'organizaciones', 'otros', 'tecnologia', 'tiendas']);
+  assert.deepEqual(Object.keys(api.PARTNER_STATUS).sort(), ['active', 'draft', 'ended', 'paused']);
+});
+console.log(`\n${n} OK (total con patrocinadores)`);

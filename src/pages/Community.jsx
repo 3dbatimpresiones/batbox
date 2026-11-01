@@ -37,7 +37,7 @@ export default function Community() {
   const { socials: SOCIALS } = useContent();
   const { isMember } = useAuth();
   const flags = useCommunityFlags();
-  const modules = isMember ? NAV.filter((n) => n.sub && flags?.[n.flag]) : [];
+  const modules = NAV.filter((n) => n.sub && flags?.[n.flag] && (isMember || n.public));
   // #/community?seccion=club → baja directo a Makers Club
   useEffect(() => {
     if (/[?&]seccion=club\b/.test(window.location.hash)) {

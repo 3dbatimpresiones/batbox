@@ -11,6 +11,7 @@ export const NAV = [
   // Módulos de comunidad (sub: true): no van en la barra principal; se listan dentro de #/community.
   // Se muestran solo a miembros y si el flag de bb_settings está activo.
   { to: '/galeria', key: 'galeria', label: 'Galería Maker', short: 'Galería', icon: 'image', flag: 'batgallery' },
+  { to: '/patrocinadores', key: 'patrocinadores', label: 'Patrocinadores', short: 'Patrocinadores', icon: 'star', flag: 'batpartners', sub: true, public: true, blurb: 'Las marcas y creadores que colaboran con 3DBAT y la comunidad.' },
   { to: '/batforum', key: 'batforum', label: 'BATFORUM', short: 'BATFORUM', icon: 'message', flag: 'batforum', sub: true, blurb: 'Preguntas y respuestas entre makers.' },
   { to: '/mapa', key: 'mapa', label: 'Mapa Maker', short: 'Mapa Maker', icon: 'pin', flag: 'batmap', sub: true, blurb: 'Encontrá makers de tu ciudad (voluntario, solo ciudad).' },
   { to: '/club', key: 'club', label: 'Makers Club', short: 'Makers Club', icon: 'crown' },

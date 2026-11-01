@@ -17,7 +17,7 @@ const SUB_KEYS = NAV.filter((n) => n.sub).map((n) => n.key);
 function useNav() {
   const { isMember } = useAuth();
   const flags = useCommunityFlags();
-  return NAV.filter((n) => !n.flag || (isMember && flags?.[n.flag]));
+  return NAV.filter((n) => !n.flag || ((isMember || n.public) && flags?.[n.flag]));
 }
 
 export function Brand({ compact }) {

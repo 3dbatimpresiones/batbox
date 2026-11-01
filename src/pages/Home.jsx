@@ -10,6 +10,7 @@ import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
 import { WeekMakerBlock } from '../components/GalleryCards.jsx';
+import { PartnersBanner } from '../components/PartnerBits.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 import { TycoonHomeBlock } from '../components/Tycoon.jsx';
 
@@ -66,6 +67,7 @@ export default function Home() {
       <section className="hero">
         <div className="hero-orb o1" /><div className="hero-orb o2" /><div className="hero-orb o3" />
         <div className="hero-in">
+          <PartnersBanner />
           <div className="hero-logo"><Icon name="box" size={26} /></div>
           <h1 className="wordmark">BAT<span>BOX</span></h1>
           <p className="hero-by">by 3DBAT IMPRESIONES</p>

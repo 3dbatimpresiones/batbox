@@ -37,7 +37,7 @@ function Flags() {
   return (
     <section className="card cm-flags">
       <h3>Módulos de la comunidad</h3>
-      {[['batfeed', 'Base social (reacciones, comentarios, avisos y perfiles; la usan Galería y Foro: no apagar)'], ['batforum', 'BATFORUM (foro)'], ['batgallery', 'GALERÍA MAKER'], ['batmap', 'Mapa Maker']].map(([k, label]) => (
+      {[['batfeed', 'Base social (reacciones, comentarios, avisos y perfiles; la usan Galería y Foro: no apagar)'], ['batforum', 'BATFORUM (foro)'], ['batgallery', 'GALERÍA MAKER'], ['batmap', 'Mapa Maker'], ['batpartners', 'Patrocinadores (directorio público)']].map(([k, label]) => (
         <label key={k} className="nb-pref"><input type="checkbox" checked={!!cur[k]} disabled={!isAdmin} onChange={() => toggle(k)} /> {label}</label>
       ))}
       {!isAdmin && <small>Solo administración puede activar o desactivar módulos.</small>}

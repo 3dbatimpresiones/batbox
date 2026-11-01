@@ -354,6 +354,72 @@ export async function deleteGalleryCategory(id) {
 export const formatMinutes = (m) => (m == null ? '' : m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
 export const formatBytes = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
+// ---------- BATPARTNERS (patrocinadores) ----------
+export const PARTNER_TYPES = [
+  { value: 'filamentos', label: 'Filamentos' }, { value: 'impresoras', label: 'Impresoras 3D' }, { value: 'tiendas', label: 'Tiendas' },
+  { value: 'creadores', label: 'Creadores de contenido' }, { value: 'disenadores', label: 'Diseñadores' }, { value: 'tecnologia', label: 'Empresas tecnológicas' },
+  { value: 'organizaciones', label: 'Organizaciones maker' },
+  { value: 'insumos', label: 'Insumos y postprocesado' }, { value: 'herramientas', label: 'Herramientas y accesorios' }, { value: 'otros', label: 'Otros' },
+];
+// Categorías de una marca (varias; si es una marca vieja, solo la principal).
+export const partnerTypes = (p) => (p.types?.length ? p.types : [p.type]);
+export const PARTNER_TYPE_LABEL = Object.fromEntries(PARTNER_TYPES.map((t) => [t.value, t.label]));
+export const PARTNER_STATUS = { draft: 'Borrador', active: 'Activo', paused: 'Pausado', ended: 'Finalizado' };
+export const partnersList = (o = {}) => rpc('bb_partners_list', { p_type: o.type || null, p_q: o.q || null });
+export const partnerDetail = (slug) => rpc('bb_partner', { p_slug: slug });
+export const partnerClick = (id, kind) => sb.rpc('bb_partner_click', { p_partner: id, p_kind: kind }).then(() => {}, () => {});
+export const partnerLogoUrl = (path) => (path ? sb.storage.from('bb-partners').getPublicUrl(path).data.publicUrl : null);
+export const partnerStats = () => rpc('bb_partner_stats');
+export async function adminPartners() {
+  const { data, error } = await sb.from('bb_partners').select('*').order('sort').order('name');
+  if (error) throw wrap(error);
+  return data;
+}
+export async function savePartner(p) {
+  const row = {
+    slug: p.slug, name: p.name, type: (p.types?.[0] || p.type), types: (p.types?.length ? p.types : [p.type]), relation: p.relation, tagline: p.tagline || '', description: p.description || '', logo_path: p.logo_path || null, logo_bare: !!p.logo_bare,
+    website: p.website?.trim() || null, links: (p.links || []).filter((l) => l.label?.trim() && l.url?.trim()).map((l) => ({ label: l.label.trim(), url: l.url.trim() })),
+    status: p.status, featured: !!p.featured, sort: Number(p.sort) || 100, starts_on: p.starts_on || null, ends_on: p.ends_on || null,
+  };
+  const q = p.id ? sb.from('bb_partners').update(row).eq('id', p.id).select('id').single() : sb.from('bb_partners').insert(row).select('id').single();
+  const { data, error } = await q;
+  if (error) throw wrap(error);
+  return data.id;
+}
+// Guarda el orden elegido: renumera la lista de 10 en 10 para que quede estable.
+export async function reorderPartners(ids) {
+  const res = await Promise.all(ids.map((id, i) => sb.from('bb_partners').update({ sort: (i + 1) * 10 }).eq('id', id)));
+  const err = res.find((r) => r.error);
+  if (err) throw wrap(err.error);
+}
+export async function deletePartner(id) {
+  const { error } = await sb.from('bb_partners').delete().eq('id', id);
+  if (error) throw wrap(error);
+}
+export async function adminBenefits(partnerId) {
+  const { data, error } = await sb.from('bb_partner_benefits').select('*').eq('partner_id', partnerId).order('sort').order('created_at');
+  if (error) throw wrap(error);
+  return data;
+}
+export async function saveBenefit(partnerId, b) {
+  const row = { partner_id: partnerId, title: b.title, description: b.description || '', code: b.code?.trim() || null, url: b.url?.trim() || null,
+    members_only: b.members_only !== false, valid_until: b.valid_until || null, active: b.active !== false, sort: Number(b.sort) || 100 };
+  const { error } = b.id ? await sb.from('bb_partner_benefits').update(row).eq('id', b.id) : await sb.from('bb_partner_benefits').insert(row);
+  if (error) throw wrap(error);
+}
+export async function deleteBenefit(id) {
+  const { error } = await sb.from('bb_partner_benefits').delete().eq('id', id);
+  if (error) throw wrap(error);
+}
+// Logo: se achica a 600 px (WebP) antes de subir; el bucket acepta solo imágenes de hasta 1 MB.
+export async function uploadPartnerLogo(file) {
+  const { blob } = await shrinkImage(file, 600);
+  const path = `logos/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.webp`;
+  const { error } = await sb.storage.from('bb-partners').upload(path, blob, { contentType: 'image/webp', upsert: false });
+  if (error) throw new Error(error.message || 'No se pudo subir el logo.');
+  return path;
+}
+
 // ---------- Utilidades de presentación ----------
 export function timeAgo(iso) {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
