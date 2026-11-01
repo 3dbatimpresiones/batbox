@@ -2,6 +2,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { newest, useContent } from '../data/ContentContext.jsx';
 import { fmtDate } from '../lib/text.js';
 import Icon from '../components/Icon.jsx';
+import { Me } from '../components/Featured.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
 import { TrialChip } from '../components/TrialBadge.jsx';
 import { TRIAL_DAYS } from '../config.js';
@@ -50,7 +51,7 @@ export default function Club() {
         <div className="cw-glow" />
         <div className="cw-main">
           <div className="section-label">MAKERS CLUB</div>
-          <h1>¡Hola, {displayName}!</h1>
+          <h1>¡Hola, <Me>{displayName}</Me>!</h1>
           <p>Bienvenido a tu zona exclusiva de Makers Club 3DBAT.</p>
         </div>
         <div className="cw-status card">

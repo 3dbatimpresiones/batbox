@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { LINKS } from '../config.js';
 import Icon from '../components/Icon.jsx';
 import AccessPanel from '../components/AccessPanel.jsx';
+import { Me, MeBanner } from '../components/Featured.jsx';
 import AccessForm from '../components/AccessForm.jsx';
 import { PAY_STATUS, SUB_STATUS, daysLeft, fmtDate, money, mySubscription } from '../lib/subsApi.js';
 
@@ -46,7 +47,8 @@ export function Account() {
     <div className="narrow">
       <div className="gate card">
         <div className="big-ico tone-ok"><Icon name="check" size={26} /></div>
-        <h2>¡Hola, {displayName}!</h2>
+        <h2>¡Hola, <Me>{displayName}</Me>!</h2>
+        <MeBanner />
         <p className="gate-text">Tu membresía de Makers Club está activa. Tu sesión también sirve para el Cotizador PRO, así que no tenés que volver a ingresar.</p>
         <div className="gate-email"><Icon name="user" size={14} /> {email}{isAdmin && <span className="chip club">✦ Admin</span>}{isEditor && <span className="chip cat">✎ Editor</span>}</div>
         <div className="gate-actions">

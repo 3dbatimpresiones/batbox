@@ -3,11 +3,13 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { navigate } from '../lib/router.js';
 import { newest, useContent } from '../data/ContentContext.jsx';
 import Icon from '../components/Icon.jsx';
+import { Me } from '../components/Featured.jsx';
 import { TrialBar } from '../components/TrialBadge.jsx';
 import { TRIAL_DAYS } from '../config.js';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
+import { WeekMakerBlock } from '../components/GalleryCards.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 import { TycoonHomeBlock } from '../components/Tycoon.jsx';
 
@@ -29,7 +31,7 @@ function ClubBanner() {
       <div className="cb-ico"><Icon name="crown" size={30} /></div>
       <div className="cb-txt">
         <div className="section-label">MAKERS CLUB 3DBAT</div>
-        <h2>{member ? `¡Hola, ${displayName}! Tu zona exclusiva te espera` : 'Herramientas PRO, tutoriales exclusivos y más'}</h2>
+        <h2>{member ? <>¡Hola, <Me>{displayName}</Me>! Tu zona exclusiva te espera</> : 'Herramientas PRO, tutoriales exclusivos y más'}</h2>
         <p>{member
           ? 'Entrá a Makers Club para usar el Cotizador PRO y ver el contenido exclusivo.'
           : access === 'guest'
@@ -50,6 +52,7 @@ function ClubBanner() {
 
 export default function Home() {
   const [q, setQ] = useState('');
+  const { isMember, isAdmin } = useAuth();
   const { tools: TOOLS, items, byKind, socials: SOCIALS } = useContent();
   const tutorials = newest(byKind('tutorial')).slice(0, 3);
   const featured = items.filter((i) => i.featured && i.kind === 'tutorial').slice(0, 3);
@@ -63,7 +66,7 @@ export default function Home() {
       <section className="hero">
         <div className="hero-orb o1" /><div className="hero-orb o2" /><div className="hero-orb o3" />
         <div className="hero-in">
-          <div className="hero-logo"><Icon name="box" size={40} /></div>
+          <div className="hero-logo"><Icon name="box" size={26} /></div>
           <h1 className="wordmark">BAT<span>BOX</span></h1>
           <p className="hero-by">by 3DBAT IMPRESIONES</p>
           <p className="hero-slogan">Todo tu universo maker, en un solo lugar.</p>
@@ -78,6 +81,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <WeekMakerBlock isMember={isMember} isAdmin={isAdmin} />
 
       <TycoonHomeBlock />
 

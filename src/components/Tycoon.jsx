@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FeatByName } from './Featured.jsx';
 import Icon from './Icon.jsx';
 import { EMBLEMS, REWARDS, metricLabel, rewardName, titleName, frameClass } from '../data/rewards.js';
 import { GAME_URL, useLive, useMt } from '../lib/mtApi.js';
@@ -132,7 +133,7 @@ export function RankRows({ rows, farms, empty = 'Todavía no hay nadie en este r
       ) : (
         <div key={r.rank + r.name} className={'mt-rank-row' + (r.me ? ' me' : '')}>
           <span className="rk">{medal(r.rank)}</span><Avatar name={r.name} frame={r.frame} src={r.avatar} size={30} />
-          <span className="rn">{r.name}{titleName(r.title) && <em>{titleName(r.title)}</em>}
+          <span className="rn"><FeatByName name={r.name}>{r.name}</FeatByName>{titleName(r.title) && <em>{titleName(r.title)}</em>}
             {r.farm && <small><Emblem emblem={r.farm.emblem} color={r.farm.color} size={14} /> {r.farm.name}</small>}
             <LiveStatus live={r.live} /></span>
           <b>{num(r.points)}</b>

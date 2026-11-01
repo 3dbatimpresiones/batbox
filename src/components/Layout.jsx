@@ -7,6 +7,18 @@ import Icon from './Icon.jsx';
 import { SocialIcon } from './BrandIcon.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 import { LiveChip } from './Tycoon.jsx';
+import NotificationBell from './NotificationBell.jsx';
+import { FeatIso, useFeaturedUid } from './Featured.jsx';
+import { useCommunityFlags } from '../lib/communityApi.js';
+
+const SUB_KEYS = NAV.filter((n) => n.sub).map((n) => n.key);
+
+// Oculta del menú los módulos de comunidad apagados o sin acceso.
+function useNav() {
+  const { isMember } = useAuth();
+  const flags = useCommunityFlags();
+  return NAV.filter((n) => !n.flag || (isMember && flags?.[n.flag]));
+}
 
 export function Brand({ compact }) {
   return (
@@ -24,6 +36,7 @@ export function Brand({ compact }) {
 
 function AccountButton() {
   const { access, user, displayName } = useAuth();
+  const featured = useFeaturedUid();
   if (access === 'loading') {
     return <span className="acct-btn" aria-label="Verificando sesión"><span className="spinner xs" /></span>;
   }
@@ -34,13 +47,15 @@ function AccountButton() {
   return (
     <a className="acct-btn" href="#/acceso" title="Tu cuenta">
       <span className="avatar">{initial}<span className={'status-dot s-' + access} /></span>
-      <span className="acct-name">{displayName.split('@')[0]}</span>
+      {user && featured === user.id && <FeatIso size={30} />}
+      <span className={'acct-name' + (user && featured === user.id ? ' feat-name' : '')}>{displayName.split('@')[0]}</span>
     </a>
   );
 }
 
 export function Header({ route }) {
   const section = route.parts[0] ?? '';
+  const nav = useNav();
   return (
     <header className="bb-top">
       <div className="bb-top-in">
@@ -51,8 +66,8 @@ export function Header({ route }) {
         )}
         <Brand />
         <nav className="top-nav" aria-label="Secciones">
-          {NAV.map((n) => (
-            <a key={n.key} href={'#' + n.to} className={'nav-link' + (section === n.key ? ' active' : '') + (n.key === 'club' ? ' club' : '') + (n.key === 'juego' ? ' game' : '')}>
+          {nav.filter((n) => !n.sub).map((n) => (
+            <a key={n.key} href={'#' + n.to} className={'nav-link' + (section === n.key || (n.key === 'community' && SUB_KEYS.includes(section)) ? ' active' : '') + (n.key === 'club' ? ' club' : '') + (n.key === 'juego' ? ' game' : '')}>
               {n.key === 'club' && <Icon name="crown" size={15} />}
               {n.key === 'juego' && <Icon name="gamepad" size={15} />}
               {n.short}
@@ -64,6 +79,7 @@ export function Header({ route }) {
           <a className={'icon-btn' + (section === 'buscar' ? ' active' : '')} href="#/buscar" title="Buscar" aria-label="Buscar">
             <Icon name="search" />
           </a>
+          <NotificationBell />
           <AccountButton />
         </div>
       </div>
@@ -75,11 +91,12 @@ export function BottomNav({ route }) {
   const section = route.parts[0] ?? '';
   const [open, setOpen] = useState(false);
   const { canEdit, isAdmin } = useAuth();
+  const nav = useNav();
   useEffect(() => setOpen(false), [route.path]);
 
-  const main = NAV.filter((n) => MOBILE_MAIN.includes(n.key));
-  const more = NAV.filter((n) => !MOBILE_MAIN.includes(n.key));
-  const moreActive = more.some((n) => n.key === section) || ['acceso', 'admin', 'buscar'].includes(section);
+  const main = nav.filter((n) => MOBILE_MAIN.includes(n.key));
+  const more = nav.filter((n) => !MOBILE_MAIN.includes(n.key) && !n.sub);
+  const moreActive = more.some((n) => n.key === section) || SUB_KEYS.includes(section) || ['acceso', 'admin', 'buscar'].includes(section);
 
   return (
     <>

@@ -6,6 +6,7 @@ import App from './App.jsx';
 import './styles/base.css';
 import './styles/batbox.css';
 import './styles/tycoon.css';
+import './styles/community.css';
 
 // Clic derecho desactivado (regla 3DBAT), salvo en enlaces, campos y videos
 // para poder "abrir en pestaña nueva" o copiar.

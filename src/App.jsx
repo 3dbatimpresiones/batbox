@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react';
-import { useRoute } from './lib/router.js';
+import { useRoute, navigate } from './lib/router.js';
 import { useActivityPing } from './lib/activity.js';
 import { useLive } from './lib/mtApi.js';
 import { useAuth } from './auth/AuthContext.jsx';
@@ -21,12 +21,21 @@ const Chops = lazy(() => import('./pages/Chops.jsx'));
 const Production = lazy(() => import('./pages/Production.jsx'));
 const Rollers = lazy(() => import('./pages/Rollers.jsx'));
 const Split = lazy(() => import('./pages/Split.jsx'));
+const Feed = lazy(() => import('./pages/Feed.jsx'));
+const Forum = lazy(() => import('./pages/Forum.jsx'));
+const MapMaker = lazy(() => import('./pages/MapMaker.jsx'));
+const Gallery = lazy(() => import('./pages/Gallery.jsx'));
 const Loading = () => <div className="empty"><div className="spinner" /></div>;
 import { Account } from './pages/Account.jsx';
 import Admin from './pages/Admin.jsx';
 import { Detail, NotFound, Search } from './pages/Detail.jsx';
 import WelcomeChoice from './components/WelcomeChoice.jsx';
 import TrialNotice from './components/TrialNotice.jsx';
+
+function Redirect({ to }) {
+  useEffect(() => { navigate(to); }, [to]);
+  return <Loading />;
+}
 
 function Page({ route }) {
   const { parts, query } = route;
@@ -45,6 +54,11 @@ function Page({ route }) {
     case 'rodillos': return <Suspense fallback={<Loading />}><Rollers /></Suspense>;
     case 'separador':
     case 'split': return <Suspense fallback={<Loading />}><Split /></Suspense>;
+    // BATFEED (muro) oculto por ahora: se conserva solo el perfil de makers. La base social sigue activa porque la usan Galería y Foro.
+    case 'batfeed': return parts[1] === 'perfil' ? <Suspense fallback={<Loading />}><Feed route={route} /></Suspense> : <Redirect to="/galeria" />;
+    case 'batforum': return <Suspense fallback={<Loading />}><Forum route={route} /></Suspense>;
+    case 'mapa': return <Suspense fallback={<Loading />}><MapMaker /></Suspense>;
+    case 'galeria': return <Suspense fallback={<Loading />}><Gallery route={route} /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;
     case 'sugerencias': return <Feedback source={query.source || ''} />;

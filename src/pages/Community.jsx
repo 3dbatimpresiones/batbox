@@ -6,6 +6,8 @@ import ClubPitch from '../components/ClubPitch.jsx';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { PageHead, SectionHead } from '../components/ui.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
+import { NAV } from '../data/nav.js';
+import { useCommunityFlags } from '../lib/communityApi.js';
 
 
 // Cómo pedir ayuda: todas las consultas se resuelven en la comunidad.
@@ -33,6 +35,9 @@ function ClubCta() {
 
 export default function Community() {
   const { socials: SOCIALS } = useContent();
+  const { isMember } = useAuth();
+  const flags = useCommunityFlags();
+  const modules = isMember ? NAV.filter((n) => n.sub && flags?.[n.flag]) : [];
   // #/community?seccion=club → baja directo a Makers Club
   useEffect(() => {
     if (/[?&]seccion=club\b/.test(window.location.hash)) {
@@ -43,6 +48,20 @@ export default function Community() {
     <div>
       <PageHead icon="users" label="BAT COMUNIDAD" title="Comunidad Makers 3DBAT"
         text="Una comunidad de makers que imprimen, diseñan y emprenden. Sumate a los grupos, seguinos en redes y conocé Makers Club." />
+
+      {modules.length > 0 && (
+        <section className="block tight">
+          <SectionHead label="PARTICIPÁ" title="Dentro de BATBOX" />
+          <div className="fo-cats">
+            {modules.map((m) => (
+              <a key={m.key} className="fo-cat card" href={'#' + m.to}>
+                <strong><Icon name={m.icon} size={16} /> {m.label}</strong>
+                <small>{m.blurb}</small>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="block tight">
         <SectionHead label="SUMATE" title="Grupos y redes" />
