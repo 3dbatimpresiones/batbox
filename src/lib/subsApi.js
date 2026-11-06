@@ -13,6 +13,10 @@ const msg = (error) => {
 
 // Solicitud de acceso / "Mis datos". Devuelve el estado: approved · pending · not_found · …
 export async function requestAccess(f) {
+  // Con número de operación, primero se trae ese pago de Mercado Pago (por si el aviso
+  // automático no llegó). Si falla, se sigue igual con lo que ya haya en la base.
+  const op = f.operation?.replace(/\D/g, '');
+  if (op) await sb.functions.invoke('mp-webhook', { body: { action: 'claim', operation: op } }).catch(() => {});
   const { data, error } = await sb.rpc('bb_request_access', {
     p_first_name: f.first_name.trim(), p_last_name: f.last_name.trim(), p_phone: f.phone.trim(),
     p_discord: f.discord.trim() || null, p_instagram: f.instagram.trim() || null,
