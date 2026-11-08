@@ -3,8 +3,6 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import * as lib from '../lib/libraryApi.js';
 import { useCommunityFlags } from '../lib/communityApi.js';
 import Icon from '../components/Icon.jsx';
-// Fondo de "Próximamente": portadas reales ya borroneadas en el archivo (no con CSS), irreconocibles.
-import teaserBg from '../assets/biblioteca-proximamente.webp';
 import { Empty, Options, PageHead, SearchInput } from '../components/ui.jsx';
 
 // =====================================================================
@@ -34,7 +32,9 @@ const saveVisit = () => { try { localStorage.setItem(VISIT_KEY, String(Date.now(
 function ComingSoon() {
   return (
     <div className="lib-soon" role="region" aria-label="Próximamente">
-      <div className="lib-soon-bg" aria-hidden="true" style={{ backgroundImage: `url(${teaserBg})` }} />
+      <div className="lib-soon-bg" aria-hidden="true">
+        {Array.from({ length: 12 }, (_, i) => <div key={i} className={'lib-soon-card c' + (i % 4)}><i /><b /><s /></div>)}
+      </div>
       <div className="lib-soon-msg">
         <span className="lib-soon-kicker">PRÓXIMAMENTE</span>
         <h1>Se viene algo grande acá.</h1>
