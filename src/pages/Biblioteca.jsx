@@ -82,8 +82,10 @@ function Cover({ m }) {
 function Gallery({ m }) {
   const keys = m.images?.length ? m.images : m.thumb_key ? [m.thumb_key] : [];
   const [i, setI] = useState(0);
+  const [intro, setIntro] = useState(true); // al entrar, las flechas se ven unos segundos
   const touch = useRef(null);
   const n = keys.length;
+  useEffect(() => { const t = setTimeout(() => setIntro(false), 3500); return () => clearTimeout(t); }, []);
   const go = (d) => setI((cur) => (cur + d + n) % n);
   useEffect(() => { // precarga la siguiente y la anterior para que el cambio sea instantáneo
     if (n < 2) return;
@@ -91,15 +93,15 @@ function Gallery({ m }) {
   }, [i, n]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!n) return <Cover m={m} />;
   return (
-    <div className="lib-gal"
+    <div className={'lib-gal' + (intro ? ' intro' : '')}
       onTouchStart={(e) => { touch.current = e.touches[0].clientX; }}
       onTouchEnd={(e) => { const dx = e.changedTouches[0].clientX - (touch.current ?? 0); if (n > 1 && Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); }}>
       <img className="lib-gal-img" src={lib.thumbUrl(keys[i])} alt={`${m.name} — foto ${i + 1} de ${n}`} decoding="async" />
       {n > 1 && <>
         <button type="button" className="lib-arrow left" onClick={() => go(-1)} aria-label="Foto anterior"><Icon name="arrowLeft" size={22} /></button>
         <button type="button" className="lib-arrow right" onClick={() => go(1)} aria-label="Foto siguiente"><Icon name="arrowRight" size={22} /></button>
-        <span className="lib-gal-count">{i + 1} / {n}</span>
       </>}
+      <span className="lib-gal-count"><Icon name="image" size={12} /> {n > 1 ? `${i + 1} / ${n}` : '1 foto'}</span>
     </div>
   );
 }

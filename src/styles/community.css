@@ -517,9 +517,9 @@
 .lib-arrow.left { left: 0; justify-content: flex-start; background: linear-gradient(90deg, rgba(10,14,40,.55), transparent); }
 .lib-arrow.right { right: 0; justify-content: flex-end; background: linear-gradient(270deg, rgba(10,14,40,.55), transparent); }
 .lib-arrow svg { filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
-.lib-gal-count { position: absolute; right: 10px; bottom: 8px; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(10,14,40,.65); opacity: 0; transition: opacity .18s ease; }
-.lib-gal:hover .lib-arrow, .lib-gal:hover .lib-gal-count, .lib-arrow:focus-visible { opacity: 1; }
-@media (hover: none) { .lib-arrow { opacity: .85; width: 56px; background: none; } .lib-gal-count { opacity: 1; } }
+.lib-gal-count { position: absolute; right: 10px; bottom: 8px; font-size: 12px; padding: 2px 8px; border-radius: 999px; background: rgba(10,14,40,.7); display: inline-flex; align-items: center; gap: 5px; }
+.lib-gal:hover .lib-arrow, .lib-gal.intro .lib-arrow, .lib-arrow:focus-visible { opacity: 1; }
+@media (hover: none) { .lib-arrow { opacity: .85; width: 56px; background: none; } }
 
 /* Menú: etiqueta "Pronto" */
 .nav-soon { margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; background: var(--pink); color: var(--dark); vertical-align: middle; }
