@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sb } from '../lib/supabase.js';
 import Icon from './Icon.jsx';
 
@@ -12,7 +13,7 @@ import Icon from './Icon.jsx';
 // cama) y "Sólido" (un solo color). Vistas: 3/4, frente, costado y arriba.
 // =====================================================================
 
-const SOLID = new THREE.MeshStandardMaterial({ color: '#cfd6de', roughness: 0.5, metalness: 0.05, flatShading: true });
+const SOLID = new THREE.MeshStandardMaterial({ color: '#cfd6de', roughness: 0.5, metalness: 0.05 });
 const VIEWS = [['iso', '3/4'], ['front', 'Frente'], ['side', 'Costado'], ['top', 'Arriba']];
 
 // Cama de impresión "pintada": PEI oscuro con grilla celeste y el nombre de BATBOX.
@@ -72,25 +73,28 @@ export default function LibraryViewer({ previewKey, meta, name }) {
         const meshes = [];
         model.traverse((o) => {
           if (!o.isMesh) return;
-          o.geometry.computeVertexNormals();
-          o.material.flatShading = true; o.material.needsUpdate = true;
+          o.geometry = toCreasedNormals(o.geometry, Math.PI / 5); // curvas suaves, bordes vivos
           o.userData.color = o.material; meshes.push(o);
         });
+        // Camas de impresión (256 × 256 mm, como en el laminador), en las coordenadas del archivo.
+        const plates = gltf.parser.json.extras?.plates?.length ? gltf.parser.json.extras.plates : null;
+        const bedMat = new THREE.MeshStandardMaterial({ map: bedTexture(), roughness: 0.85 });
+        const edgeMat = new THREE.MeshStandardMaterial({ color: '#10152b' });
+        const mb0 = new THREE.Box3().setFromObject(model);
+        const list = plates || (() => { const sz = mb0.getSize(new THREE.Vector3()), c = mb0.getCenter(new THREE.Vector3()); return [{ x: c.x, y: -c.z, w: Math.max(256, sz.x + 10), d: Math.max(256, sz.z + 10) }]; })();
+        for (const p of list) {
+          const bed = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.d, 3), [edgeMat, edgeMat, edgeMat, edgeMat, bedMat, edgeMat]);
+          bed.position.set(p.x, p.y, -1.6); model.add(bed);
+        }
         // Apoya el conjunto sobre la cama, centrado.
         const b = new THREE.Box3().setFromObject(model), size = b.getSize(new THREE.Vector3()), center = b.getCenter(new THREE.Vector3());
         model.position.set(-center.x, -b.min.y, -center.z);
         const holder = new THREE.Group(); holder.add(model); scene.add(holder);
-        const side = Math.max(size.x, size.z) * 1.12 + 20;
-        const bed = new THREE.Mesh(new THREE.BoxGeometry(side, 4, side), [
-          new THREE.MeshStandardMaterial({ color: '#10152b' }), new THREE.MeshStandardMaterial({ color: '#10152b' }),
-          new THREE.MeshStandardMaterial({ map: bedTexture(), roughness: 0.85 }), new THREE.MeshStandardMaterial({ color: '#10152b' }),
-          new THREE.MeshStandardMaterial({ color: '#10152b' }), new THREE.MeshStandardMaterial({ color: '#10152b' })]);
-        bed.position.y = -2.05; scene.add(bed);
         const r = Math.max(size.x, size.y, size.z, 10);
         const target = new THREE.Vector3(0, size.y / 2, 0);
         api.current = {
           view(v) {
-            const d = r * 2.3;
+            const d = r * 1.25;
             const pos = { iso: [d * 0.62, d * 0.55, d * 0.72], front: [0, size.y / 2 + d * 0.08, d], side: [d, size.y / 2 + d * 0.08, 0], top: [0.001, d * 1.1, 0.001] }[v];
             camera.position.set(...pos); controls.target.copy(target); controls.update();
           },

@@ -6,8 +6,9 @@
 // No usa dependencias nuevas: fflate (ya está en BATBOX) y el lector de src/lib/split/io.js.
 import { unzipSync } from 'fflate';
 import { parse3MF, parseSTL } from '../src/lib/split/io.js';
+import { MeshoptSimplifier } from 'meshoptimizer';
 
-const TARGET_TRIS = 120000; // total aproximado de la vista previa (~1–2 MB)
+const TARGET_TRIS = 200000; // total aproximado de la vista previa (~1–2 MB)
 globalThis.__BB_MAX_TRIS = 30000000; // modelos muy detallados: se leen igual y se simplifican
 
 // Colores por nombre de pieza (español/inglés). El primero que coincide gana.
@@ -41,29 +42,6 @@ function collect(zipBuf) {
   };
   walk(unzipSync(new Uint8Array(zipBuf)), 0);
   return out;
-}
-
-// Simplificación por agrupamiento de vértices en una grilla (rápida y sin dependencias).
-function decimate(vert, tri, col, cell) {
-  const map = new Map(), sum = [], cnt = [], remap = new Int32Array(vert.length / 3);
-  for (let i = 0; i < remap.length; i++) {
-    const k = `${Math.floor(vert[i * 3] / cell)},${Math.floor(vert[i * 3 + 1] / cell)},${Math.floor(vert[i * 3 + 2] / cell)}`;
-    let id = map.get(k);
-    if (id === undefined) { id = cnt.length; map.set(k, id); sum.push(0, 0, 0); cnt.push(0); }
-    sum[id * 3] += vert[i * 3]; sum[id * 3 + 1] += vert[i * 3 + 1]; sum[id * 3 + 2] += vert[i * 3 + 2]; cnt[id]++;
-    remap[i] = id;
-  }
-  const v = new Float32Array(cnt.length * 3);
-  for (let i = 0; i < cnt.length; i++) for (let k = 0; k < 3; k++) v[i * 3 + k] = sum[i * 3 + k] / cnt[i];
-  const t = [], c = [], seen = new Set();
-  for (let i = 0; i < tri.length / 3; i++) {
-    const a = remap[tri[i * 3]], b = remap[tri[i * 3 + 1]], d = remap[tri[i * 3 + 2]];
-    if (a === b || b === d || a === d) continue;
-    const key = [a, b, d].sort((x, y) => x - y).join(',');
-    if (seen.has(key)) continue;
-    seen.add(key); t.push(a, b, d); c.push(col ? col[i] : 0);
-  }
-  return { vert: v, tri: t, col: c };
 }
 
 // GLB mínimo: una malla por color (posiciones + índices) con material de ese color.
@@ -100,7 +78,7 @@ function toGLB(groups, extras) {
   return Buffer.concat([head, jh, js, bh, bin]);
 }
 
-export function buildPreview(zipBuf, { bodyColor = null } = {}) {
+export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
   const files = collect(zipBuf);
   const mf = files.filter((f) => f.e === '3mf').sort((a, b) => b.data.length - a.data.length)[0];
   let objects, palette, mode;
@@ -120,49 +98,91 @@ export function buildPreview(zipBuf, { bodyColor = null } = {}) {
     });
     mode = 'stl';
   }
-  // Tamaño de celda según el total de triángulos y el tamaño del conjunto.
+  // Simplificación de calidad (meshoptimizer) por pieza y por color, respetando bordes entre colores.
+  await MeshoptSimplifier.ready;
   let total = 0; const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   for (const o of objects) {
     total += o.tri.length / 3;
     for (let i = 0; i < o.vert.length; i += 3) for (let k = 0; k < 3; k++) { min[k] = Math.min(min[k], o.vert[i + k]); max[k] = Math.max(max[k], o.vert[i + k]); }
   }
-  const diag = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]) || 1;
-  let cell = total > TARGET_TRIS ? diag / (Math.sqrt(TARGET_TRIS) * 2.2) : 0;
-  // Agrupa por color (las piezas sin color usan la paleta de muestra).
-  const byColor = new Map();
+  const ratio = Math.min(1, TARGET_TRIS / Math.max(total, 1));
+  const byColor = new Map(), boxes = [];
   const add = (color, name, v, t) => {
     if (!byColor.has(color)) byColor.set(color, { color, name, vert: [], tri: [] });
     const g = byColor.get(color), base = g.vert.length / 3;
     for (const x of v) g.vert.push(x);
     for (const x of t) g.tri.push(x + base);
   };
-  // Simplifica y, si quedó pesado, agranda la grilla y repite (hasta 8 intentos).
-  let dec = null;
-  for (let tries = 0; tries < 8; tries++) {
-    dec = objects.map((o) => (cell ? decimate(o.vert, o.tri, o.col, cell) : { vert: o.vert, tri: [...o.tri], col: o.col ? [...o.col] : [] }));
-    const n = dec.reduce((a, d) => a + d.tri.length / 3, 0);
-    if (n <= TARGET_TRIS * 1.25) break;
-    cell = cell ? cell * Math.max(1.25, Math.sqrt(n / TARGET_TRIS)) : diag / (Math.sqrt(TARGET_TRIS) * 2.2);
-  }
   let tris = 0;
   for (const [oi, o] of objects.entries()) {
-    const d = dec[oi];
+    const ob = [Infinity, Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < o.vert.length; i += 3) { ob[0] = Math.min(ob[0], o.vert[i]); ob[1] = Math.min(ob[1], o.vert[i + 1]); ob[2] = Math.max(ob[2], o.vert[i]); ob[3] = Math.max(ob[3], o.vert[i + 1]); }
+    boxes.push(ob);
+    // Triángulos de esta pieza agrupados por color.
     const groups = new Map();
-    for (let i = 0; i < d.tri.length / 3; i++) {
-      const ci = d.col[i];
+    const nt = o.tri.length / 3;
+    for (let i = 0; i < nt; i++) {
+      const ci = o.col ? o.col[i] : -1;
       const color = ci != null && ci >= 0 && palette[ci] ? palette[ci] : FALLBACK[oi % FALLBACK.length];
       if (!groups.has(color)) groups.set(color, []);
-      groups.get(color).push(d.tri[i * 3], d.tri[i * 3 + 1], d.tri[i * 3 + 2]);
+      groups.get(color).push(o.tri[i * 3], o.tri[i * 3 + 1], o.tri[i * 3 + 2]);
     }
-    for (const [color, t] of groups) {
+    const positions = o.vert instanceof Float32Array ? o.vert : new Float32Array(o.vert);
+    for (const [color, idx] of groups) {
+      let ind = new Uint32Array(idx);
+      const want = Math.max(36, Math.floor((ind.length * ratio) / 3) * 3);
+      if (ratio < 1 && ind.length > want) {
+        const [out] = MeshoptSimplifier.simplify(ind, positions, 3, want, 0.02, ['LockBorder']);
+        if (out.length >= 3) ind = out;
+      }
       // Solo los vértices usados por este grupo.
       const used = new Map(), v = [], tt = [];
-      for (const ix of t) { let n = used.get(ix); if (n === undefined) { n = used.size; used.set(ix, n); v.push(d.vert[ix * 3], d.vert[ix * 3 + 1], d.vert[ix * 3 + 2]); } tt.push(n); }
+      for (const ix of ind) { let n = used.get(ix); if (n === undefined) { n = used.size; used.set(ix, n); v.push(positions[ix * 3], positions[ix * 3 + 1], positions[ix * 3 + 2]); } tt.push(n); }
       add(color, o.name, v, tt); tris += tt.length / 3;
     }
   }
+  const plates = layoutPlates(boxes);
   const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]].map((x) => Math.round(x * 10) / 10);
-  return { glb: toGLB([...byColor.values()], { mode, size_mm: size, parts: objects.length, source_tris: total }), tris, mode, size, parts: objects.length, colors: byColor.size };
+  return { glb: toGLB([...byColor.values()], { mode, size_mm: size, parts: objects.length, source_tris: total, plates }), tris, mode, size, parts: objects.length, colors: byColor.size, plates: plates.length };
+}
+
+// Camas de impresión: agrupa las piezas como estaban en el laminador (varias camas en un 3MF)
+// y arma una cama de 256 × 256 mm por grupo (más grande si el grupo no entra).
+const BED = 256;
+function layoutPlates(boxes) {
+  const groups = boxes.map((b) => [...b]);
+  const fits = (a, b) => Math.max(a[2], b[2]) - Math.min(a[0], b[0]) <= BED && Math.max(a[3], b[3]) - Math.min(a[1], b[1]) <= BED;
+  const near = (a, b, gap) => a[0] - gap <= b[2] && b[0] - gap <= a[2] && a[1] - gap <= b[3] && b[1] - gap <= a[3];
+  // 1) junta las piezas que se tocan o están muy cerca; 2) junta grupos que entran juntos en una cama.
+  for (const [gap, needFit] of [[12, false], [60, true], [400, true]]) {
+    let merged = true;
+    while (merged) {
+      merged = false;
+      for (let i = 0; i < groups.length && !merged; i++) for (let j = i + 1; j < groups.length && !merged; j++) {
+        const a = groups[i], b = groups[j];
+        if (near(a, b, gap) && (!needFit || fits(a, b))) {
+          groups[i] = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+          groups.splice(j, 1); merged = true;
+        }
+      }
+    }
+  }
+  // 3) si dos camas se pisan, se juntan en una (más grande) para que no se superpongan.
+  const bed = (g) => { const w = Math.max(BED, g[2] - g[0] + 10), d = Math.max(BED, g[3] - g[1] + 10), cx = (g[0] + g[2]) / 2, cy = (g[1] + g[3]) / 2; return [cx - w / 2, cy - d / 2, cx + w / 2, cy + d / 2]; };
+  for (let again = true; again;) {
+    again = false;
+    for (let i = 0; i < groups.length && !again; i++) for (let j = i + 1; j < groups.length && !again; j++) {
+      if (near(bed(groups[i]), bed(groups[j]), -4)) {
+        const a = groups[i], b = groups[j];
+        groups[i] = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])];
+        groups.splice(j, 1); again = true;
+      }
+    }
+  }
+  return groups.map((g) => {
+    const w = Math.max(BED, g[2] - g[0] + 10), d = Math.max(BED, g[3] - g[1] + 10);
+    return { x: Math.round((g[0] + g[2]) / 2 * 10) / 10, y: Math.round((g[1] + g[3]) / 2 * 10) / 10, w: Math.round(w), d: Math.round(d) };
+  });
 }
 
 // Color principal (más saturado) de una foto RGB cruda de w×h, para pintar la carrocería.

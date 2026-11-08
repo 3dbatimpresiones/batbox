@@ -18,8 +18,15 @@ import { Empty, Options, PageHead, SearchInput } from '../components/ui.jsx';
 
 const TITLE = 'BIBLIOTECA 3D';
 const TEXT = 'Modelos 3D listos para imprimir, exclusivos para los miembros del Makers Club.';
+// NUEVO = publicado después de tu visita anterior a la Biblioteca 3D (en este navegador).
+// Durante esta visita se siguen viendo; en la próxima ya no. Si nunca entraste: los de los últimos 7 días.
 const NEW_DAYS = 7;
-const isNew = (m) => !!m.published_at && Date.now() - new Date(m.published_at).getTime() < NEW_DAYS * 864e5;
+let seenBefore = null; // momento de la visita anterior (se fija una vez por carga de la página)
+const isNew = (m) => {
+  if (!m.published_at) return false;
+  const since = seenBefore || Date.now() - NEW_DAYS * 864e5;
+  return new Date(m.published_at).getTime() > since;
+};
 const fmtDate = (d) => new Date(d).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 
 // Última visita (solo en este navegador) para avisar cuántos modelos entraron desde entonces.
@@ -562,7 +569,7 @@ export default function Biblioteca({ route }) {
   const [quota, setQuota] = useState(null);
   const [cats, setCats] = useState(null);
   const [error, setError] = useState('');
-  const [lastVisit] = useState(readVisit);
+  const [lastVisit] = useState(() => { const v = readVisit(); if (seenBefore === null) seenBefore = v; return v; });
   const [sub, arg] = [route.parts[1], route.parts[2]];
   const signedIn = access !== 'guest' && access !== 'loading';
   const open = isAdmin || !!flags?.biblioteca;

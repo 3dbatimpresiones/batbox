@@ -330,12 +330,12 @@ if (PREVIEWS && (secretArg || process.env.SUPABASE_SECRET) && !process.argv.incl
           fs.unlinkSync(tmp);
         } catch { /* sin ffmpeg o sin portada: color por defecto */ }
       }
-      const p = buildPreview(zip, { bodyColor: body || '#e6e8ec' });
+      const p = await buildPreview(zip, { bodyColor: body || '#e6e8ec' });
       const name = `${m.slug}.glb`;
       const up = await fetch(`${SB}/storage/v1/object/bb-lib-previews/${encodeURIComponent(name)}`, { method: 'POST', headers: { ...h, 'Content-Type': 'model/gltf-binary', 'x-upsert': 'true' }, body: p.glb });
       if (!up.ok) throw new Error('subida ' + up.status + ' ' + (await up.text()).slice(0, 120));
-      await patch(m.id, { preview_key: name, preview_meta: { mode: p.mode, size_mm: p.size, parts: p.parts, tris: p.tris, colors: p.colors } });
-      made++; console.log(`3D ${m.slug}: ${p.mode} · ${p.parts} piezas · ${p.colors} colores · ${(p.glb.length / 1048576).toFixed(2)} MB`);
+      await patch(m.id, { preview_key: name, preview_meta: { mode: p.mode, size_mm: p.size, parts: p.parts, tris: p.tris, colors: p.colors, plates: p.plates, v: 2 } });
+      made++; console.log(`3D ${m.slug}: ${p.mode} · ${p.parts} piezas · ${p.colors} colores · ${p.plates} cama(s) · ${(p.glb.length / 1048576).toFixed(2)} MB`);
     } catch (e) {
       console.log(`3D ${m.slug}: no se pudo (${e.message})`);
       await patch(m.id, { preview_meta: { error: String(e.message).slice(0, 200), at: new Date().toISOString() } }).catch(() => {});
