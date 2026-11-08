@@ -33,7 +33,7 @@ function ComingSoon() {
   return (
     <div className="lib-soon" role="region" aria-label="Próximamente">
       <div className="lib-soon-bg" aria-hidden="true">
-        {Array.from({ length: 12 }, (_, i) => <div key={i} className={'lib-soon-card c' + (i % 4)}><i /><b /><s /></div>)}
+        {Array.from({ length: 40 }, (_, i) => <div key={i} className={'lib-soon-card c' + (i % 4)}><i /><b /><s /></div>)}
       </div>
       <div className="lib-soon-msg">
         <span className="lib-soon-kicker">PRÓXIMAMENTE</span>
