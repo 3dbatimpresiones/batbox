@@ -14,11 +14,14 @@ import { useCommunityFlags } from '../lib/communityApi.js';
 const SUB_KEYS = NAV.filter((n) => n.sub).map((n) => n.key);
 
 // Oculta del menú los módulos de comunidad apagados o sin acceso.
+// La Biblioteca 3D se ve como "Próximamente" hasta que se prende el interruptor "biblioteca" (los admins ya la usan).
 function useNav() {
-  const { isMember } = useAuth();
+  const { isMember, isAdmin } = useAuth();
   const flags = useCommunityFlags();
-  return NAV.filter((n) => !n.flag || ((isMember || n.public) && flags?.[n.flag]));
+  return NAV.filter((n) => !n.flag || ((isMember || n.public) && flags?.[n.flag]))
+    .map((n) => (n.key === 'biblioteca' && !isAdmin && !flags?.biblioteca ? { ...n, soon: true } : n));
 }
+const Soon = ({ n }) => (n.soon ? <span className="nav-soon">Pronto</span> : null);
 
 export function Brand({ compact }) {
   return (
@@ -70,7 +73,7 @@ export function Header({ route }) {
             <a key={n.key} href={'#' + n.to} className={'nav-link' + (section === n.key || (n.key === 'community' && SUB_KEYS.includes(section)) ? ' active' : '') + (n.key === 'club' ? ' club' : '') + (n.key === 'juego' ? ' game' : '')}>
               {n.key === 'club' && <Icon name="crown" size={15} />}
               {n.key === 'juego' && <Icon name="gamepad" size={15} />}
-              {n.short}
+              {n.short}<Soon n={n} />
             </a>
           ))}
         </nav>
@@ -105,7 +108,7 @@ export function BottomNav({ route }) {
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             {more.map((n) => (
               <a key={n.key} href={'#' + n.to} className={'sheet-link' + (section === n.key ? ' active' : '')}>
-                <Icon name={n.icon} /> {n.label}
+                <Icon name={n.icon} /> {n.label}<Soon n={n} />
               </a>
             ))}
             <a href="#/buscar" className="sheet-link"><Icon name="search" /> Buscar</a>

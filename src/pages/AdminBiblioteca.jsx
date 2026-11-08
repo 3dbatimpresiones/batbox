@@ -115,12 +115,12 @@ function SyncButton({ before, onDone }) {
   const [state, setState] = useState('idle'); // idle | running | done | error
   const [msg, setMsg] = useState('');
   const run = async () => {
-    setState('running'); setMsg('Buscando archivos nuevos en Drive… (tarda 1 a 2 minutos)');
+    setState('running'); setMsg('Buscando archivos nuevos en Drive… (unos 30 segundos; más si hay muchos modelos nuevos)');
     try {
       const { requested_at } = await lib.syncStart();
       const since = new Date(requested_at).getTime() - 5000;
-      for (let i = 0; i < 60; i++) {
-        await new Promise((ok) => setTimeout(ok, 5000));
+      for (let i = 0; i < 100; i++) {
+        await new Promise((ok) => setTimeout(ok, 3000));
         const s = await lib.syncStatus();
         if (s.created_at && new Date(s.created_at).getTime() >= since && s.status === 'completed') {
           if (s.conclusion !== 'success') throw new Error('La importación terminó con un error. Revisá Actions en GitHub.');

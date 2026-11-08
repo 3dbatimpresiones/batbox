@@ -52,7 +52,7 @@ async function sync(req, env) {
     if (!check.ok) return json(403, { error: 'Solo los administradores pueden actualizar la biblioteca.' });
     if (!env.GITHUB_TOKEN) return json(503, { error: 'Falta configurar GITHUB_TOKEN en el puente.' });
 
-    const gh = { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'batbox-biblioteca', 'X-GitHub-Api-Version': '2022-11-28' };
+    const gh = { Authorization: `Bearer ${env.GITHUB_TOKEN.replace(/^FEFF/, "").trim()}`, Accept: 'application/vnd.github+json', 'User-Agent': 'batbox-biblioteca', 'X-GitHub-Api-Version': '2022-11-28' };
     if (req.method === 'POST') {
       const r = await fetch(`${WORKFLOW}/dispatches`, { method: 'POST', headers: { ...gh, 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main' }) });
       if (r.status !== 204) { console.error('github', r.status, (await r.text()).slice(0, 200)); return json(502, { error: 'GitHub no aceptó el pedido. Probá de nuevo en un rato.' }); }

@@ -23,15 +23,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Instalar ffmpeg (portadas WebP)
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
-      - name: Cargar modelos nuevos
+      # Primero solo cuenta lo nuevo (unos segundos); si no hay nada, termina sin instalar ffmpeg.
+      - name: Revisar si hay archivos nuevos
+        id: check
         env:
           GOOGLE_SA_JSON: ${{ secrets.BIBLIOTECA_GOOGLE_SA_JSON }}
           SUPABASE_SECRET: ${{ secrets.BIBLIOTECA_SUPABASE_SECRET }}
         run: |
           if [ -z "$GOOGLE_SA_JSON" ] || [ -z "$SUPABASE_SECRET" ]; then
             echo "Faltan los secrets BIBLIOTECA_GOOGLE_SA_JSON / BIBLIOTECA_SUPABASE_SECRET: no se hace nada."
-            exit 0
+            echo "nuevos=0" >> "$GITHUB_OUTPUT"; exit 0
           fi
-          node scripts/biblioteca-importar.mjs "" /tmp/import.sql /tmp/portadas "" --publicar
+          node scripts/biblioteca-importar.mjs "" /tmp/import.sql /tmp/portadas "" --revisar
+      - name: Instalar ffmpeg (portadas WebP)
+        if: steps.check.outputs.nuevos != '0'
+        run: sudo apt-get install -y -qq --no-install-recommends ffmpeg > /dev/null || (sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg > /dev/null)
+      - name: Cargar modelos nuevos
+        if: steps.check.outputs.nuevos != '0'
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.BIBLIOTECA_GOOGLE_SA_JSON }}
+          SUPABASE_SECRET: ${{ secrets.BIBLIOTECA_SUPABASE_SECRET }}
+        run: node scripts/biblioteca-importar.mjs "" /tmp/import.sql /tmp/portadas "" --publicar

@@ -32,6 +32,7 @@ export const models = ({ category = null, q = '', sort = 'new', offset = 0, limi
 export const model = (slug) => rpc('bb_lib_model', { p_slug: slug });
 export const toggleFavorite = (id) => rpc('bb_lib_favorite_toggle', { p_model: id });
 export const myFavorites = () => rpc('bb_lib_my_favorites');
+export const myDownloads = () => rpc('bb_lib_my_downloads');
 
 // Pide el permiso y arranca la descarga en el navegador (el archivo viene del puente, no de Supabase).
 export async function download(id) {
