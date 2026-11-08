@@ -541,3 +541,68 @@
 .lib-soon-kicker { display: inline-block; font-weight: 800; letter-spacing: .32em; font-size: 13px; padding: 6px 14px; border-radius: 999px; color: var(--dark); background: var(--bb-gradient); }
 .lib-soon-msg h1 { margin: 18px 0 6px; font-size: clamp(26px, 5vw, 40px); color: #fff; line-height: 1.15; }
 .lib-soon-msg p { margin: 0; color: var(--muted); font-size: 17px; }
+
+/* Biblioteca 3D: estrellas, filtros, colecciones, valoraciones */
+.lib-stars { display: inline-flex; gap: 1px; vertical-align: middle; line-height: 1; }
+.lib-star { font-style: normal; color: rgba(255,255,255,.22); background: none; border: 0; padding: 0 1px; line-height: 1; }
+.lib-star.full { color: var(--warn); }
+.lib-star.half { background: linear-gradient(90deg, var(--warn) 50%, rgba(255,255,255,.22) 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lib-stars.pick .lib-star { cursor: pointer; }
+.lib-rating { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.lib-tagbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--muted); }
+.lib-tag { border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.lib-tag small { color: var(--muted); margin-left: 3px; }
+.lib-tag.active { background: var(--cyan); color: var(--dark); border-color: var(--cyan); }
+.lib-tag.active small { color: var(--dark); }
+.lib-picker { position: relative; }
+.lib-picker-pop { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; min-width: 250px; max-width: 86vw; padding: 12px; border-radius: 14px;
+  background: var(--dark-2); border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0,0,0,.4); display: flex; flex-direction: column; gap: 8px; }
+.lib-picker-new, .lib-col-new { display: flex; gap: 8px; align-items: center; }
+.lib-picker-new .pink-input, .lib-col-new .pink-input { flex: 1; min-width: 0; }
+.lib-col-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.lib-reviews { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; }
+.lib-review-form { display: flex; flex-direction: column; gap: 8px; }
+.lib-review { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.lib-review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.lib-review .cm-body { margin: 6px 0 0; }
+
+/* Cartel de lanzamiento en el Inicio */
+.lib-launch { position: relative; margin: 18px auto 0; max-width: 1100px; padding: 26px 24px; border-radius: 22px; text-align: center;
+  background: radial-gradient(circle at 15% 20%, rgba(93,218,219,.25), transparent 55%), radial-gradient(circle at 85% 80%, rgba(247,142,182,.22), transparent 55%), rgba(19,29,71,.85);
+  border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.lib-launch h2 { margin: 4px 0 0; font-size: clamp(24px, 4vw, 34px); color: #fff; }
+.lib-launch p { margin: 0; color: var(--muted); }
+.lib-launch-x { position: absolute; top: 10px; right: 14px; border: 0; background: none; color: var(--muted); font-size: 24px; cursor: pointer; line-height: 1; }
+
+/* Biblioteca 3D: "Lo imprimí" */
+.lib-makes { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+.lib-make-form { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 16px; }
+.lib-make-preview { max-height: 260px; max-width: 100%; object-fit: contain; border-radius: 12px; align-self: flex-start; }
+.lib-make-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.lib-make { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lib-make.hidden { opacity: .45; }
+.lib-make-img { border: 0; padding: 0; background: rgba(19,29,71,.7); border-radius: 12px; overflow: hidden; aspect-ratio: 1; cursor: zoom-in; }
+.lib-make-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lib-make figcaption { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--muted); min-width: 0; }
+.lib-make figcaption b { color: var(--text); }
+.lib-make figcaption span { overflow-wrap: anywhere; }
+.lib-make-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.lib-zoom { position: fixed; inset: 0; z-index: 100; background: rgba(5,8,25,.88); display: grid; place-items: center; padding: 16px; cursor: zoom-out; }
+.lib-zoom img { max-width: 100%; max-height: 100%; border-radius: 12px; }
+
+/* Biblioteca 3D: pestañas Fotos / 3D y visor */
+.lib-media { display: flex; flex-direction: column; gap: 10px; }
+.lib-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: rgba(10,14,40,.6); border: 1px solid var(--line); flex-wrap: wrap; }
+.lib-seg button { border: 0; background: none; color: var(--text); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.lib-seg button.on { background: var(--cyan); color: var(--dark); font-weight: 600; }
+.lib-media-tabs { align-self: flex-start; }
+.lib-viewer { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 4 / 3; max-height: 520px; width: 100%;
+  background: radial-gradient(circle at 50% 30%, #2b3570, #121836 70%); }
+.lib-viewer:fullscreen { max-height: none; aspect-ratio: auto; border-radius: 0; }
+.lib-viewer-canvas { position: absolute; inset: 0; touch-action: none; }
+.lib-viewer-canvas canvas { display: block; width: 100% !important; height: 100% !important; }
+.lib-viewer-msg { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; color: var(--muted); gap: 10px; }
+.lib-viewer-bar { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; pointer-events: none; }
+.lib-viewer-bar > * { pointer-events: auto; }
+.lib-seg-btn { border: 1px solid var(--line); background: rgba(10,14,40,.6); color: var(--text); border-radius: 999px; padding: 6px 10px; cursor: pointer; margin-left: auto; }
+.lib-viewer-info { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: rgba(10,14,40,.6); padding: 3px 10px; border-radius: 999px; }

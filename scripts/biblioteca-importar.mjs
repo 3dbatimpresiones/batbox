@@ -104,13 +104,20 @@ const lines = ['-- Generado por scripts/biblioteca-importar.mjs el ' + new Date(
 // --fotos: además completa la galería de los modelos ya cargados que todavía no la tienen.
 const FILL_PHOTOS = process.argv.includes('--fotos');
 const existing = new Map(), takenSlugs = new Set(); // storage_key → { slug, images, thumb }
+// Vistas previas 3D (migración 063): modelos que todavía no tienen una (ni un error anotado).
+let PREVIEWS = true; const needPreview = [];
 if (secretArg || process.env.SUPABASE_SECRET) {
   const k = (process.env.SUPABASE_SECRET || fs.readFileSync(secretArg, 'utf8')).replace(/^﻿/, '').trim();
   for (let from = 0; ; from += 1000) {
-    const r = await fetch(`https://llciggitqtseosfklbjl.supabase.co/rest/v1/bb_lib_models?select=storage_key,slug,images,thumb_key&order=created_at`, { headers: { apikey: k, Authorization: 'Bearer ' + k, Range: `${from}-${from + 999}` } });
+    const cols = 'id,storage_key,slug,images,thumb_key' + (PREVIEWS ? ',preview_key,preview_meta' : '');
+    const r = await fetch(`https://llciggitqtseosfklbjl.supabase.co/rest/v1/bb_lib_models?select=${cols}&order=created_at`, { headers: { apikey: k, Authorization: 'Bearer ' + k, Range: `${from}-${from + 999}` } });
+    if (!r.ok && PREVIEWS && r.status === 400) { PREVIEWS = false; from -= 1000; console.log('Vistas previas 3D: falta la migración 063, se saltean.'); continue; }
     if (!r.ok) { console.error('No se pudo leer Supabase:', r.status); process.exit(1); }
     const rows = await r.json();
-    rows.forEach((x) => { existing.set(x.storage_key, { slug: x.slug, images: x.images || [], thumb: x.thumb_key }); takenSlugs.add(x.slug); });
+    rows.forEach((x) => {
+      existing.set(x.storage_key, { slug: x.slug, images: x.images || [], thumb: x.thumb_key }); takenSlugs.add(x.slug);
+      if (PREVIEWS && !x.preview_key && !x.preview_meta) needPreview.push({ id: x.id, slug: x.slug, storage_key: x.storage_key, thumb: x.thumb_key });
+    });
     if (rows.length < 1000) break;
   }
 }
@@ -227,8 +234,8 @@ for (const r of roots) await walk(r.id, null, '');
 
 // --revisar: solo cuenta los ZIP nuevos (para que GitHub instale ffmpeg únicamente si hace falta).
 if (process.argv.includes('--revisar')) {
-  console.log(`Para procesar (modelos nuevos o fotos nuevas): ${pending.length}`);
-  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `nuevos=${pending.length}\n`);
+  console.log(`Para procesar (modelos nuevos o fotos nuevas): ${pending.length} · vistas 3D pendientes: ${needPreview.length}`);
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `nuevos=${pending.length + needPreview.length}\n`);
   process.exit(0);
 }
 const queue = [...pending];
@@ -291,4 +298,48 @@ if (secretArg || process.env.SUPABASE_SECRET) {
       console.log(`Aviso enviado a ${n} miembro(s).`);
     } catch (e) { console.log('No se pudo enviar el aviso:', e.message); }
   }
+}
+
+// --- Vistas previas 3D (migración 063): para el visor de la ficha. Hasta 15 por corrida. ---
+// Baja el ZIP una vez, arma un GLB liviano con colores y lo guarda en el bucket PRIVADO bb-lib-previews.
+// Si falla, anota el error en preview_meta y no se reintenta solo (se borra preview_meta para reintentar).
+if (PREVIEWS && (secretArg || process.env.SUPABASE_SECRET) && !process.argv.includes('--sin-3d')) {
+  const { buildPreview, dominantColor } = await import('./biblioteca-preview.mjs');
+  const SB = 'https://llciggitqtseosfklbjl.supabase.co';
+  const key = (process.env.SUPABASE_SECRET || fs.readFileSync(secretArg, 'utf8')).replace(/^\uFEFF/, '').trim();
+  const h = { apikey: key, Authorization: 'Bearer ' + key };
+  const patch = (id, body) => fetch(`${SB}/rest/v1/bb_lib_models?id=eq.${id}`, { method: 'PATCH', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  // Los modelos recién insertados en esta corrida también necesitan su vista.
+  if (records.length) {
+    const fresh = await (await fetch(`${SB}/rest/v1/bb_lib_models?select=id,slug,storage_key,thumb_key&preview_key=is.null&preview_meta=is.null`, { headers: h })).json();
+    for (const x of fresh) if (!needPreview.some((n) => n.id === x.id)) needPreview.push({ id: x.id, slug: x.slug, storage_key: x.storage_key, thumb: x.thumb_key });
+  }
+  const todo = needPreview.slice(0, 15);
+  let made = 0;
+  for (const m of todo) {
+    try {
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files/${m.storage_key}?alt=media`, { headers: H });
+      if (!r.ok) throw new Error('Drive ' + r.status);
+      const zip = Buffer.from(await r.arrayBuffer());
+      let body = null;
+      if (m.thumb) { // color principal de la portada para la carrocería (si es STL)
+        try {
+          const img = Buffer.from(await (await fetch(`${SB}/storage/v1/object/public/bb-lib-thumbs/${encodeURIComponent(m.thumb)}`)).arrayBuffer());
+          const tmp = path.join(os.tmpdir(), `bb-lib-cover-${m.slug}.webp`); fs.writeFileSync(tmp, img);
+          body = dominantColor(execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', tmp, '-vf', 'scale=48:36', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']));
+          fs.unlinkSync(tmp);
+        } catch { /* sin ffmpeg o sin portada: color por defecto */ }
+      }
+      const p = buildPreview(zip, { bodyColor: body || '#e6e8ec' });
+      const name = `${m.slug}.glb`;
+      const up = await fetch(`${SB}/storage/v1/object/bb-lib-previews/${encodeURIComponent(name)}`, { method: 'POST', headers: { ...h, 'Content-Type': 'model/gltf-binary', 'x-upsert': 'true' }, body: p.glb });
+      if (!up.ok) throw new Error('subida ' + up.status + ' ' + (await up.text()).slice(0, 120));
+      await patch(m.id, { preview_key: name, preview_meta: { mode: p.mode, size_mm: p.size, parts: p.parts, tris: p.tris, colors: p.colors } });
+      made++; console.log(`3D ${m.slug}: ${p.mode} · ${p.parts} piezas · ${p.colors} colores · ${(p.glb.length / 1048576).toFixed(2)} MB`);
+    } catch (e) {
+      console.log(`3D ${m.slug}: no se pudo (${e.message})`);
+      await patch(m.id, { preview_meta: { error: String(e.message).slice(0, 200), at: new Date().toISOString() } }).catch(() => {});
+    }
+  }
+  if (todo.length) console.log(`Vistas 3D: ${made} de ${todo.length}${needPreview.length > todo.length ? ` (quedan ${needPreview.length - todo.length} para la próxima)` : ''}.`);
 }

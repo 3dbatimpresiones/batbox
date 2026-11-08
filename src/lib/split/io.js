@@ -11,6 +11,8 @@ import { unzipSync, strFromU8 } from 'fflate';
 
 export const NO_COLOR = 0xffff;
 export const MAX_TRIS = 1500000;
+// El importador de la Biblioteca 3D (Node) puede subir el límite para armar vistas previas; en la web no cambia.
+const maxTris = () => globalThis.__BB_MAX_TRIS || MAX_TRIS;
 
 // ---------- Paleta compartida ----------
 function makePalette() {
@@ -72,7 +74,7 @@ export function parseSTL(buf, name = 'Modelo') {
     if (!nums.length || nums.length % 9) throw new Error('No se pudo leer el STL de texto.');
     pos = new Float32Array(nums);
   }
-  if (pos.length / 9 > MAX_TRIS) throw new Error(`El modelo tiene más de ${MAX_TRIS.toLocaleString('es-AR')} triángulos.`);
+  if (pos.length / 9 > maxTris()) throw new Error(`El modelo tiene más de ${MAX_TRIS.toLocaleString('es-AR')} triángulos.`);
   const { vert, tri } = weldSoup(pos);
   return { objects: [{ name, vert, tri, col: null }], palette: [], warnings: [] };
 }
@@ -128,7 +130,7 @@ export function parseOBJ(text, name = 'Modelo') {
   });
   if (!out.length) throw new Error('El OBJ no tiene caras.');
   const total = out.reduce((a, o) => a + o.tri.length / 3, 0);
-  if (total > MAX_TRIS) throw new Error(`El modelo tiene más de ${MAX_TRIS.toLocaleString('es-AR')} triángulos.`);
+  if (total > maxTris()) throw new Error(`El modelo tiene más de ${MAX_TRIS.toLocaleString('es-AR')} triángulos.`);
   const warnings = [];
   if (usedMtl && !usedVC) warnings.push('El OBJ usa materiales (.mtl) que no vienen en el archivo: cada material se muestra con un color de muestra.');
   return { objects: out, palette: pal.list, warnings };
@@ -285,7 +287,7 @@ export function parse3MF(buf, name = 'Modelo') {
   }
   if (!out.length) throw new Error('El 3MF no tiene triángulos.');
   const total = out.reduce((a, o) => a + o.tri.length / 3, 0);
-  if (total > MAX_TRIS) throw new Error(`El modelo tiene más de ${MAX_TRIS.toLocaleString('es-AR')} triángulos.`);
+  if (total > maxTris()) throw new Error(`El modelo tiene más de ${MAX_TRIS.toLocaleString('es-AR')} triángulos.`);
   if (subdivided) warnings.push('El 3MF tiene pintura fina (triángulos subdivididos al pintar). En esta etapa esos triángulos toman el color base del objeto.');
   return { objects: out, palette: pal.list, warnings };
 }

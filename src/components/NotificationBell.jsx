@@ -17,6 +17,7 @@ const TEXT = {
   forum_reply: 'respondió tu tema del foro',
   forum_solution: 'marcó tu respuesta como solución',
   library_new: 'sumó modelos nuevos',
+  library_launch: 'abrió sus puertas',
 };
 const PREF_LABEL = {
   badge: 'Insignias que gano', comment: 'Comentarios en mis publicaciones', reply: 'Respuestas a mis comentarios', reaction: 'Reacciones a mis publicaciones',
@@ -70,7 +71,7 @@ export default function NotificationBell() {
   const go = async (n) => {
     setOpen(false);
     if (!n.read) { api.markRead([n.id]).then(refreshCount).catch(() => {}); }
-    if (n.kind === 'library_new') { navigate('/biblioteca'); return; }
+    if (n.kind === 'library_new' || n.kind === 'library_launch') { navigate('/biblioteca'); return; }
     if (!n.post_id) return;
     if (n.ref_type === 'topic') navigate('/batforum/t/' + n.post_id);
     else if (n.ref_type === 'badge' || n.post_kind === 'project') navigate('/galeria/p/' + n.post_id);
@@ -120,7 +121,7 @@ export default function NotificationBell() {
                       <li key={n.id}>
                         <button type="button" className={'nb-item' + (n.read ? '' : ' unread')} onClick={() => go(n)}>
                           <Avatar author={a} size={34} uid={n.actor_id} />
-                          <span className="nb-txt"><b>{n.kind === 'library_new' ? 'La Biblioteca 3D' : a?.name || 'Alguien'}</b> {TEXT[n.kind] || 'tiene novedades para vos'}
+                          <span className="nb-txt"><b>{n.kind === 'library_new' || n.kind === 'library_launch' ? 'La Biblioteca 3D' : a?.name || 'Alguien'}</b> {TEXT[n.kind] || 'tiene novedades para vos'}
                             {n.snippet && <em>“{n.snippet}”</em>}
                             <small>{api.timeAgo(n.created_at)}</small></span>
                         </button>

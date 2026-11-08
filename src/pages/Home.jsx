@@ -13,6 +13,26 @@ import { WeekMakerBlock } from '../components/GalleryCards.jsx';
 import { PartnersBanner } from '../components/PartnerBits.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 import { TycoonHomeBlock } from '../components/Tycoon.jsx';
+import { useCommunityFlags } from '../lib/communityApi.js';
+
+// Cartel de lanzamiento de la Biblioteca 3D: 14 días después de abrirla, hasta que la persona lo cierra.
+const LAUNCH_KEY = 'bb_lib_launch_seen';
+function LibraryLaunchBanner() {
+  const flags = useCommunityFlags();
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem(LAUNCH_KEY) === '1'; } catch { return false; } });
+  const at = flags?.biblioteca && flags.biblioteca_launched_at ? new Date(flags.biblioteca_launched_at).getTime() : 0;
+  if (hidden || !at || Date.now() - at > 14 * 864e5) return null;
+  const close = () => { setHidden(true); try { localStorage.setItem(LAUNCH_KEY, '1'); } catch { /* sin almacenamiento */ } };
+  return (
+    <section className="lib-launch">
+      <button type="button" className="lib-launch-x" onClick={close} aria-label="Cerrar aviso">×</button>
+      <span className="lib-soon-kicker">NUEVO EN EL MAKERS CLUB</span>
+      <h2>¡Llegó la Biblioteca 3D!</h2>
+      <p>Modelos listos para imprimir, exclusivos para los miembros del Makers Club.</p>
+      <a className="btn primary" href="#/biblioteca" onClick={close}><Icon name="box" size={16} /> Explorar la biblioteca</a>
+    </section>
+  );
+}
 
 const QUICK = [
   { to: '/juego', icon: 'gamepad', label: 'Maker Tycoon' },
@@ -83,6 +103,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <LibraryLaunchBanner />
 
       <WeekMakerBlock isMember={isMember} isAdmin={isAdmin} />
 

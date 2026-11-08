@@ -21,14 +21,38 @@ async function rpc(fn, args) {
 export const SORTS = [
   { value: 'new', label: 'Nuevos' },
   { value: 'popular', label: 'Populares' },
+  { value: 'rating', label: 'Mejor valorados' },
   { value: 'name', label: 'A–Z' },
 ];
 export const PAGE = 24;
 
 export const quota = () => rpc('bb_lib_quota');
 export const categories = () => rpc('bb_lib_categories_list');
-export const models = ({ category = null, q = '', sort = 'new', offset = 0, limit = PAGE, status = null } = {}) =>
-  rpc('bb_lib_models_list', { p_category: category, p_q: q || null, p_sort: sort, p_limit: limit, p_offset: offset, p_status: status });
+export const models = ({ category = null, q = '', sort = 'new', offset = 0, limit = PAGE, status = null, tag = null } = {}) =>
+  rpc('bb_lib_models_list', { p_category: category, p_q: q || null, p_sort: sort, p_limit: limit, p_offset: offset, p_status: status, p_tag: tag });
+export const tags = (category = null) => rpc('bb_lib_tags', { p_category: category });
+export const related = (id) => rpc('bb_lib_related', { p_model: id });
+
+// Valoraciones
+export const reviews = (id) => rpc('bb_lib_reviews_list', { p_model: id });
+export const saveReview = (id, stars, comment) => rpc('bb_lib_review_save', { p_model: id, p_stars: stars, p_comment: comment || '' });
+export const deleteReview = (id, user = null) => rpc('bb_lib_review_delete', { p_model: id, p_user: user });
+
+// "Lo imprimí": fotos de impresiones de los miembros (las fotos van al bucket de comunidad).
+export const makes = (id) => rpc('bb_lib_makes_list', { p_model: id });
+export const saveMake = (id, media, caption, galleryPost = null) => rpc('bb_lib_make_save', { p_model: id, p_media: media, p_caption: caption || '', p_gallery: galleryPost });
+export const deleteMake = (id) => rpc('bb_lib_make_delete', { p_id: id });
+
+// Colecciones personales
+export const myCollections = (model = null) => rpc('bb_lib_my_collections', { p_model: model });
+export const saveCollection = (name, id = null) => rpc('bb_lib_collection_save', { p_name: name, p_id: id });
+export const deleteCollection = (id) => rpc('bb_lib_collection_delete', { p_id: id });
+export const toggleInCollection = (id, model) => rpc('bb_lib_collection_toggle', { p_id: id, p_model: model });
+export const collectionModels = (id) => rpc('bb_lib_collection_models', { p_id: id });
+
+// Etiquetas automáticas → texto lindo ("escala 1:12" → "Escala 1:12", "gt-rc" → "GT-RC", "con direccion" → "Con dirección").
+const TAG_LABEL = { 'gt-rc': 'GT-RC', 'con direccion': 'Con dirección', bmw: 'BMW' };
+export const tagLabel = (t) => TAG_LABEL[t] || t.replace(/^\w/, (c) => c.toUpperCase());
 export const model = (slug) => rpc('bb_lib_model', { p_slug: slug });
 export const toggleFavorite = (id) => rpc('bb_lib_favorite_toggle', { p_model: id });
 export const myFavorites = () => rpc('bb_lib_my_favorites');
