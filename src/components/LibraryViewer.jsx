@@ -49,6 +49,14 @@ export default function LibraryViewer({ previewKey, meta, name }) {
     const camera = new THREE.PerspectiveCamera(35, 1, 1, 100000);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    controls.screenSpacePanning = true;
+    controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
+    controls.mouseButtons.RIGHT = THREE.MOUSE.PAN;
+    // Rueda presionada: desplaza la vista, no la página (igual que en el Splitter).
+    const stopMiddle = (e) => { if (e.button === 1) e.preventDefault(); };
+    renderer.domElement.addEventListener('mousedown', stopMiddle);
+    renderer.domElement.addEventListener('auxclick', stopMiddle);
     scene.add(new THREE.HemisphereLight('#ffffff', '#3b4370', 1.1));
     const sun = new THREE.DirectionalLight('#ffffff', 2.2); sun.position.set(1, 2, 1.4); scene.add(sun);
     const fill = new THREE.DirectionalLight('#9fdcff', 0.7); fill.position.set(-1.5, 0.8, -1); scene.add(fill);
@@ -108,6 +116,8 @@ export default function LibraryViewer({ previewKey, meta, name }) {
 
     return () => {
       alive = false; cancelAnimationFrame(frame); ro.disconnect(); controls.dispose();
+      renderer.domElement.removeEventListener('mousedown', stopMiddle);
+      renderer.domElement.removeEventListener('auxclick', stopMiddle);
       scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; ms.forEach((m) => { if (m !== SOLID) { m.map?.dispose(); m.dispose(); } }); });
       renderer.dispose(); renderer.domElement.remove();
     };
