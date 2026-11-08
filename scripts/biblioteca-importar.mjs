@@ -103,22 +103,36 @@ const lines = ['-- Generado por scripts/biblioteca-importar.mjs el ' + new Date(
 // Si hay acceso a Supabase, se saltean los ZIP ya cargados (no se vuelven a leer ni a convertir).
 // --fotos: además completa la galería de los modelos ya cargados que todavía no la tienen.
 const FILL_PHOTOS = process.argv.includes('--fotos');
-const existing = new Set(), takenSlugs = new Set(), needPhotos = new Map();
+const existing = new Map(), takenSlugs = new Set(); // storage_key → { slug, images, thumb }
 if (secretArg || process.env.SUPABASE_SECRET) {
   const k = (process.env.SUPABASE_SECRET || fs.readFileSync(secretArg, 'utf8')).replace(/^﻿/, '').trim();
   for (let from = 0; ; from += 1000) {
-    const r = await fetch(`https://llciggitqtseosfklbjl.supabase.co/rest/v1/bb_lib_models?select=storage_key,slug${FILL_PHOTOS ? ',images' : ''}&order=created_at`, { headers: { apikey: k, Authorization: 'Bearer ' + k, Range: `${from}-${from + 999}` } });
-    if (!r.ok) { console.error('No se pudo leer Supabase:', r.status, FILL_PHOTOS ? '(¿falta la migración 060?)' : ''); process.exit(1); }
+    const r = await fetch(`https://llciggitqtseosfklbjl.supabase.co/rest/v1/bb_lib_models?select=storage_key,slug,images,thumb_key&order=created_at`, { headers: { apikey: k, Authorization: 'Bearer ' + k, Range: `${from}-${from + 999}` } });
+    if (!r.ok) { console.error('No se pudo leer Supabase:', r.status); process.exit(1); }
     const rows = await r.json();
-    rows.forEach((x) => { existing.add(x.storage_key); takenSlugs.add(x.slug); if (FILL_PHOTOS && !x.images?.length) needPhotos.set(x.storage_key, x.slug); });
+    rows.forEach((x) => { existing.set(x.storage_key, { slug: x.slug, images: x.images || [], thumb: x.thumb_key }); takenSlugs.add(x.slug); });
     if (rows.length < 1000) break;
   }
 }
+
+// Fotos sueltas en Drive al lado del ZIP: "Modelo.jpg", "Modelo - 1.jpg", "Modelo_2.png", "Modelo (3).webp"…
+// Se asocian al ZIP con el mismo nombre. En la galería se guardan como <slug>--d-<idDrive>.webp.
+const IMG_RE = /\.(jpe?g|png|webp)$/i;
+// El número de foto solo cuenta si va separado por guion, guion bajo o entre paréntesis
+// (así "Peugeot 206.jpg" o "… Escala 1:12.png" no pierden su número).
+const looseBase = (name) => slugify(name.replace(IMG_RE, '').replace(/\s*[-_]\s*\d{1,2}\s*$|\s*\(\s*\d{1,2}\s*\)\s*$/, ''));
+const looseKey = (slug, id) => `${slug}--d-${id}.webp`;
 const used = new Set(takenSlugs); let count = 0, skipped = [];
 const records = [], categories = [];
 
 async function walk(folderId, catSlug, catPath) {
-  for (const f of await list(`'${folderId}' in parents and trashed=false`)) {
+  const files = await list(`'${folderId}' in parents and trashed=false`);
+  const loose = new Map(); // base del nombre → fotos sueltas
+  for (const f of files) if (IMG_RE.test(f.name) && f.mimeType !== 'application/vnd.google-apps.folder') {
+    const b = looseBase(f.name); if (!loose.has(b)) loose.set(b, []); loose.get(b).push(f);
+  }
+  for (const list of loose.values()) list.sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true }));
+  for (const f of files) {
     if (f.mimeType === 'application/vnd.google-apps.folder') {
       const slug = slugify(f.name);
       if (!catSlug) {
@@ -128,24 +142,76 @@ async function walk(folderId, catSlug, catPath) {
       } else await walk(f.id, catSlug, catPath + ' / ' + f.name); // subcarpetas: misma categoría
       continue;
     }
+    if (IMG_RE.test(f.name)) continue; // fotos sueltas: van con su ZIP
     if (!/\.zip$/i.test(f.name)) { skipped.push(`${catPath || '(raíz)'}/${f.name} (no es ZIP)`); continue; }
-    if (needPhotos.has(f.id)) { pending.push({ f, catSlug, catPath, slug: needPhotos.get(f.id), refill: true }); continue; }
-    if (existing.has(f.id)) continue;
+    const extra = loose.get(slugify(pretty(f.name))) || [];
+    const ex = existing.get(f.id);
+    if (ex) {
+      // Ya cargado: solo se actualiza la galería si cambiaron las fotos sueltas (o --fotos y no tiene ninguna).
+      const zipImgs = ex.images.filter((k) => !k.includes('--d-'));
+      const wanted = [...zipImgs, ...extra.map((p) => looseKey(ex.slug, p.id))];
+      const fromZip = FILL_PHOTOS && !zipImgs.length;
+      if (fromZip || JSON.stringify(wanted) !== JSON.stringify(ex.images))
+        pending.push({ f, catSlug, catPath, slug: ex.slug, refill: true, extra, ex, fromZip });
+      continue;
+    }
     let slug = slugify(pretty(f.name)); while (used.has(slug)) slug += '-2'; used.add(slug);
-    pending.push({ f, catSlug, catPath, slug });
+    pending.push({ f, catSlug, catPath, slug, extra });
   }
 }
 
+// Convierte una foto suelta de Drive (se baja entera: son livianas) a WebP para la galería.
+async function loosePhoto(p, slug, withCover) {
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${p.id}?alt=media`, { headers: H });
+  if (!r.ok) throw new Error('Drive ' + r.status);
+  const tmp = path.join(os.tmpdir(), `bb-lib-${p.id}${path.extname(p.name)}`);
+  fs.writeFileSync(tmp, Buffer.from(await r.arrayBuffer()));
+  const conv = (width, name) => execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', tmp, '-vf', `scale='min(${width},iw)':-2`, '-frames:v', '1', '-quality', '78', path.join(thumbsDir, name)]);
+  try {
+    conv(1280, looseKey(slug, p.id));
+    if (withCover) conv(640, slug + '.webp');
+  } finally { fs.unlinkSync(tmp); }
+}
+
 // Procesa un ZIP nuevo: piezas (índice) + foto. Se corren varios a la vez.
-async function processZip({ f, catSlug, catPath, slug, refill }) {
+// Fotos sueltas → claves de galería (convierte solo las que todavía no están subidas).
+async function addLoose(extra, slug, have, needCover) {
+  const keys = [];
+  for (const p of extra) {
+    const key = looseKey(slug, p.id);
+    try {
+      if (!have.includes(key)) { await loosePhoto(p, slug, needCover && !keys.length); newFiles.push(key); if (needCover && !keys.length) newFiles.push(slug + '.webp'); }
+      keys.push(key);
+    } catch (e) { skipped.push(`${p.name}: no se pudo convertir la foto (${e.message})`); }
+  }
+  return keys;
+}
+
+async function processZip({ f, catSlug, catPath, slug, refill, extra = [], ex, fromZip }) {
+  if (refill) {
+    // Modelo ya cargado: se rearma la galería (fotos del ZIP + fotos sueltas actuales).
+    let zipImgs = ex.images.filter((k) => !k.includes('--d-')), thumb = null;
+    if (fromZip) {
+      try { const parts = await zipParts(f.id, Number(f.size || 0)); ({ thumb, images: zipImgs } = await photos(f.id, parts, slug)); newFiles.push(...zipImgs); if (thumb) newFiles.push(thumb); }
+      catch (e) { skipped.push(`${f.name}: no se pudieron sacar las fotos (${e.message})`); }
+    }
+    const looseKeys = await addLoose(extra, slug, ex.images, !ex.thumb && !thumb);
+    if (!ex.thumb && !thumb && looseKeys.length) thumb = slug + '.webp';
+    refills.push({ storage_key: f.id, thumb, images: [...zipImgs, ...looseKeys], name: pretty(f.name) });
+    console.log(`~ galería de ${pretty(f.name)}: ${zipImgs.length + looseKeys.length} foto(s)`);
+    return;
+  }
   {
     const size = Number(f.size || 0);
     let parts = null;
     try { parts = await zipParts(f.id, size); } catch (e) { skipped.push(`${f.name}: no se pudo leer el índice (${e.message}); se carga sin piezas`); }
     let thumb = null, images = [];
     try { ({ thumb, images } = await photos(f.id, parts, slug)); } catch (e) { skipped.push(`${f.name}: no se pudieron sacar las fotos (${e.message})`); }
+    newFiles.push(...images); if (thumb) newFiles.push(thumb);
+    const looseKeys = await addLoose(extra, slug, [], !thumb);
+    if (!thumb && looseKeys.length) thumb = slug + '.webp';
+    images = [...images, ...looseKeys];
     if (parts) parts = parts.map(({ name, size }) => ({ name, size }));
-    if (refill) { refills.push({ storage_key: f.id, thumb, images, name: pretty(f.name) }); console.log(`~ fotos para ${pretty(f.name)}: ${images.length}`); return; }
     records.push({ cat: catSlug, row: { slug, name: pretty(f.name), storage_key: f.id, file_name: slugify(pretty(f.name)) + '.zip',
       size_bytes: size || null, md5: f.md5Checksum || null, parts: parts || [], thumb_key: thumb, images } });
     lines.push(`insert into public.bb_lib_models (slug, name, category_id, storage_key, file_name, size_bytes, md5, parts, thumb_key)
@@ -156,12 +222,12 @@ async function processZip({ f, catSlug, catPath, slug, refill }) {
     console.log(`+ ${catPath || '(sin categoría)'} → ${pretty(f.name)} · ${(size / 1048576).toFixed(1)} MB · ${parts ? parts.length + ' piezas' : 'sin índice'} · ${images.length} foto(s)`);
   }
 }
-const pending = [], refills = [];
+const pending = [], refills = [], newFiles = [];
 for (const r of roots) await walk(r.id, null, '');
 
 // --revisar: solo cuenta los ZIP nuevos (para que GitHub instale ffmpeg únicamente si hace falta).
 if (process.argv.includes('--revisar')) {
-  console.log(`Nuevos en Drive: ${pending.length}`);
+  console.log(`Para procesar (modelos nuevos o fotos nuevas): ${pending.length}`);
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `nuevos=${pending.length}\n`);
   process.exit(0);
 }
@@ -191,8 +257,7 @@ if (secretArg || process.env.SUPABASE_SECRET) {
   }
   const upload = (name) => call('/storage/v1/object/bb-lib-thumbs/' + encodeURIComponent(name), { method: 'POST',
     headers: { 'Content-Type': 'image/webp', 'x-upsert': 'true' }, body: fs.readFileSync(path.join(thumbsDir, name)) });
-  for (const r of [...records.map((x) => ({ thumb: x.row.thumb_key, images: x.row.images })), ...refills])
-    for (const name of [r.thumb, ...(r.images || [])].filter(Boolean)) await upload(name);
+  for (const name of new Set(newFiles)) await upload(name); // solo lo convertido en esta corrida
   const J = { 'Content-Type': 'application/json' };
   if (categories.length) await call('/rest/v1/bb_lib_categories?on_conflict=slug', { method: 'POST', headers: { ...J, Prefer: 'resolution=ignore-duplicates' }, body: JSON.stringify(categories) });
   const cats = await call('/rest/v1/bb_lib_categories?select=id,slug');
@@ -211,7 +276,7 @@ if (secretArg || process.env.SUPABASE_SECRET) {
     }
   }
   // Galería de modelos ya cargados (--fotos).
-  for (const r of refills) if (r.images.length) {
+  for (const r of refills) {
     const body = { images: r.images }; if (r.thumb) body.thumb_key = r.thumb;
     await call('/rest/v1/bb_lib_models?storage_key=eq.' + encodeURIComponent(r.storage_key), { method: 'PATCH', headers: J, body: JSON.stringify(body) });
   }
