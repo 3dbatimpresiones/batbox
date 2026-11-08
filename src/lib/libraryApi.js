@@ -49,6 +49,19 @@ export const adminSaveModel = (p) => rpc('bb_lib_admin_model_save', { p });
 export const adminSetStatus = (id, status) => rpc('bb_lib_admin_model_status', { p_model: id, p_status: status });
 export const adminSaveCategory = (p) => rpc('bb_lib_admin_category_save', { p });
 
+// Botón "Actualizar biblioteca" (solo admins): el puente valida que sea admin y lanza la importación en GitHub.
+async function syncCall(method) {
+  const { data } = await sb.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) throw new Error('Tenés que iniciar sesión.');
+  const r = await fetch(`${LIBRARY_DL_URL}/sync`, { method, headers: { Authorization: `Bearer ${token}` } });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.error || 'No se pudo actualizar la biblioteca.');
+  return body;
+}
+export const syncStart = () => syncCall('POST');
+export const syncStatus = () => syncCall('GET');
+
 // Acepta un enlace de Drive (/file/d/<ID>/ o ?id=<ID>) o el ID solo.
 export function driveId(text = '') {
   const s = text.trim();

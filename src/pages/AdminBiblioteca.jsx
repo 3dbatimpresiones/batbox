@@ -110,6 +110,39 @@ function Editor({ initial, cats, onDone }) {
   );
 }
 
+// Lanza la importación desde Drive y espera a que termine (suele tardar 1 a 2 minutos).
+function SyncButton({ before, onDone }) {
+  const [state, setState] = useState('idle'); // idle | running | done | error
+  const [msg, setMsg] = useState('');
+  const run = async () => {
+    setState('running'); setMsg('Buscando archivos nuevos en Drive… (tarda 1 a 2 minutos)');
+    try {
+      const { requested_at } = await lib.syncStart();
+      const since = new Date(requested_at).getTime() - 5000;
+      for (let i = 0; i < 60; i++) {
+        await new Promise((ok) => setTimeout(ok, 5000));
+        const s = await lib.syncStatus();
+        if (s.created_at && new Date(s.created_at).getTime() >= since && s.status === 'completed') {
+          if (s.conclusion !== 'success') throw new Error('La importación terminó con un error. Revisá Actions en GitHub.');
+          const after = await lib.adminStats();
+          const n = after.models - before;
+          setState('done'); setMsg(n > 0 ? `Listo: ${n} modelo${n === 1 ? '' : 's'} nuevo${n === 1 ? '' : 's'} publicado${n === 1 ? '' : 's'}.` : 'Listo: no había archivos nuevos.');
+          onDone();
+          return;
+        }
+      }
+      throw new Error('Está tardando más de lo normal. Volvé a mirar en unos minutos.');
+    } catch (e) { setState('error'); setMsg(e.message); }
+  };
+  return (
+    <div className="lib-sync">
+      <button type="button" className="btn primary" disabled={state === 'running'} onClick={run}>
+        <Icon name="refresh" size={16} /> {state === 'running' ? 'Actualizando…' : 'Actualizar biblioteca'}</button>
+      {msg && <small className={state === 'error' ? 'cm-warn' : 'cm-date'}>{msg}</small>}
+    </div>
+  );
+}
+
 export default function AdminBiblioteca() {
   const [stats, setStats] = useState(null);
   const [cats, setCats] = useState(null);
@@ -140,8 +173,9 @@ export default function AdminBiblioteca() {
   return (
     <div className="lib-admin">
       <Stats s={stats} />
+      <SyncButton before={stats?.models || 0} onDone={reload} />
       <div className="lib-actions">
-        <button type="button" className="btn primary" onClick={() => setEdit({ ...EMPTY, category_id: cats[0]?.id || '' })}><Icon name="sparkles" size={16} /> Nuevo modelo</button>
+        <button type="button" className="btn ghost" onClick={() => setEdit({ ...EMPTY, category_id: cats[0]?.id || '' })}><Icon name="sparkles" size={16} /> Nuevo modelo a mano</button>
         <a className="btn ghost" href="#/biblioteca"><Icon name="external" size={16} /> Ver como miembro</a>
       </div>
       <Categories cats={cats} reload={reload} />

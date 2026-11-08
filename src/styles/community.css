@@ -504,3 +504,4 @@
 .lib-admin { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .lib-stats { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 .lib-img { width: 100%; display: block; object-fit: cover; }
+.lib-sync { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }

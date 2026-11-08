@@ -1,16 +1,22 @@
 // Puente de descargas de la Biblioteca 3D (Cloudflare Worker, plan gratis).
 // GET /d/<token>  → canjea el permiso en Supabase y transmite el archivo desde Drive.
 // GET /salud      → comprueba que el Worker responde.
-// Secretos (wrangler secret put): SUPABASE_URL, SUPABASE_SERVICE_KEY, GOOGLE_SA_JSON.
+// POST /sync       → (solo administradores) lanza en GitHub la importación de modelos nuevos.
+// GET  /sync       → (solo administradores) estado de la última importación.
+// Secretos (wrangler secret put): SUPABASE_URL, SUPABASE_SERVICE_KEY, GOOGLE_SA_JSON, GITHUB_TOKEN.
 // Nunca se envían al navegador.
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PUBLISHABLE_KEY = 'sb_publishable_du93qodYkSZRevJ-BgXUGw_BrFc6JMO'; // pública (la misma de BATBOX)
+const ORIGINS = ['https://3dbat.com.ar', 'https://www.3dbat.com.ar', 'https://3dbatimpresiones.github.io', 'http://localhost:5173'];
+const WORKFLOW = 'https://api.github.com/repos/3dbatimpresiones/batbox/actions/workflows/biblioteca-sync.yml';
 let driveToken = null; // { value, expires } — se reutiliza mientras el Worker sigue vivo
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (url.pathname === '/salud') return text(200, 'ok');
+    if (url.pathname === '/sync') return sync(req, env);
     if (req.method !== 'GET' && req.method !== 'HEAD') return text(405, 'Método no permitido.');
 
     const m = url.pathname.match(/^\/d\/([^/]+)$/);
@@ -27,6 +33,43 @@ export default {
     }
   },
 };
+
+// ---------- Actualizar biblioteca (botón del panel admin) ----------
+async function sync(req, env) {
+  const origin = req.headers.get('Origin') || '';
+  const cors = ORIGINS.includes(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Authorization', 'Access-Control-Max-Age': '86400' } });
+  }
+  const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+  try {
+    // Solo administradores: se valida con la sesión del usuario contra Supabase (bb_lib_admin_stats exige admin).
+    const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+    if (!jwt) return json(401, { error: 'Tenés que iniciar sesión.' });
+    const check = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/bb_lib_admin_stats`, {
+      method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: '{}',
+    });
+    if (!check.ok) return json(403, { error: 'Solo los administradores pueden actualizar la biblioteca.' });
+    if (!env.GITHUB_TOKEN) return json(503, { error: 'Falta configurar GITHUB_TOKEN en el puente.' });
+
+    const gh = { Authorization: `Bearer ${env.GITHUB_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'batbox-biblioteca', 'X-GitHub-Api-Version': '2022-11-28' };
+    if (req.method === 'POST') {
+      const r = await fetch(`${WORKFLOW}/dispatches`, { method: 'POST', headers: { ...gh, 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main' }) });
+      if (r.status !== 204) { console.error('github', r.status, (await r.text()).slice(0, 200)); return json(502, { error: 'GitHub no aceptó el pedido. Probá de nuevo en un rato.' }); }
+      return json(202, { ok: true, requested_at: new Date().toISOString() });
+    }
+    if (req.method === 'GET') {
+      const r = await fetch(`${WORKFLOW}/runs?per_page=1`, { headers: gh });
+      if (!r.ok) return json(502, { error: 'No se pudo leer el estado en GitHub.' });
+      const run = (await r.json()).workflow_runs?.[0];
+      return json(200, run ? { status: run.status, conclusion: run.conclusion, created_at: run.created_at, event: run.event } : {});
+    }
+    return json(405, { error: 'Método no permitido.' });
+  } catch (err) {
+    console.error('sync', err?.message || err);
+    return json(502, { error: 'No se pudo actualizar la biblioteca.' });
+  }
+}
 
 async function redeem(env, token) {
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/bb_lib_redeem`, {
