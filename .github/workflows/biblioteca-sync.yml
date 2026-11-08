@@ -1,0 +1,37 @@
+name: Biblioteca 3D - cargar modelos nuevos de Drive
+
+# Cada 10 minutos revisa la carpeta de Drive de la biblioteca y publica los ZIP nuevos
+# (con su foto). Lo ya cargado no se toca. Gratis en repos públicos.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: biblioteca-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar ffmpeg (portadas WebP)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null
+      - name: Cargar modelos nuevos
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.BIBLIOTECA_GOOGLE_SA_JSON }}
+          SUPABASE_SECRET: ${{ secrets.BIBLIOTECA_SUPABASE_SECRET }}
+        run: |
+          if [ -z "$GOOGLE_SA_JSON" ] || [ -z "$SUPABASE_SECRET" ]; then
+            echo "Faltan los secrets BIBLIOTECA_GOOGLE_SA_JSON / BIBLIOTECA_SUPABASE_SECRET: no se hace nada."
+            exit 0
+          fi
+          node scripts/biblioteca-importar.mjs "" /tmp/import.sql /tmp/portadas "" --publicar

@@ -14,6 +14,7 @@ export default function GroupCard() {
 
   useEffect(() => {
     if (isTrial) return;
+    if (simulated) { setPhone('11 5555-0000'); return; } // simulación local: celular de ejemplo
     mySubscription().then((me) => setPhone(me?.phone || ''), () => setPhone(''));
   }, [isTrial]);
 
@@ -33,7 +34,8 @@ export default function GroupCard() {
 
   const join = async () => {
     setError('');
-    if (simulated) { notify('ok', 'Simulación: acá se abriría el grupo'); return; }
+    // Simulación local: abre el mismo link que está guardado en la base.
+    if (simulated) { window.open('https://chat.whatsapp.com/EWGa0QwsFmWHfbT9phpXvC', '_blank'); return; }
     const w = window.open('about:blank', '_blank'); // se abre ya, si no el navegador la bloquea
     setBusy(true);
     try {

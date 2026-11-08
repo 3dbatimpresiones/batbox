@@ -491,3 +491,16 @@
 /* Banner: los logos sin fondo conservan su proporción (los apaisados se ven más grandes) */
 .pt-banner-item .pt-logo.bare { width: auto !important; height: 52px !important; }
 .pt-banner-item .pt-logo.bare img { width: auto; max-width: 150px; height: 100%; }
+
+/* ---------- Biblioteca 3D (#/biblioteca) ---------- */
+.lib-page { max-width: 1100px; }
+.lib-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.lib-tabs .opt { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.lib-cover { aspect-ratio: 4 / 3; background: radial-gradient(circle at 30% 20%, rgba(0,212,255,.22), transparent 60%), radial-gradient(circle at 80% 90%, rgba(255,79,163,.18), transparent 55%), rgba(19,29,71,.7); color: var(--cyan, #00d4ff); }
+.lib-detail .lib-cover { border-radius: 16px; max-height: 320px; width: 100%; }
+.lib-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.lib-box { padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.lib-box summary { cursor: pointer; }
+.lib-admin { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lib-stats { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.lib-img { width: 100%; display: block; object-fit: cover; }

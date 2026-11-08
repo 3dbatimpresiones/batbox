@@ -21,10 +21,13 @@ const Chops = lazy(() => import('./pages/Chops.jsx'));
 const Production = lazy(() => import('./pages/Production.jsx'));
 const Rollers = lazy(() => import('./pages/Rollers.jsx'));
 const Split = lazy(() => import('./pages/Split.jsx'));
+const Support = lazy(() => import('./pages/Support.jsx'));
+const Texture = lazy(() => import('./pages/Texture.jsx'));
 const Feed = lazy(() => import('./pages/Feed.jsx'));
 const Forum = lazy(() => import('./pages/Forum.jsx'));
 const MapMaker = lazy(() => import('./pages/MapMaker.jsx'));
 const Gallery = lazy(() => import('./pages/Gallery.jsx'));
+const Biblioteca = lazy(() => import('./pages/Biblioteca.jsx'));
 const Partners = lazy(() => import('./pages/Partners.jsx'));
 const Loading = () => <div className="empty"><div className="spinner" /></div>;
 import { Account } from './pages/Account.jsx';
@@ -55,11 +58,14 @@ function Page({ route }) {
     case 'rodillos': return <Suspense fallback={<Loading />}><Rollers /></Suspense>;
     case 'separador':
     case 'split': return <Suspense fallback={<Loading />}><Split /></Suspense>;
+    case 'batsupport': return <Suspense fallback={<Loading />}><Support /></Suspense>;
+    case 'battexture': return <Suspense fallback={<Loading />}><Texture /></Suspense>;
     // BATFEED (muro) oculto por ahora: se conserva solo el perfil de makers. La base social sigue activa porque la usan Galería y Foro.
     case 'batfeed': return parts[1] === 'perfil' ? <Suspense fallback={<Loading />}><Feed route={route} /></Suspense> : <Redirect to="/galeria" />;
     case 'batforum': return <Suspense fallback={<Loading />}><Forum route={route} /></Suspense>;
     case 'mapa': return <Suspense fallback={<Loading />}><MapMaker /></Suspense>;
     case 'patrocinadores': return <Suspense fallback={<Loading />}><Partners route={route} /></Suspense>;
+    case 'biblioteca': return <Suspense fallback={<Loading />}><Biblioteca route={route} /></Suspense>;
     case 'galeria': return <Suspense fallback={<Loading />}><Gallery route={route} /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;

@@ -27,6 +27,10 @@ export const LINKS = {
   paypalSubscribe: 'https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=P-3YW5408561955474SNAH7JZI',
 };
 
+// Puente de descargas de la Biblioteca 3D (Cloudflare Worker). Público: solo canjea
+// permisos de un solo uso que entrega Supabase después de validar al miembro.
+export const LIBRARY_DL_URL = 'https://batbox-biblioteca-descargas.makersclub3dbat.workers.dev';
+
 // Cuentas DUEÑAS (las únicas que dan o quitan permisos): las define la base
 // (bb_owner_emails() en supabase/007). A propósito NO están acá: este archivo es público.
 

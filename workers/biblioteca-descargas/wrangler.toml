@@ -1,0 +1,9 @@
+name = "batbox-biblioteca-descargas"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# Secretos (NO van acá): se cargan con
+#   npx wrangler secret put SUPABASE_URL
+#   npx wrangler secret put SUPABASE_SERVICE_KEY
+#   npx wrangler secret put GOOGLE_SA_JSON
