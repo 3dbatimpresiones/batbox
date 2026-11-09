@@ -1,0 +1,526 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import '../styles/batcard.css';
+import portada from '../assets/batcard-portada.webp';
+import Plasma from '../components/batcard/Plasma.jsx';
+import Card from '../components/batcard/Card.jsx';
+import { sfx, setAudio } from '../components/batcard/sfx.js';
+import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
+import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK } from '../lib/batcard/catalog.js';
+import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
+import { fmtMult } from '../lib/batcard/score.js';
+import { newSeed } from '../lib/batcard/rng.js';
+
+// =====================================================================
+// #/batcard — BATCARD · Un juego de 3DBAT IMPRESIONES.
+// Roguelike de cartas. Motor puro en src/lib/batcard/; acá solo presentación.
+// Guardado local (sin cuenta). Ranking del Makers Club: fase posterior (requiere validación en servidor).
+// =====================================================================
+
+const K_SAVE = 'batcard.save', K_SET = 'batcard.ajustes', K_REC = 'batcard.record', K_TUTO = 'batcard.tutorial';
+const ls = {
+  get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
+  del(k) { try { localStorage.removeItem(k); } catch { /* nada */ } },
+};
+const DEF_SET = { crt: 'suave', motion: 'auto', flashes: true, vol: 0.6, mute: false, speed: 'normal' };
+const SPEED = { normal: 320, rapida: 120 };
+
+function useSettings() {
+  const [s, setS] = useState(() => ({ ...DEF_SET, ...(ls.get(K_SET) || {}) }));
+  useEffect(() => { ls.set(K_SET, s); setAudio(s.vol, s.mute); }, [s]);
+  const sysReduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced = s.motion === 'reducido' || (s.motion === 'auto' && sysReduced);
+  return [s, (patch) => setS((p) => ({ ...p, ...patch })), reduced];
+}
+
+function loadSave() {
+  const raw = ls.get(K_SAVE);
+  if (!raw) return { save: null, problem: null };
+  const why = validateSave(raw);
+  if (why) return { save: null, problem: why };
+  return { save: raw, problem: null };
+}
+
+export default function Batcard() {
+  const [set, patch, reduced] = useSettings();
+  const [screen, setScreen] = useState('menu');
+  const [{ save, problem }, setSaveInfo] = useState(loadSave);
+  const [st, setSt] = useState(null);
+
+  const start = (s) => { setSt(s); setScreen('juego'); };
+  const nueva = () => { ls.del(K_SAVE); start(newGame(newSeed())); };
+  const continuar = () => save && start(save);
+  const aparcar = () => { setSaveInfo(loadSave()); setScreen('menu'); };
+  const descartarRoto = () => { ls.set(K_SAVE + '.roto', ls.get(K_SAVE)); ls.del(K_SAVE); setSaveInfo({ save: null, problem: null }); };
+
+  return (
+    <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}`}>
+      <div className="bc-stage">
+        <Plasma still={reduced} />
+        <div className="bc-crt" aria-hidden="true" />
+        <div className="bc-content">
+          {screen === 'menu' && (
+            <Menu save={save} problem={problem} onNew={nueva} onCont={continuar} onDropBad={descartarRoto} go={setScreen} />
+          )}
+          {screen === 'coleccion' && <Coleccion back={() => setScreen('menu')} />}
+          {screen === 'ajustes' && <Ajustes set={set} patch={patch} back={() => setScreen(st ? 'juego' : 'menu')} />}
+          {screen === 'juego' && st && (
+            <Juego st={st} setSt={setSt} speed={SPEED[set.speed]} reduced={reduced}
+              onMenu={aparcar} onAjustes={() => setScreen('ajustes')} onNew={nueva} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Menú
+function Menu({ save, problem, onNew, onCont, onDropBad, go }) {
+  const rec = ls.get(K_REC);
+  return (
+    <div className="bc-menu">
+      <img className="bc-cover" src={portada} alt="BATCARD: la A del título es un alicate de corte al ras. Un juego de 3DBAT IMPRESIONES." />
+      <h1 className="sr-only">BATCARD · Un juego de 3DBAT IMPRESIONES</h1>
+      <p className="bc-tag">Cada partida es una orden de producción. Armá combinaciones, mejorá tu taller y pasá los controles de calidad.</p>
+      {problem && (
+        <div className="bc-alert" role="alert">
+          No se pudo recuperar tu partida guardada ({problem}). No la borramos: podés descartarla y empezar otra.
+          <button className="bc-btn small" onClick={onDropBad}>Descartar guardado</button>
+        </div>
+      )}
+      <div className="bc-menu-btns">
+        {save && <button className="bc-btn primary" onClick={onCont}>Continuar <small>Lote {save.lot + 1} · {BLIND_NAMES[save.blind]}</small></button>}
+        <button className={`bc-btn${save ? '' : ' primary'}`} onClick={() => { if (!save || confirm('Empezar otra partida reemplaza la guardada. ¿Seguimos?')) onNew(); }}>Nueva partida</button>
+        <button className="bc-btn" onClick={() => go('coleccion')}>Colección</button>
+        <button className="bc-btn" onClick={() => go('ajustes')}>Ajustes</button>
+      </div>
+      {rec && <p className="bc-rec">Récord: {rec.won ? 'orden completa' : `Lote ${rec.lot}`} · mejor mano {rec.best.toLocaleString('es-AR')} Calidad</p>}
+      <p className="bc-foot">Gratis y sin cuenta: la partida se guarda en este navegador. El ranking del Makers Club llega en una próxima versión.</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Juego
+function Juego({ st, setSt, speed, reduced, onMenu, onAjustes, onNew }) {
+  const [sel, setSel] = useState([]);
+  const [over, setOver] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [anim, setAnim] = useState(null); // { prev, last, i }
+  const [calPick, setCalPick] = useState(null); // índice de calibración esperando palo
+  const [tuto, setTuto] = useState(() => ls.get(K_TUTO) ?? 0);
+  const [help, setHelp] = useState(() => (ls.get(K_TUTO) ?? 0) === 0);
+  const fx = useRef(null);
+
+  // Guardado tras cada transición confirmada (incluye compra y refresco).
+  useEffect(() => {
+    if (st.phase === 'victory' || st.phase === 'defeat') {
+      ls.del(K_SAVE);
+      const rec = ls.get(K_REC) || { lot: 0, best: 0, won: false };
+      ls.set(K_REC, { lot: Math.max(rec.lot, st.lot + 1), best: Math.max(rec.best, st.stats.bestHand), won: rec.won || st.phase === 'victory' });
+    } else ls.set(K_SAVE, st);
+  }, [st]);
+  useEffect(() => { ls.set(K_TUTO, tuto); }, [tuto]);
+
+  const view = anim ? anim.prev : st;
+  const r = view.round;
+  const info = blindInfo(view);
+  const byId = useMemo(() => Object.fromEntries(view.deck.map((c) => [c.id, c])), [view.deck]);
+
+  const act = (action, after) => {
+    const res = step(st, action);
+    if (res.error) { setMsg(res.error); return null; }
+    setMsg('');
+    setSt(res.state);
+    after?.(res);
+    return res;
+  };
+
+  // Animación por etapas de la traza de puntaje.
+  useEffect(() => {
+    if (!anim) return undefined;
+    const steps = anim.last.trace.length;
+    if (anim.i >= steps) {
+      const h = setTimeout(() => {
+        setAnim(null);
+        if (st.phase === 'shop' || st.phase === 'victory') sfx.win();
+        if (st.phase === 'defeat') sfx.lose();
+      }, reduced ? 250 : 700);
+      return () => clearTimeout(h);
+    }
+    const h = setTimeout(() => {
+      const t = anim.last.trace[anim.i];
+      if (t.phase === 'mod' && t.text.includes('Mult')) sfx.mult(); else sfx.tick(anim.i);
+      setAnim((a) => a && { ...a, i: a.i + 1 });
+    }, anim.i === 0 ? 250 : speed);
+    return () => clearTimeout(h);
+  }, [anim, speed, reduced, st.phase]);
+
+  const toggle = (id) => {
+    if (anim) return;
+    setSel((s) => {
+      if (s.includes(id)) { sfx.deselect(); return s.filter((x) => x !== id); }
+      if (s.length >= 5) { setMsg('Máximo 5 cartas.'); return s; }
+      sfx.select(); return [...s, id];
+    });
+  };
+  const imprimir = () => {
+    if (anim || !sel.length) return;
+    const prev = st;
+    const res = act({ type: 'PLAY', ids: sel, overextrude: over });
+    if (!res) return;
+    sfx.print();
+    setAnim({ prev, last: res.state.last, i: 0 });
+    setSel([]); setOver(false);
+    if (tuto === 0) setTuto(1);
+    if (tuto === 2 && over) setTuto(3);
+  };
+  const descartar = () => {
+    if (anim || !sel.length) return;
+    if (act({ type: 'DISCARD', ids: sel })) { sfx.snap(); setSel([]); if (tuto === 1) setTuto(2); }
+  };
+  const usarCal = (idx, suit) => {
+    const cal = CAL[st.cals[idx]];
+    if (cal.target !== 'none' && sel.length !== 1) { setMsg(`Seleccioná exactamente 1 carta de tu mano para usar ${cal.name}.`); return; }
+    if (cal.target === 'card+suit' && !suit) { setCalPick(idx); return; }
+    if (act({ type: 'USE_CAL', idx, cardId: sel[0], suit })) { sfx.snap(); setCalPick(null); if (cal.id === 'corte_ras') setSel([]); }
+  };
+
+  // Atajos de teclado
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target.closest?.('input,select,textarea')) return;
+      if (st.phase !== 'round' || anim) return;
+      const k = e.key.toLowerCase();
+      if (k === 'enter' && e.target.tagName !== 'BUTTON') imprimir();
+      else if (k === 'i') imprimir();
+      else if (k === 'd') descartar();
+      else if (k === 's') setOver((o) => !o);
+      else if (k === 'escape') setSel([]);
+      else if (/^[1-8]$/.test(k) && st.round.hand[+k - 1]) toggle(st.round.hand[+k - 1]);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const pv = !anim && st.phase === 'round' ? preview(st, sel, over) : null;
+  const canOver = st.phase === 'round' && st.round.heat <= RULES.overLimit;
+  const tShown = anim ? anim.last.trace[Math.min(anim.i, anim.last.trace.length) - 1] : null;
+  const shownScore = anim ? (anim.i >= anim.last.trace.length ? anim.prev.round.score + anim.last.total : anim.prev.round.score) : r?.score ?? 0;
+  const hand = r ? r.hand.filter((id) => !(anim && anim.last.played.includes(id))) : [];
+  const litCards = anim ? new Set(anim.last.trace.slice(0, anim.i).filter((t) => t.cardId).map((t) => t.cardId)) : new Set();
+  const litMods = anim ? new Set(anim.last.trace.slice(0, anim.i).filter((t) => t.modSlot != null).map((t) => t.modSlot)) : new Set();
+
+  return (
+    <div className="bc-game" ref={fx}>
+      <header className="bc-hud">
+        <div className="bc-hud-l">
+          <span className="bc-pill">Lote {view.lot + 1}/{LOTS}</span>
+          <span className={`bc-pill ${info.boss ? 'boss' : ''}`}>{info.name}</span>
+          {r && <span className="bc-pill">Meta <b>{r.target.toLocaleString('es-AR')}</b></span>}
+        </div>
+        <div className="bc-hud-r">
+          {r && <span className="bc-stat"><small>Calidad</small><b className={anim && anim.i >= anim.last.trace.length ? 'bump' : ''}>{shownScore.toLocaleString('es-AR')}</b></span>}
+          {r && <span className="bc-stat"><small>Impresiones</small><b>{r.prints}</b></span>}
+          {r && <span className="bc-stat"><small>Descartes</small><b>{r.discards}</b></span>}
+          <span className="bc-stat brass"><small>Créditos</small><b>{view.credits}</b></span>
+          <button className="bc-icon" onClick={() => setHelp(true)} aria-label="¿Cómo se puntúa?">?</button>
+          <button className="bc-icon" onClick={onAjustes} aria-label="Ajustes">⚙</button>
+          <button className="bc-icon" onClick={onMenu} aria-label="Guardar y volver al menú">⏏</button>
+        </div>
+      </header>
+
+      <Mods st={view} lit={litMods} setSt={setSt} act={act} shop={st.phase === 'shop' && !anim} />
+
+      {msg && <div className="bc-msg" role="status">{msg}</div>}
+
+      {view.phase === 'preview' && <Preview st={view} onStart={() => act({ type: 'START_ROUND' }, () => sfx.print())} />}
+
+      {view.phase === 'round' && r && (
+        <>
+          <Heat heat={r.heat} forecast={pv ? pv.heat : over ? Math.min(6, r.heat + 2) : null} boss={r.boss} />
+          <section className="bc-bed" aria-label="Cama de impresión">
+            {anim ? (
+              <>
+                <div className="bc-played">
+                  {anim.last.played.map((id) => <Card key={id} card={anim.prev.deck.find((c) => c.id === id)} scoring={anim.last.scoring.includes(id)} lit={litCards.has(id)} />)}
+                </div>
+                <div className="bc-trace" aria-live="polite">
+                  <div className="bc-cm"><span className="chips">{tShown ? tShown.chips : 0}</span><span className="x">×</span><span className="mult">{tShown ? fmtMult(tShown.mult) : 0}</span></div>
+                  <ol>{anim.last.trace.slice(0, anim.i).map((t, i) => <li key={i} className={'ph-' + t.phase}>{t.text}</li>)}</ol>
+                  {anim.i < anim.last.trace.length && <button className="bc-btn small" onClick={() => setAnim((a) => ({ ...a, i: a.last.trace.length }))}>Acelerar</button>}
+                </div>
+              </>
+            ) : (
+              <div className="bc-forecast">
+                {pv ? (
+                  <>
+                    <b>{PATTERN[pv.pattern].name}</b>{pv.level > 0 && <small> nivel {pv.level + 1}</small>}
+                    <span className="bc-cm small"><span className="chips">{pv.score.chips}</span><span className="x">×</span><span className="mult">{fmtMult(pv.score.mult)}</span></span>
+                    <span className="bc-est">= <b>{pv.score.total.toLocaleString('es-AR')}</b> de Calidad</span>
+                    <small>{pv.score.total + r.score >= r.target ? '¡Con esta mano pasás la meta!' : `Después te faltarían ${(r.target - r.score - pv.score.total).toLocaleString('es-AR')}`} · puntúan {pv.scoring.length} carta{pv.scoring.length > 1 ? 's' : ''}</small>
+                  </>
+                ) : <span className="muted">Elegí de 1 a 5 cartas para ver cuánto suman. Te faltan <b>{(r.target - r.score).toLocaleString('es-AR')}</b> de Calidad. <button className="bc-mini" onClick={() => setHelp(true)}>¿Cómo se puntúa?</button></span>}
+                {view.last && !pv && <small className="muted">Última: {PATTERN[view.last.pattern].name} → {view.last.total.toLocaleString('es-AR')}</small>}
+              </div>
+            )}
+          </section>
+
+          <Tutorial step={tuto} setStep={setTuto} />
+
+          <section className={`bc-hand${reduced ? '' : ' float'}`} aria-label="Tu mano">
+            {hand.map((id, i) => (
+              <Card key={id} card={byId[id]} idx={i} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
+                scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim} />
+            ))}
+          </section>
+          <div className="bc-draw">Mazo: {r.draw.length} / {view.deck.length}</div>
+
+          <div className="bc-actions">
+            <button className="bc-btn primary big" onClick={imprimir} disabled={!!anim || !sel.length}>Imprimir <kbd>I</kbd></button>
+            <label className={`bc-over${!canOver ? ' dis' : ''}`} title={canOver ? '' : 'Con Calor 5 o 6 no se puede'}>
+              <input type="checkbox" checked={over} disabled={!canOver || !!anim} onChange={(e) => setOver(e.target.checked)} />
+              Sobreextruir <small>+12 Capas · +2 Calor</small> <kbd>S</kbd>
+            </label>
+            <button className="bc-btn" onClick={descartar} disabled={!!anim || !sel.length || r.discards <= 0}>Descartar <kbd>D</kbd></button>
+          </div>
+
+          {view.cals.length > 0 && (
+            <div className="bc-cals" aria-label="Calibraciones">
+              {view.cals.map((id, i) => (
+                <div key={i} className="bc-cal">
+                  <b>{CAL[id].name}</b><small>{CAL[id].desc}</small>
+                  {calPick === i ? (
+                    <span className="bc-suits">{SUIT_IDS.map((s) => <button key={s} className="bc-btn small" onClick={() => usarCal(i, s)} aria-label={SUITS[s].name}>{SUITS[s].sym}</button>)}<button className="bc-btn small" onClick={() => setCalPick(null)}>✕</button></span>
+                  ) : <button className="bc-btn small" disabled={!!anim} onClick={() => usarCal(i)}>Usar</button>}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {help && <Ayuda onClose={() => setHelp(false)} />}
+      {view.phase === 'shop' && <Shop st={view} act={act} />}
+      {(view.phase === 'victory' || view.phase === 'defeat') && <End st={view} onNew={onNew} onMenu={onMenu} />}
+      <p className="bc-seed">Semilla {st.seed} · {st.deck.length} cartas en el mazo</p>
+    </div>
+  );
+}
+
+function Ayuda({ onClose }) {
+  useEffect(() => {
+    const k = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [onClose]);
+  return createPortal(
+    <div className="bc-root bc-modal" role="dialog" aria-modal="true" aria-label="Cómo se puntúa" onClick={onClose}>
+      <div className="bc-panel bc-help" onClick={(e) => e.stopPropagation()}>
+        <div className="bc-row"><h2>¿Cómo se puntúa?</h2><button className="bc-btn small" onClick={onClose} autoFocus>Entendido</button></div>
+        <p>Cada ronda tiene una <b>meta de Calidad</b>. Tenés <b>{RULES.prints} impresiones</b> para llegar: cada impresión suma Calidad.</p>
+        <p className="bc-formula"><span className="chips">Capas</span> × <span className="mult">Multiplicador</span> = Calidad</p>
+        <ol className="bc-list">
+          <li>Elegí de 1 a 5 cartas. El juego busca qué <b>Patrón</b> (mano de póker) forman.</li>
+          <li>El Patrón da Capas y Multiplicador base (tabla de abajo).</li>
+          <li>Las cartas que forman el Patrón suman su valor en Capas: 2–10 su número, J/Q/K 10, As 11.</li>
+          <li>Después actúan tus Mods (de izquierda a derecha) y se multiplica.</li>
+        </ol>
+        <table className="bc-table"><thead><tr><th>Patrón</th><th>Capas × Mult</th><th>Ejemplo</th></tr></thead>
+          <tbody>{PATTERNS.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td className="muted">{EJ[p.id]}</td></tr>)}</tbody></table>
+        <h3>Ejemplo</h3>
+        <p>Par de K: (12 + 10 + 10) × 2 = <b>64</b>. Trío de 7: (30 + 21) × 3 = <b>153</b>. Una Carta alta casi no suma: buscá Patrones más grandes.</p>
+        <h3>Consejos</h3>
+        <ul className="bc-list">
+          <li>Al seleccionar cartas ves el <b>total exacto</b> antes de imprimir.</li>
+          <li><b>Descartá</b> las cartas que no te sirven: se reponen y no gastás impresión ({RULES.discards} por ronda).</li>
+          <li><b>Sobreextruir</b> da +12 Capas pero sube 2 de Calor. Descartar enfría 1.</li>
+          <li>Ganar con impresiones de sobra da más Créditos para comprar Mods en Suministros.</li>
+        </ul>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+const EJ = { alta: 'A', par: 'K K', doble: '9 9 · 4 4', trio: '7 7 7', escalera: '5 6 7 8 9', color: '5 del mismo palo', full: '3 3 3 · 9 9', poker: '8 8 8 8', ecolor: 'escalera del mismo palo' };
+
+function Heat({ heat, forecast, boss }) {
+  return (
+    <div className="bc-heat" role="meter" aria-valuemin={0} aria-valuemax={6} aria-valuenow={heat} aria-label={`Calor ${heat} de 6`}>
+      <span className="lbl">Calor</span>
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <span key={i} className={`seg${i <= heat && heat > 0 && i > 0 ? ' on' : ''}${forecast != null && i > heat && i <= forecast ? ' fc' : ''}${i === 6 ? ' max' : ''}`}>{i}</span>
+      ))}
+      <span className="txt">{forecast != null && forecast !== heat ? `→ ${forecast} si imprimís` : `${heat}/6`}{boss === 'hotend_saturado' && ' · ¡Hotend Saturado castiga el 6!'}</span>
+    </div>
+  );
+}
+
+function Mods({ st, lit, act, shop }) {
+  const slots = Array.from({ length: RULES.maxMods }, (_, i) => st.mods[i]);
+  if (!st.mods.length) return <p className="bc-nomods">Sin Mods de Taller todavía: se consiguen en Suministros, después de cada ronda ganada.</p>;
+  return (
+    <section className="bc-mods" aria-label="Mods de Taller (se aplican de izquierda a derecha)">
+      {slots.map((id, i) => id ? (
+        <ModCard key={id} mod={MOD[id]} lit={lit.has(i)}>
+          <span className="bc-mod-ctl">
+            <button className="bc-mini" disabled={i === 0} onClick={() => act({ type: 'MOVE_MOD', from: i, to: i - 1 })} aria-label={`Mover ${MOD[id].name} a la izquierda`}>◀</button>
+            {shop && <button className="bc-mini" onClick={() => act({ type: 'SELL_MOD', idx: i }, () => sfx.coin())}>Vender {Math.floor(MOD[id].price / 2)}</button>}
+            <button className="bc-mini" disabled={i === st.mods.length - 1} onClick={() => act({ type: 'MOVE_MOD', from: i, to: i + 1 })} aria-label={`Mover ${MOD[id].name} a la derecha`}>▶</button>
+          </span>
+        </ModCard>
+      ) : <div key={'v' + i} className="bc-mod empty">Slot de Mod</div>)}
+    </section>
+  );
+}
+
+function ModCard({ mod, lit, children }) {
+  const onMove = (e) => {
+    const b = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty('--mx', ((e.clientX - b.left) / b.width).toFixed(3));
+    e.currentTarget.style.setProperty('--my', ((e.clientY - b.top) / b.height).toFixed(3));
+  };
+  return (
+    <div className={`bc-mod fin-${mod.finish}${lit ? ' lit' : ''}`} onPointerMove={onMove}>
+      <span className="bc-mod-name">{mod.name}</span>
+      <span className="bc-mod-desc">{mod.desc}</span>
+      <span className="bc-mod-rar">{mod.rarity}</span>
+      {children}
+    </div>
+  );
+}
+
+function Preview({ st, onStart }) {
+  const info = blindInfo(st);
+  return (
+    <section className="bc-panel bc-preview">
+      <h2>Lote {st.lot + 1} · {info.name}</h2>
+      <p className="big">Meta: <b>{info.target.toLocaleString('es-AR')}</b> de Calidad</p>
+      <p>{RULES.prints} impresiones · {RULES.discards - (info.boss === 'bobina_enredada' ? 1 : 0)} descartes · mano de {RULES.handSize} · pago {info.pay} Créditos + 1 por impresión que sobre</p>
+      {info.boss && <div className="bc-boss"><b>Jefe: {BOSS[info.boss].name}</b><span>{BOSS[info.boss].desc}</span></div>}
+      <div className="bc-lotmap">{TARGETS[st.lot].map((t, i) => <span key={i} className={i === st.blind ? 'cur' : i < st.blind ? 'done' : ''}>{BLIND_NAMES[i]}<b>{t}</b></span>)}</div>
+      <button className="bc-btn primary big" onClick={onStart} autoFocus>Arrancar la impresión</button>
+    </section>
+  );
+}
+
+const itemName = (it) => (it.kind === 'mod' ? MOD[it.id].name : it.kind === 'cal' ? CAL[it.id].name : PROF[it.id].name);
+const itemDesc = (it, st) => {
+  if (it.kind === 'mod') return MOD[it.id].desc;
+  if (it.kind === 'cal') return CAL[it.id].desc;
+  const p = PATTERN[PROF[it.id].pattern];
+  const lv = st.levels[p.id] || 0;
+  return `Perfil: sube ${p.name} a nivel ${lv + 2} (+${p.lvl[0]} Capas, +${p.lvl[1]} Mult).`;
+};
+const KIND = { mod: 'Mod', cal: 'Calibración', profile: 'Perfil' };
+
+function Shop({ st, act }) {
+  const w = st.lastWin;
+  return (
+    <section className="bc-panel bc-shop">
+      {w && <div className="bc-cash">¡Control superado! {w.score.toLocaleString('es-AR')} / {w.target.toLocaleString('es-AR')} · cobrás <b>{w.pay}</b> Créditos ({w.base} base + {w.left} por impresiones sobrantes{w.extra.length ? ' + ' + w.extra.join(', ') : ''})</div>}
+      <h2>Suministros</h2>
+      <div className="bc-items">
+        {st.shop.items.map((it, i) => (
+          <div key={i} className={`bc-item k-${it.kind}${it.sold ? ' sold' : ''}`}>
+            <small>{KIND[it.kind]}{it.kind === 'mod' ? ' · ' + MOD[it.id].rarity : ''}</small>
+            <b>{itemName(it)}</b>
+            <span>{itemDesc(it, st)}</span>
+            <button className="bc-btn small" disabled={it.sold || st.credits < it.price}
+              onClick={() => act({ type: 'BUY', slot: i }, () => sfx.coin())}>
+              {it.sold ? 'Comprado' : `Comprar · ${it.price}`}
+            </button>
+          </div>
+        ))}
+      </div>
+      <p className="muted">Hasta {RULES.maxMods} Mods y {RULES.maxCals} calibraciones. Los Mods se aplican de izquierda a derecha: ordenalos con ◀ ▶.</p>
+      <div className="bc-actions">
+        <button className="bc-btn" disabled={st.credits < st.shop.rerollCost} onClick={() => act({ type: 'REROLL' })}>Refrescar · {st.shop.rerollCost}</button>
+        <button className="bc-btn primary big" onClick={() => act({ type: 'LEAVE_SHOP' })}>Siguiente ronda</button>
+      </div>
+    </section>
+  );
+}
+
+function End({ st, onNew, onMenu }) {
+  const won = st.phase === 'victory';
+  return (
+    <section className={`bc-panel bc-end ${won ? 'won' : 'lost'}`}>
+      <h2>{won ? '¡Orden de producción completa!' : 'La impresión falló'}</h2>
+      <p>{won ? `Superaste los ${LOTS} Lotes.` : `Llegaste al Lote ${st.lot + 1}, ${BLIND_NAMES[st.blind]}.`}</p>
+      <ul className="bc-endstats">
+        <li>Mejor mano: <b>{st.stats.bestHand.toLocaleString('es-AR')}</b></li>
+        <li>Impresiones: <b>{st.stats.prints}</b></li>
+        <li>Calidad total: <b>{st.stats.total.toLocaleString('es-AR')}</b></li>
+        <li>Semilla: <b>{st.seed}</b></li>
+      </ul>
+      <div className="bc-actions">
+        <button className="bc-btn primary big" onClick={onNew}>Nueva partida</button>
+        <button className="bc-btn" onClick={onMenu}>Menú</button>
+      </div>
+    </section>
+  );
+}
+
+const TIPS = [
+  'Elegí de 1 a 5 cartas tocándolas (o con las teclas 1 a 8) y tocá Imprimir. Las cartas que forman el Patrón suman sus Capas.',
+  'Bien. Si la mano no te sirve, seleccioná cartas y Descartalas: se reponen del mazo. Tenés pocos descartes por ronda.',
+  'Nuevo: la Temperatura de Taller. Sobreextruir suma +12 Capas pero sube 2 de Calor. Descartar enfría 1. Con Calor 5 o 6 no podés Sobreextruir.',
+];
+function Tutorial({ step: s, setStep }) {
+  if (s >= TIPS.length) return null;
+  return (
+    <div className="bc-tip" role="note">
+      <span>{TIPS[s]}</span>
+      <button className="bc-mini" onClick={() => setStep(TIPS.length)}>Ocultar tutorial</button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Colección y ajustes
+function Coleccion({ back }) {
+  return (
+    <div className="bc-panel bc-coll">
+      <div className="bc-row"><h2>Colección</h2><button className="bc-btn small" onClick={back}>Volver</button></div>
+      <h3>Mods de Taller</h3>
+      <div className="bc-mods wrap">{MODS.map((m) => <ModCard key={m.id} mod={m} lit={false}><span className="bc-mod-rar">{m.price} Créditos</span></ModCard>)}</div>
+      <h3>Patrones y Perfiles</h3>
+      <table className="bc-table"><thead><tr><th>Patrón</th><th>Base</th><th>Por nivel</th><th>Perfil</th></tr></thead>
+        <tbody>{PATTERNS.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td>+{p.lvl[0]} / +{p.lvl[1]}</td><td>{PROFILES.find((x) => x.pattern === p.id)?.name}</td></tr>)}</tbody></table>
+      <h3>Calibraciones</h3>
+      <ul className="bc-list">{CALIBRATIONS.map((c) => <li key={c.id}><b>{c.name}</b> — {c.desc}</li>)}</ul>
+      <p className="muted">Se usan durante una ronda, con 1 carta de tu mano seleccionada (Enfriamiento no necesita carta). Si no hay objetivo válido, no se gastan. El mazo no baja de {MIN_DECK} cartas.</p>
+      <h3>Jefes de Control de Calidad</h3>
+      <ul className="bc-list">{BOSSES.map((b) => <li key={b.id}><b>{b.name}</b> — {b.desc}</li>)}</ul>
+      <h3>Cómo se calcula la Calidad</h3>
+      <p>Calidad = Capas × Multiplicador. Orden: efecto del jefe → base del Patrón → cartas puntuadas (2–10 su número, figuras 10, as 11) → Mods de izquierda a derecha → ajustes finales. Se redondea hacia abajo una sola vez.</p>
+      <h3>Palos del taller</h3>
+      <ul className="bc-list">{SUIT_IDS.map((s) => <li key={s}>{SUITS[s].sym} {SUITS[s].name}: {SUITS[s].motif}</li>)}</ul>
+    </div>
+  );
+}
+
+function Ajustes({ set, patch, back }) {
+  return (
+    <div className="bc-panel bc-set">
+      <div className="bc-row"><h2>Ajustes</h2><button className="bc-btn small" onClick={back}>Volver</button></div>
+      <label>Efecto CRT
+        <select value={set.crt} onChange={(e) => patch({ crt: e.target.value })}>
+          <option value="apagado">Apagado</option><option value="suave">Suave</option><option value="completo">Completo</option>
+        </select>
+      </label>
+      <label>Movimiento
+        <select value={set.motion} onChange={(e) => patch({ motion: e.target.value })}>
+          <option value="auto">Según el sistema</option><option value="normal">Normal</option><option value="reducido">Reducido (fondo quieto)</option>
+        </select>
+      </label>
+      <label><input type="checkbox" checked={set.flashes} onChange={(e) => patch({ flashes: e.target.checked })} /> Destellos y brillos</label>
+      <label>Velocidad del puntaje
+        <select value={set.speed} onChange={(e) => patch({ speed: e.target.value })}><option value="normal">Normal</option><option value="rapida">Rápida</option></select>
+      </label>
+      <label>Volumen <input type="range" min="0" max="1" step="0.05" value={set.vol} onChange={(e) => patch({ vol: +e.target.value })} /></label>
+      <label><input type="checkbox" checked={set.mute} onChange={(e) => patch({ mute: e.target.checked })} /> Silenciar</label>
+      <p className="muted">Teclado: 1–8 elegir cartas · I imprimir · D descartar · S sobreextruir · Esc limpiar selección.</p>
+    </div>
+  );
+}

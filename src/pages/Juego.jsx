@@ -32,6 +32,7 @@ export default function Juego({ query }) {
           <div className="mt-home-cta">
             <a className="btn primary big" href={GAME_URL}><Icon name="gamepad" size={20} /> Jugar gratis</a>
             <button className="btn ghost" onClick={() => setTab('como')}><Icon name="book" size={16} /> Cómo funciona</button>
+            <a className="btn ghost" href="#/batcard"><Icon name="star" size={16} /> Nuevo: BATCARD</a>
           </div>
           <p className="mt-note">Gratis y sin límites, con o sin cuenta. Con tu cuenta de Google (la misma de BATBOX) guardás la partida en la nube y entrás al ranking. {ov.data?.season && <>Temporada actual: <b>{ov.data.season.name}</b>.</>}</p>
         </div>
