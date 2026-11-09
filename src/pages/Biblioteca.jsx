@@ -523,6 +523,8 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
   // Datos de impresión reales del laminador (si el 3MF los trae). Si hay uno solo, va en la ficha;
   // si hay varios 3MF (variantes), cada uno se muestra al lado de su archivo.
   const print = m.preview_meta?.print || [];
+  const est = m.preview_meta?.est; // estimación por volumen si el 3MF no trae datos del laminador
+  const swatches = (m.preview_meta?.swatches || []).filter((c) => /^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(c)); // colores del 3MF
   const printOf = (name) => print.find((p) => p.file === name);
   const printLine = (p) => `${lib.formatDuration(p.time_s)} · ${p.grams} g · ${p.plates} cama${p.plates === 1 ? '' : 's'}`;
   const fav = async () => {
@@ -553,9 +555,16 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
             <div><dt>Filamento</dt><dd>{print[0].grams} g</dd></div>
             <div><dt>Camas</dt><dd>{print[0].plates}</dd></div>
           </>}
+          {print.length === 0 && est && <>
+            <div><dt>Tiempo de impresión</dt><dd>≈ {lib.formatDuration(est.time_s)}</dd></div>
+            <div><dt>Filamento</dt><dd>≈ {est.grams} g</dd></div>
+          </>}
           {print.length === 0 && m.preview_meta?.plates > 0 && <div><dt>Camas (aprox.)</dt><dd>{m.preview_meta.plates} de 256 mm</dd></div>}
+          {swatches.length > 0 && <div><dt>Colores</dt><dd className="lib-swatches">
+            {swatches.map((c) => <span key={c} className="lib-swatch" style={{ background: c }} title={c} />)}</dd></div>}
         </dl>
         {print.length === 1 && <small className="cm-date">Tiempo y filamento según el laminador del autor; pueden variar con tu impresora y perfil.</small>}
+        {print.length === 0 && est && <small className="cm-date">≈ Estimado por el volumen de las piezas (PLA, 15 % de relleno, todas las piezas una vez). Puede variar con tu perfil.</small>}
         {last && <div className="lib-last-dl"><Icon name="check" size={15} /> Lo descargaste el {new Date(last).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
         {m.parts?.length > 0 && (
           <div className="ga-files"><h3>Qué trae el {single ? 'ZIP' : 'archivo'}</h3>

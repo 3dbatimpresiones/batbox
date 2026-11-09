@@ -175,21 +175,21 @@ if (secretArg || process.env.SUPABASE_SECRET) {
 
 // --rehacer-piezas: completa la ubicación de cada archivo en los ZIP ya cargados (descarga por archivo, 066).
 // Solo lee el índice de cada ZIP (unos KB), no lo baja entero.
-// --rehacer-impresion: lee tiempo y filamento reales (3MF laminado) de los modelos que ya tienen vista 3D
+// --rehacer-impresion: tiempo y filamento (reales del 3MF laminado o estimados por volumen) y colores del 3MF
 // y los suma a preview_meta.print. Baja cada ZIP/RAR una vez; no toca la vista 3D.
 if (process.argv.includes('--rehacer-impresion') && (secretArg || process.env.SUPABASE_SECRET)) {
-  const { printInfo } = await import('./biblioteca-preview.mjs');
+  const { modelData } = await import('./biblioteca-preview.mjs');
   const k = (process.env.SUPABASE_SECRET || fs.readFileSync(secretArg, 'utf8')).replace(/^﻿/, '').trim();
   const SBU = 'https://llciggitqtseosfklbjl.supabase.co/rest/v1', hk = { apikey: k, Authorization: 'Bearer ' + k, 'Content-Type': 'application/json' };
   const rows = await (await fetch(`${SBU}/bb_lib_models?select=id,name,storage_key,preview_meta&preview_key=not.is.null`, { headers: hk })).json();
   let con = 0, sin = 0;
-  for (const r of rows.filter((x) => x.preview_meta && !('print' in x.preview_meta))) {
+  for (const r of rows.filter((x) => x.preview_meta && !('swatches' in x.preview_meta))) {
     try {
-      const print = await printInfo(await download(r.storage_key));
-      const res = await fetch(`${SBU}/bb_lib_models?id=eq.${r.id}`, { method: 'PATCH', headers: hk, body: JSON.stringify({ preview_meta: { ...r.preview_meta, print } }) });
+      const { print, est, swatches } = await modelData(await download(r.storage_key));
+      const res = await fetch(`${SBU}/bb_lib_models?id=eq.${r.id}`, { method: 'PATCH', headers: hk, body: JSON.stringify({ preview_meta: { ...r.preview_meta, print, est, swatches } }) });
       if (!res.ok) throw new Error('supabase ' + res.status);
       print.length ? con++ : sin++;
-      console.log(`impresión: ${r.name}: ${print.length ? print.map((p) => `${p.file} ${Math.round(p.time_s / 60)} min ${p.grams} g ${p.plates} cama(s)`).join(' | ') : 'sin datos'}`);
+      console.log(`impresión: ${r.name}: ${print.length ? print.map((p) => `${p.file} ${Math.round(p.time_s / 60)} min ${p.grams} g ${p.plates} cama(s)`).join(' | ') : `estimado ${est?.grams ?? '?'} g`} · ${swatches.length} color(es)`);
     } catch (e) { console.log(`impresión: ${r.name}: no se pudo (${e.message})`); }
   }
   console.log(`Con datos de impresión: ${con} · sin datos: ${sin}`);
@@ -446,7 +446,7 @@ if (PREVIEWS && (secretArg || process.env.SUPABASE_SECRET) && !process.argv.incl
       const name = `${m.slug}.v${PREVIEW_V}.glb`;
       const up = await fetch(`${SB}/storage/v1/object/bb-lib-previews/${encodeURIComponent(name)}`, { method: 'POST', headers: { ...h, 'Content-Type': 'model/gltf-binary', 'x-upsert': 'true', 'cache-control': 'max-age=31536000' }, body: p.glb });
       if (!up.ok) throw new Error('subida ' + up.status + ' ' + (await up.text()).slice(0, 120));
-      await patch(m.id, { preview_key: name, preview_meta: { mode: p.mode, size_mm: p.size, parts: p.parts, tris: p.tris, colors: p.colors, plates: p.plates, print: p.print, v: PREVIEW_V } });
+      await patch(m.id, { preview_key: name, preview_meta: { mode: p.mode, size_mm: p.size, parts: p.parts, tris: p.tris, colors: p.colors, plates: p.plates, print: p.print, est: p.est, swatches: p.swatches, v: PREVIEW_V } });
       if (m.oldKey && m.oldKey !== name) await fetch(`${SB}/storage/v1/object/bb-lib-previews`, { method: 'DELETE', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: [m.oldKey] }) }).catch(() => {});
       made++; console.log(`3D ${m.slug}: ${p.mode} · ${p.parts} piezas · ${p.colors} colores · ${p.plates} cama(s) · ${(p.glb.length / 1048576).toFixed(2)} MB`);
     } catch (e) {

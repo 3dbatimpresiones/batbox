@@ -123,6 +123,49 @@ export async function printInfo(zipBuf) { return printFrom(await collect(zipBuf)
 export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
   const files = await collect(zipBuf);
   const print = printFrom(files);
+  const { objects, palette, mode } = loadObjects(files, bodyColor);
+  const est = estimate(objects), swatches = mode === '3mf' ? usedColors(objects, palette) : [];
+  return { ...(await meshPreview(objects, palette, mode)), print, est, swatches };
+}
+
+// Datos livianos (sin armar la vista 3D): impresión real, estimación y colores del 3MF.
+export async function modelData(zipBuf) {
+  const files = await collect(zipBuf);
+  const { objects, palette, mode } = loadObjects(files, null);
+  return { print: printFrom(files), est: estimate(objects), swatches: mode === '3mf' ? usedColors(objects, palette) : [] };
+}
+
+// Colores del 3MF que de verdad usan las piezas, del más usado al menos usado.
+function usedColors(objects, palette) {
+  const n = new Map();
+  for (const o of objects) if (o.col) for (const ci of o.col) if (ci >= 0 && palette[ci]) n.set(palette[ci], (n.get(palette[ci]) || 0) + 1);
+  return [...n.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c.toLowerCase()).slice(0, 12);
+}
+
+// Estimación de filamento y tiempo a partir de la geometría (cuando el 3MF no trae los datos del laminador).
+// Perfil típico: 2 perímetros (0,8 mm) + capas sup./inf., 15 % de relleno, PLA 1,24 g/cm³.
+// EST_TIME_S_PER_G se calibró con los modelos que sí traen tiempo y gramos reales.
+const WALL_MM = 0.8, INFILL = 0.15, DENSITY = 1.24, EST_GRAMS_K = 1.1, EST_TIME_S_PER_G = 130; // calibrado 2026-11-09 con 11 modelos reales
+function estimate(objects) {
+  let vol = 0, area = 0;
+  for (const o of objects) {
+    const v = o.vert, t = o.tri; let ov = 0;
+    for (let i = 0; i < t.length; i += 3) {
+      const a = t[i] * 3, b = t[i + 1] * 3, c = t[i + 2] * 3;
+      const ax = v[a], ay = v[a + 1], az = v[a + 2], bx = v[b], by = v[b + 1], bz = v[b + 2], cx = v[c], cy = v[c + 1], cz = v[c + 2];
+      ov += (ax * (by * cz - bz * cy) - ay * (bx * cz - bz * cx) + az * (bx * cy - by * cx)) / 6;
+      const ux = bx - ax, uy = by - ay, uz = bz - az, wx = cx - ax, wy = cy - ay, wz = cz - az;
+      area += Math.hypot(uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx) / 2;
+    }
+    vol += Math.abs(ov);
+  }
+  if (!(vol > 0)) return null;
+  const shell = Math.min(vol, area * WALL_MM), solid = shell + (vol - shell) * INFILL; // mm³ de plástico
+  const grams = (solid / 1000) * DENSITY * EST_GRAMS_K;
+  return { vol_cm3: Math.round(vol / 100) / 10, grams: Math.round(grams), time_s: Math.round(grams * EST_TIME_S_PER_G) };
+}
+
+function loadObjects(files, bodyColor) {
   const mf = files.filter((f) => f.e === '3mf').sort((a, b) => b.data.length - a.data.length)[0];
   let objects, palette, mode;
   if (mf) {
@@ -141,6 +184,10 @@ export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
     });
     mode = 'stl';
   }
+  return { objects, palette, mode };
+}
+
+async function meshPreview(objects, palette, mode) {
   // Simplificación de calidad (meshoptimizer) por pieza y por color, respetando bordes entre colores.
   await MeshoptSimplifier.ready; await MeshoptEncoder.ready;
   let total = 0; const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
@@ -186,7 +233,7 @@ export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
   }
   const plates = layoutPlates(boxes);
   const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]].map((x) => Math.round(x * 10) / 10);
-  return { glb: toGLB([...byColor.values()], { mode, size_mm: size, parts: objects.length, source_tris: total, plates }), tris, mode, size, parts: objects.length, colors: byColor.size, plates: plates.length, print };
+  return { glb: toGLB([...byColor.values()], { mode, size_mm: size, parts: objects.length, source_tris: total, plates }), tris, mode, size, parts: objects.length, colors: byColor.size, plates: plates.length };
 }
 
 // Camas de impresión: agrupa las piezas como estaban en el laminador (varias camas en un 3MF)
