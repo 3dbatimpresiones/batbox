@@ -3,7 +3,7 @@ import { FeatByName } from './Featured.jsx';
 import Icon from './Icon.jsx';
 import { EMBLEMS, REWARDS, metricLabel, rewardName, titleName, frameClass } from '../data/rewards.js';
 import { GAME_URL, useLive, useMt } from '../lib/mtApi.js';
-import tallerAnim from '../assets/tycoon-taller.webp';
+import tallerAnim from '../assets/tycoon-portada.webp';
 import fcIcon from '../assets/filacolor-icon.png';
 
 // =====================================================================
@@ -153,7 +153,7 @@ export function TycoonHomeBlock() {
   return (
     <section className="mt-home">
       <div className="mt-home-media">
-        {imgOk ? <img src={tallerAnim} alt="El taller de Maker Tycoon funcionando: impresoras 3D trabajando" onError={() => setImgOk(false)} /> : <div className="mt-home-ph"><Icon name="gamepad" size={48} /></div>}
+        {imgOk ? <img src={tallerAnim} alt="Portada de 3DBAT Maker Tycoon: taller pixel art lleno de impresoras 3D" onError={() => setImgOk(false)} /> : <div className="mt-home-ph"><Icon name="gamepad" size={48} /></div>}
         <span className="mt-new">NOVEDAD GRATIS</span>
       </div>
       <div className="mt-home-txt">

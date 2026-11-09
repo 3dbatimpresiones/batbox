@@ -1,3 +1,4 @@
+import tycoonPortada from '../assets/tycoon-portada.webp';
 // Detecta plataforma e IDs a partir de un enlace pegado en el panel admin.
 export function parseMediaUrl(raw = '') {
   const url = raw.trim();
@@ -32,6 +33,7 @@ export const resolveAsset = (p) => (!p ? null : /^https?:\/\//i.test(p) ? p : im
 export function thumbSrc(item) {
   if (item.thumb) return resolveAsset(item.thumb);
   if (item.instagramCode && LOCAL_IG_THUMBS.has(item.instagramCode)) return resolveAsset(`thumbs/ig/${item.instagramCode}.jpg`);
+  if (item.id === 'maker-tycoon') return tycoonPortada; // portada con hash: evita la caché de 7 días
   if (LOCAL_TOOL_THUMBS.has(item.id)) return resolveAsset(`thumbs/tools/${item.id}.jpg`);
   return null;
 }
