@@ -158,13 +158,22 @@ function Media({ m }) {
 // Estado personal compartido por todas las tarjetas: favoritos y modelos ya descargados.
 // Se carga una sola vez (no por tarjeta) y avisa a las tarjetas cuando cambia.
 // ---------------------------------------------------------------------
-const mine = { fav: null, dl: null, subs: new Set(), loading: false };
+const mine = { fav: null, dl: null, col: null, subs: new Set(), loading: false };
 const mineNotify = () => mine.subs.forEach((f) => f());
 async function mineLoad(force = false) {
   if ((mine.fav && !force) || mine.loading) return;
   mine.loading = true;
   const [f, d] = await Promise.all([lib.myFavorites().catch(() => []), lib.myDownloads().catch(() => [])]);
   mine.fav = new Set(f.map((x) => x.id)); mine.dl = new Set(d.map((x) => x.id)); mine.loading = false; mineNotify();
+  mineLoadCols();
+}
+// Modelos que están en alguna de mis colecciones (para pintar el marcador en dorado).
+async function mineLoadCols() {
+  try {
+    const cols = await lib.myCollections();
+    const lists = await Promise.all(cols.filter((c) => c.count > 0).map((c) => lib.collectionModels(c.id).catch(() => [])));
+    mine.col = new Set(lists.flat().map((x) => x.id)); mineNotify();
+  } catch { /* sin colecciones: queda como está */ }
 }
 function useMine() {
   const [, tick] = useState(0);
@@ -276,6 +285,7 @@ function SaveModal({ m, onClose, onSaved = () => {} }) {
   // Tildar una colección la guarda y cierra la ventana; destildar la saca y deja la ventana abierta.
   const tick = (c) => run(async () => {
     const added = await lib.toggleInCollection(c.id, m.id);
+    mineLoadCols();
     if (added) { onSaved(); closeRef.current(); }
   });
   const create = () => {
@@ -283,6 +293,8 @@ function SaveModal({ m, onClose, onSaved = () => {} }) {
     run(async () => {
       const id = await lib.saveCollection(name.trim(), null, cover || null);
       if (!(await lib.toggleInCollection(id, m.id))) await lib.toggleInCollection(id, m.id); // por si ya estaba
+      if (!mine.col) mine.col = new Set();
+      mine.col.add(m.id); mineNotify();
       onSaved(); closeRef.current();
     });
   };
@@ -323,7 +335,7 @@ function ModelCard({ m, cat }) {
   const st = useMine();
   const [save, setSave] = useState(false);
   const [busy, setBusy] = useState(false);
-  const fav = st.fav?.has(m.id), done = st.dl?.has(m.id) || !!m.last_download;
+  const fav = st.fav?.has(m.id), saved = st.col?.has(m.id), done = st.dl?.has(m.id) || !!m.last_download;
   const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
   const [burst, fire] = useBurst();
   const like = async () => { if (busy) return; setBusy(true); try { if (await mineToggleFav(m.id)) fire('heart'); } catch { /* sin conexión: queda como estaba */ } finally { setBusy(false); } };
@@ -333,7 +345,8 @@ function ModelCard({ m, cat }) {
         <div className="lib-card-acts">
           <button type="button" className={'lib-card-act' + (fav ? ' on' : '')} onClick={stop(like)} aria-pressed={fav}
             aria-label={fav ? 'Quitar de favoritos' : 'Me gusta'} title={fav ? 'Quitar de favoritos' : 'Me gusta (guardar en favoritos)'}><Icon name="heart" size={17} />{burst?.props.kind === 'heart' && burst}</button>
-          <button type="button" className="lib-card-act" onClick={stop(() => setSave(true))} aria-label="Guardar en colección" title="Guardar en colección"><Icon name="bookmark" size={17} /></button>
+          <button type="button" className={'lib-card-act lib-act-save' + (saved ? ' on' : '')} onClick={stop(() => setSave(true))} aria-pressed={!!saved}
+            aria-label={saved ? 'Está en tus colecciones' : 'Guardar en colección'} title={saved ? 'Está en tus colecciones (tocá para cambiar)' : 'Guardar en colección'}><Icon name="bookmark" size={17} /></button>
         </div>
         {burst?.props.kind === 'save' && burst}
         {done && <span className="lib-done-tag"><Icon name="check" size={12} /> Ya lo descargaste</span>}
@@ -537,8 +550,10 @@ function Home({ cats, quota, tab, arg, lastVisit }) {
 function CollectionPicker({ m }) {
   const [open, setOpen] = useState(false);
   const [burst, fire] = useBurst();
+  const saved = useMine().col?.has(m.id);
   return (<>
-    <span className="lib-burst-host"><button type="button" className="cm-act" onClick={() => setOpen(true)}><Icon name="bookmark" size={16} /> Guardar en colección</button>{burst}</span>
+    <span className="lib-burst-host"><button type="button" className={'cm-act lib-act-save' + (saved ? ' on' : '')} onClick={() => setOpen(true)} aria-pressed={!!saved}>
+      <Icon name="bookmark" size={16} /> {saved ? 'En tus colecciones' : 'Guardar en colección'}</button>{burst}</span>
     {open && <SaveModal m={m} onClose={() => setOpen(false)} onSaved={() => fire('save')} />}
   </>);
 }
