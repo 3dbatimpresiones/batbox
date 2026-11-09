@@ -1,7 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import * as lib from '../lib/libraryApi.js';
-import { gallerySave, imageUrl, removeImages, useCommunityFlags } from '../lib/communityApi.js';
+import { createPortal } from 'react-dom';
+import { gallerySave, imageUrl, removeImages, uploadImage, useCommunityFlags } from '../lib/communityApi.js';
 import { useUploads } from '../lib/useUploads.js';
 import Icon from '../components/Icon.jsx';
 import { Empty, Options, PageHead, SearchInput } from '../components/ui.jsx';
@@ -153,10 +154,135 @@ function Media({ m }) {
   );
 }
 
-function ModelCard({ m, cat }) {
+// ---------------------------------------------------------------------
+// Estado personal compartido por todas las tarjetas: favoritos y modelos ya descargados.
+// Se carga una sola vez (no por tarjeta) y avisa a las tarjetas cuando cambia.
+// ---------------------------------------------------------------------
+const mine = { fav: null, dl: null, subs: new Set(), loading: false };
+const mineNotify = () => mine.subs.forEach((f) => f());
+async function mineLoad(force = false) {
+  if ((mine.fav && !force) || mine.loading) return;
+  mine.loading = true;
+  const [f, d] = await Promise.all([lib.myFavorites().catch(() => []), lib.myDownloads().catch(() => [])]);
+  mine.fav = new Set(f.map((x) => x.id)); mine.dl = new Set(d.map((x) => x.id)); mine.loading = false; mineNotify();
+}
+function useMine() {
+  const [, tick] = useState(0);
+  useEffect(() => { const f = () => tick((n) => n + 1); mine.subs.add(f); mineLoad(); return () => { mine.subs.delete(f); }; }, []);
+  return mine;
+}
+async function mineToggleFav(id) {
+  const on = await lib.toggleFavorite(id);
+  if (!mine.fav) mine.fav = new Set();
+  if (on) mine.fav.add(id); else mine.fav.delete(id);
+  mineNotify(); return on;
+}
+const mineMarkDownloaded = (id) => { if (!mine.dl) mine.dl = new Set(); mine.dl.add(id); mineNotify(); };
+
+// Portada de una colección: elegida ('t:' foto de la biblioteca, 'u:' foto propia) o la del último modelo.
+const collectionCover = (c) => (c.cover_key?.startsWith('t:') ? lib.thumbUrl(c.cover_key.slice(2))
+  : c.cover_key?.startsWith('u:') ? imageUrl(c.cover_key.slice(2)) : c.cover ? lib.thumbUrl(c.cover) : null);
+
+// Elegir portada: una de las fotos ofrecidas o una subida desde la computadora.
+function CoverChooser({ photos, value, onChange }) {
+  const { user } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [own, setOwn] = useState(value?.startsWith('u:') ? value : null);
+  const upload = async (file) => {
+    if (!file) return;
+    setBusy(true); setError('');
+    try { const r = await uploadImage(user.id, file); const key = 'u:' + r.path; setOwn(key); onChange(key); }
+    catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
   return (
-    <a className="ga-card" href={'#/biblioteca/m/' + m.slug}>
+    <div className="lib-cover-pick">
+      <small className="cm-date">Portada (opcional)</small>
+      <div className="lib-cover-opts">
+        <button type="button" className={'lib-cover-opt' + (!value ? ' on' : '')} onClick={() => onChange('')} title="Automática (la del último modelo)">
+          <Icon name="sparkles" size={18} /><small>Auto</small></button>
+        {photos.map((k) => (
+          <button key={k} type="button" className={'lib-cover-opt' + (value === 't:' + k ? ' on' : '')} onClick={() => onChange('t:' + k)}>
+            <img src={lib.thumbUrl(k)} alt="" loading="lazy" /></button>))}
+        {own && <button type="button" className={'lib-cover-opt' + (value === own ? ' on' : '')} onClick={() => onChange(own)}>
+          <img src={imageUrl(own.slice(2))} alt="" /></button>}
+        <label className="lib-cover-opt lib-cover-up" title="Subir una foto desde la computadora">
+          {busy ? <span className="spinner xs" /> : <><Icon name="image" size={18} /><small>Subir</small></>}
+          <input type="file" accept="image/*" hidden onChange={(e) => upload(e.target.files?.[0])} /></label>
+      </div>
+      {error && <small className="cm-warn">{error}</small>}
+    </div>
+  );
+}
+
+// Guardar un modelo: me gusta (favoritos) + colecciones, con nombre y portada para las nuevas.
+function SaveModal({ m, onClose }) {
+  const st = useMine();
+  const [list, setList] = useState(null);
+  const [photos, setPhotos] = useState(m.thumb_key ? [m.thumb_key] : []);
+  const [name, setName] = useState('');
+  const [cover, setCover] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => lib.myCollections(m.id).then(setList).catch((e) => setError(e.message)), [m.id]);
+  const closeRef = useRef(onClose); closeRef.current = onClose;
+  useEffect(() => {
+    load();
+    lib.model(m.slug).then((d) => setPhotos([...new Set([d.thumb_key, ...(d.images || [])].filter(Boolean))].slice(0, 8))).catch(() => {});
+    const esc = (e) => e.key === 'Escape' && closeRef.current();
+    document.addEventListener('keydown', esc); return () => document.removeEventListener('keydown', esc);
+  }, [load, m.slug]);
+  const run = async (fn) => { setBusy(true); try { await fn(); setError(''); await load(); } catch (e) { setError(e.message); } finally { setBusy(false); } };
+  const fav = st.fav?.has(m.id);
+  return createPortal(
+    <div className="modal-back" onClick={(e) => { e.stopPropagation(); onClose(); }}>
+      <div className="modal lib-save" role="dialog" aria-modal="true" aria-labelledby="lib-save-t" onClick={(e) => e.stopPropagation()}>
+        <h2 id="lib-save-t">Guardar “{m.name}”</h2>
+        <button type="button" className={'lib-like' + (fav ? ' on' : '')} disabled={busy} onClick={() => run(() => mineToggleFav(m.id))}>
+          <Icon name="heart" size={18} /> {fav ? 'Te gusta · está en Mis favoritos' : 'Me gusta (guardar en Mis favoritos)'}</button>
+        <h3 className="lib-save-h">Mis colecciones</h3>
+        {list === null ? <span className="spinner xs" /> : list.length === 0 ? <small className="cm-date">Todavía no tenés colecciones: creá la primera abajo.</small>
+          : <div className="lib-save-list">{list.map((c) => {
+            const src = collectionCover(c);
+            return (
+              <label key={c.id} className={'lib-save-row' + (c.has ? ' on' : '')}>
+                <input type="checkbox" checked={c.has} disabled={busy} onChange={() => run(() => lib.toggleInCollection(c.id, m.id))} />
+                {src ? <img src={src} alt="" /> : <span className="lib-save-noimg"><Icon name="bookmark" size={14} /></span>}
+                <span>{c.name} <small className="cm-date">({c.count})</small></span>
+              </label>);
+          })}</div>}
+        <form className="lib-save-new" onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim()) run(async () => { const id = await lib.saveCollection(name.trim(), null, cover || null); await lib.toggleInCollection(id, m.id); setName(''); setCover(''); });
+        }}>
+          <h3 className="lib-save-h">Nueva colección</h3>
+          <div className="pink-input"><input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Nombre (ej.: Para imprimir, Regalos…)" /></div>
+          {name.trim() && <CoverChooser photos={photos} value={cover} onChange={setCover} />}
+          <button type="submit" className="btn ghost" disabled={!name.trim() || busy}><Icon name="sparkles" size={15} /> Crear y guardar acá</button>
+        </form>
+        {error && <div className="feedback-error">{error}</div>}
+        <div className="modal-actions"><button type="button" className="btn primary" onClick={onClose}>Listo</button></div>
+      </div>
+    </div>, document.body);
+}
+
+function ModelCard({ m, cat }) {
+  const st = useMine();
+  const [save, setSave] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fav = st.fav?.has(m.id), done = st.dl?.has(m.id) || !!m.last_download;
+  const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
+  const like = async () => { if (busy) return; setBusy(true); try { await mineToggleFav(m.id); } catch { /* sin conexión: queda como estaba */ } finally { setBusy(false); } };
+  return (
+    <a className={'ga-card' + (done ? ' lib-done' : '')} href={'#/biblioteca/m/' + m.slug}>
       <div className="ga-cover"><Cover m={m} />
+        <div className="lib-card-acts">
+          <button type="button" className={'lib-card-act' + (fav ? ' on' : '')} onClick={stop(like)} aria-pressed={fav}
+            aria-label={fav ? 'Quitar de favoritos' : 'Me gusta'} title={fav ? 'Quitar de favoritos' : 'Me gusta (guardar en favoritos)'}><Icon name="heart" size={17} /></button>
+          <button type="button" className="lib-card-act" onClick={stop(() => setSave(true))} aria-label="Guardar en colección" title="Guardar en colección"><Icon name="bookmark" size={17} /></button>
+        </div>
+        {done && <span className="lib-done-tag"><Icon name="check" size={12} /> Ya lo descargaste</span>}
+        {save && <SaveModal m={m} onClose={() => setSave(false)} />}
         <div className="ga-badges">
           {isNew(m) && <span className="chip lib-new">NUEVO</span>}
           {m.featured && <span className="chip cat"><Icon name="star" size={11} /> Destacado</span>}
@@ -227,7 +353,27 @@ function Recent({ cats, lastVisit }) {
 const TABS = [['', 'Catálogo', null], ['favoritos', 'Mis favoritos', 'heart'], ['colecciones', 'Mis colecciones', 'bookmark'], ['descargas', 'Mis descargas', 'box']];
 
 // Mis colecciones: lista con portada y cantidad; adentro, la grilla de modelos.
+// Cambiar la portada de una colección: fotos de sus modelos o una propia.
+function CoverModal({ c, onClose, onSaved }) {
+  const [photos, setPhotos] = useState([]);
+  const [cover, setCover] = useState(c.cover_key || '');
+  const [error, setError] = useState('');
+  useEffect(() => { lib.collectionModels(c.id).then((ms) => setPhotos([...new Set(ms.map((x) => x.thumb_key).filter(Boolean))].slice(0, 12))).catch(() => {}); }, [c.id]);
+  const save = async () => { try { await lib.saveCollection(c.name, c.id, cover); onSaved(); } catch (e) { setError(e.message); } };
+  return createPortal(
+    <div className="modal-back" onClick={onClose}>
+      <div className="modal lib-save" role="dialog" aria-modal="true" aria-labelledby="lib-cov-t" onClick={(e) => e.stopPropagation()}>
+        <h2 id="lib-cov-t">Portada de “{c.name}”</h2>
+        <CoverChooser photos={photos} value={cover} onChange={setCover} />
+        {error && <div className="feedback-error">{error}</div>}
+        <div className="modal-actions"><button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn primary" onClick={save}>Guardar</button></div>
+      </div>
+    </div>, document.body);
+}
+
 function Collections({ cats, openId }) {
+  const [coverFor, setCoverFor] = useState(null);
   const [list, setList] = useState(null);
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -245,9 +391,11 @@ function Collections({ cats, openId }) {
           <h2 className="fo-h2">{cur.name} <small>({cur.count})</small></h2>
           <span className="cm-spacer" />
           <button type="button" className="cm-link" onClick={() => { const n = prompt('Nuevo nombre', cur.name); if (n?.trim()) run(() => lib.saveCollection(n.trim(), cur.id)); }}>Renombrar</button>
+          <button type="button" className="cm-link" onClick={() => setCoverFor(cur)}>Portada</button>
           <button type="button" className="cm-link danger" onClick={() => { if (confirm(`¿Borrar la colección "${cur.name}"? Los modelos no se borran.`)) run(async () => { await lib.deleteCollection(cur.id); location.hash = '#/biblioteca/colecciones'; }); }}>Borrar</button>
         </div>
         {error && <div className="feedback-error">{error}</div>}
+        {coverFor && <CoverModal c={coverFor} onClose={() => setCoverFor(null)} onSaved={() => { setCoverFor(null); load(); }} />}
         <Grid filters={{ collection: cur.id }} cats={cats} empty={<Empty icon="bookmark" title="Esta colección está vacía" text="En la ficha de cada modelo tocá “Guardar en colección”." />} />
       </>
     );
@@ -262,7 +410,7 @@ function Collections({ cats, openId }) {
       {list.length === 0 ? <Empty icon="bookmark" title="Todavía no tenés colecciones" text="Armá listas como “Para imprimir” o “Regalos” y guardá ahí los modelos." />
         : <div className="ga-grid">{list.map((c) => (
           <a key={c.id} className="ga-card" href={'#/biblioteca/colecciones/' + c.id}>
-            <div className="ga-cover">{c.cover ? <img className="lib-cover lib-img" src={lib.thumbUrl(c.cover)} alt="" loading="lazy" /> : <div className="ga-nocover lib-cover"><Icon name="bookmark" size={34} /></div>}</div>
+            <div className="ga-cover">{collectionCover(c) ? <img className="lib-cover lib-img" src={collectionCover(c)} alt="" loading="lazy" /> : <div className="ga-nocover lib-cover"><Icon name="bookmark" size={34} /></div>}</div>
             <div className="ga-info"><h3>{c.name}</h3><span className="cm-date">{c.count} modelo{c.count === 1 ? '' : 's'}</span></div>
           </a>))}</div>}
     </>
@@ -310,49 +458,31 @@ function Home({ cats, quota, tab, arg, lastVisit }) {
                 </div>
               )}
             </div>
-            {browsing && <h2 className="fo-h2">Todos los modelos</h2>}
-            <Grid filters={{ category, q, sort, tag }} cats={cats}
-              empty={<Empty icon="box" title={q || category || tag ? 'No encontramos modelos' : 'La biblioteca se está armando'} text={q || category || tag ? 'Probá con otra búsqueda, categoría o filtro.' : 'Muy pronto vas a encontrar acá los primeros modelos.'} />} />
+            {/* "Todas": una sección por categoría, con título grande, para que se note el cambio de categoría. */}
+            {!q && !category && !tag && roots.some((c) => c.models > 0) ? roots.filter((c) => c.models > 0).map((c) => (
+              <section key={c.id} className="lib-cat-section" id={'cat-' + c.slug}>
+                <div className="lib-cat-head">
+                  <h2>{c.name}</h2>
+                  <small>{c.models} modelo{c.models === 1 ? '' : 's'}</small>
+                  <span className="cm-spacer" />
+                  <button type="button" className="cm-link" onClick={() => { setCategory(c.id); setTag(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Ver solo {c.name} →</button>
+                </div>
+                <Grid filters={{ category: c.id, sort }} cats={cats} empty={null} />
+              </section>
+            )) : <Grid filters={{ category, q, sort, tag }} cats={cats}
+              empty={<Empty icon="box" title={q || category || tag ? 'No encontramos modelos' : 'La biblioteca se está armando'} text={q || category || tag ? 'Probá con otra búsqueda, categoría o filtro.' : 'Muy pronto vas a encontrar acá los primeros modelos.'} />} />}
           </>}
     </>
   );
 }
 
 // "Guardar en colección": menú con las colecciones propias (tildar/destildar) y crear una nueva.
-function CollectionPicker({ modelId }) {
+function CollectionPicker({ m }) {
   const [open, setOpen] = useState(false);
-  const [list, setList] = useState(null);
-  const [name, setName] = useState('');
-  const [error, setError] = useState('');
-  const wrap = useRef(null);
-  const load = () => lib.myCollections(modelId).then(setList).catch((e) => setError(e.message));
-  useEffect(() => {
-    if (!open) return undefined;
-    load();
-    const out = (e) => { if (wrap.current && !wrap.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', out);
-    return () => document.removeEventListener('mousedown', out);
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  const run = async (fn) => { try { await fn(); setError(''); await load(); } catch (e) { setError(e.message); } };
-  const inAny = list?.some((c) => c.has);
-  return (
-    <div className="lib-picker" ref={wrap}>
-      <button type="button" className={'cm-act' + (inAny ? ' on' : '')} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <Icon name="bookmark" size={16} /> Guardar en colección</button>
-      {open && (
-        <div className="lib-picker-pop" role="dialog" aria-label="Colecciones">
-          {list === null ? <span className="spinner xs" /> : list.length === 0 ? <small className="cm-date">Todavía no tenés colecciones.</small>
-            : list.map((c) => (
-              <label key={c.id} className="nb-pref"><input type="checkbox" checked={c.has} onChange={() => run(() => lib.toggleInCollection(c.id, modelId))} /> {c.name} <small className="cm-date">({c.count})</small></label>))}
-          <form className="lib-picker-new" onSubmit={(e) => { e.preventDefault(); if (name.trim()) run(async () => { const id = await lib.saveCollection(name.trim()); await lib.toggleInCollection(id, modelId); setName(''); }); }}>
-            <div className="pink-input"><input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Nueva colección…" /></div>
-            <button type="submit" className="btn ghost" disabled={!name.trim()}>Crear</button>
-          </form>
-          {error && <small className="cm-warn">{error}</small>}
-        </div>
-      )}
-    </div>
-  );
+  return (<>
+    <button type="button" className="cm-act" onClick={() => setOpen(true)}><Icon name="bookmark" size={16} /> Guardar en colección</button>
+    {open && <SaveModal m={m} onClose={() => setOpen(false)} />}
+  </>);
 }
 
 // Valoraciones: estrellas + comentario. Solo puede valorar quien descargó el modelo.
@@ -517,6 +647,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
       setOk(r.remaining == null ? what : `${what} ${r.counted ? 'Contó como 1 descarga' : 'No suma: este modelo ya contó hoy'}. Te quedan ${r.remaining} en las próximas 24 h.`);
       if (r.counted && r.remaining != null) setM((cur) => ({ ...cur, downloads: cur.downloads + 1 }));
       if (r.counted) setLast(new Date().toISOString());
+      mineMarkDownloaded(m.id);
     } catch (e) { setError(e.message); } finally { setBusy(false); refreshQuota(); }
   };
   const single = /\.zip$/i.test(m.file_name || '');
@@ -528,7 +659,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
   const printOf = (name) => print.find((p) => p.file === name);
   const printLine = (p) => `${lib.formatDuration(p.time_s)} · ${p.grams} g · ${p.plates} cama${p.plates === 1 ? '' : 's'}`;
   const fav = async () => {
-    try { const on = await lib.toggleFavorite(m.id); setM((cur) => ({ ...cur, is_favorite: on, favorites: Math.max(0, cur.favorites + (on ? 1 : -1)) })); }
+    try { const on = await mineToggleFav(m.id); setM((cur) => ({ ...cur, is_favorite: on, favorites: Math.max(0, cur.favorites + (on ? 1 : -1)) })); }
     catch (e) { setError(e.message); }
   };
   return (
@@ -587,7 +718,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
             <Icon name="box" size={16} /> {busy === true ? 'Preparando…' : 'Descargar modelo completo'}</button>
           <button type="button" className={'cm-act' + (m.is_favorite ? ' on' : '')} onClick={fav} aria-pressed={m.is_favorite}>
             <Icon name="heart" size={16} /> {m.is_favorite ? 'En favoritos' : 'Guardar en favoritos'}</button>
-          <CollectionPicker modelId={m.id} />
+          <CollectionPicker m={m} />
         </div>
         <QuotaNote q={quota} />
         {ok && <div className="cm-ok">{ok}</div>}

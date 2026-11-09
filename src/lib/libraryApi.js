@@ -45,7 +45,9 @@ export const deleteMake = (id) => rpc('bb_lib_make_delete', { p_id: id });
 
 // Colecciones personales
 export const myCollections = (model = null) => rpc('bb_lib_my_collections', { p_model: model });
-export const saveCollection = (name, id = null) => rpc('bb_lib_collection_save', { p_name: name, p_id: id });
+// cover: undefined/null = no cambia · '' = automática · 't:<foto>' o 'u:<uid>/<archivo>' = elegida (068)
+export const saveCollection = (name, id = null, cover = null) =>
+  rpc('bb_lib_collection_save', cover == null ? { p_name: name, p_id: id } : { p_name: name, p_id: id, p_cover: cover });
 export const deleteCollection = (id) => rpc('bb_lib_collection_delete', { p_id: id });
 export const toggleInCollection = (id, model) => rpc('bb_lib_collection_toggle', { p_id: id, p_model: model });
 export const collectionModels = (id) => rpc('bb_lib_collection_models', { p_id: id });
