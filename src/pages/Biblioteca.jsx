@@ -226,9 +226,31 @@ function Burst({ kind }) {
     </span>
   );
 }
+// Sonidos cortos generados en el navegador (sin archivos): like = "pop" brillante que sube,
+// guardar = dos notas tipo "¡listo!". Volumen bajo; si el navegador no deja reproducir, no pasa nada.
+let audioCtx = null;
+function playSound(kind) {
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = audioCtx, t0 = ctx.currentTime + 0.01;
+    if (ctx.state === 'suspended') ctx.resume();
+    const note = (freq, start, dur, type = 'sine', vol = 0.12, slideTo = null) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t0 + start);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + start + dur);
+      g.gain.setValueAtTime(0.0001, t0 + start);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
+      o.connect(g).connect(ctx.destination); o.start(t0 + start); o.stop(t0 + start + dur + 0.02);
+    };
+    if (kind === 'heart') { note(520, 0, 0.12, 'sine', 0.13, 880); note(1046, 0.07, 0.18, 'triangle', 0.07); note(1568, 0.12, 0.2, 'sine', 0.04); }
+    else { note(660, 0, 0.12, 'triangle', 0.11); note(990, 0.1, 0.22, 'triangle', 0.11); note(1320, 0.1, 0.25, 'sine', 0.04); }
+  } catch { /* sin audio */ }
+}
+
 function useBurst() {
   const [b, setB] = useState(null);
-  const fire = (kind) => { setB({ kind, k: Date.now() }); setTimeout(() => setB((cur) => (cur && Date.now() - cur.k >= 1000 ? null : cur)), 1100); };
+  const fire = (kind) => { playSound(kind); setB({ kind, k: Date.now() });setTimeout(() => setB((cur) => (cur && Date.now() - cur.k >= 1000 ? null : cur)), 1100); };
   return [b ? <Burst key={b.k} kind={b.kind} /> : null, fire];
 }
 
@@ -437,7 +459,7 @@ function Collections({ cats, openId }) {
   }
   return (
     <>
-      <form className="lib-col-new" onSubmit={(e) => { e.preventDefault(); if (name.trim()) run(async () => { await lib.saveCollection(name.trim()); setName(''); }); }}>
+      <form className="lib-col-new" onSubmit={(e) => { e.preventDefault(); if (name.trim()) run(async () => { await lib.saveCollection(name.trim()); playSound('save'); setName(''); }); }}>
         <div className="pink-input"><input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Nueva colección (ej.: Para imprimir, Regalos…)" /></div>
         <button type="submit" className="btn ghost" disabled={!name.trim()}><Icon name="sparkles" size={15} /> Crear</button>
       </form>
