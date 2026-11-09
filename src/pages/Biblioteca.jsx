@@ -739,7 +739,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
   return (
     <>
       {back}
-      <article className="cm-post card lib-detail">
+      <article className={'cm-post card lib-detail' + (last || mine.dl?.has(m.id) ? ' lib-detail-done' : '')}>
         <Media m={m} />
         <div className="fo-chips">
           {isNew(m) && <span className="chip lib-new">NUEVO</span>}
