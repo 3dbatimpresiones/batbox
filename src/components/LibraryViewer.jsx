@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sb } from '../lib/supabase.js';
 import Icon from './Icon.jsx';
@@ -13,7 +14,20 @@ import Icon from './Icon.jsx';
 // cama) y "Sólido" (un solo color). Vistas: 3/4, frente, costado y arriba.
 // =====================================================================
 
-const SOLID = new THREE.MeshStandardMaterial({ color: '#cfd6de', roughness: 0.5, metalness: 0.05 });
+// La vista se guarda en el navegador: volver a abrir el mismo modelo no la descarga de nuevo
+// (el nombre del archivo trae la versión, así que una vista regenerada se baja otra vez).
+async function loadPreview(key) {
+  const url = `https://bb-lib-cache/${encodeURIComponent(key)}`;
+  let cache = null;
+  try { cache = await caches.open('bb-lib-3d'); const hit = await cache.match(url); if (hit) return await hit.arrayBuffer(); } catch { cache = null; }
+  const { data, error } = await sb.storage.from('bb-lib-previews').download(key);
+  if (error || !data) throw new Error('No se pudo cargar la vista 3D. Probá de nuevo en un rato.');
+  const buf = await data.arrayBuffer();
+  try { await cache?.put(url, new Response(buf.slice(0), { headers: { 'Content-Type': 'model/gltf-binary' } })); } catch { /* sin caché: no pasa nada */ }
+  return buf;
+}
+
+const SOLID =new THREE.MeshStandardMaterial({ color: '#cfd6de', roughness: 0.5, metalness: 0.05 });
 const VIEWS = [['iso', '3/4'], ['front', 'Frente'], ['side', 'Costado'], ['top', 'Arriba']];
 
 // Cama de impresión "pintada": PEI oscuro con grilla celeste y el nombre de BATBOX.
@@ -71,19 +85,25 @@ export default function LibraryViewer({ previewKey, meta, name }) {
 
     (async () => {
       try {
-        const { data, error: e } = await sb.storage.from('bb-lib-previews').download(previewKey);
-        if (e || !data) throw new Error('No se pudo cargar la vista 3D. Probá de nuevo en un rato.');
-        const gltf = await new GLTFLoader().parseAsync(await data.arrayBuffer(), '');
+        const buf = await loadPreview(previewKey);
+        const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buf, '');
         if (!alive) return;
         const model = gltf.scene;
-        model.rotation.x = -Math.PI / 2; // los archivos de impresión vienen con Z hacia arriba
-        model.updateMatrixWorld(true);
         const meshes = [];
         model.traverse((o) => {
           if (!o.isMesh) return;
+          // Vistas comprimidas: vuelve las posiciones a milímetros reales (mismo sombreado que antes).
+          o.updateMatrix();
+          const src = o.geometry.getAttribute('position'), f = new Float32Array(src.count * 3);
+          for (let i = 0; i < src.count; i++) { f[i * 3] = src.getX(i); f[i * 3 + 1] = src.getY(i); f[i * 3 + 2] = src.getZ(i); }
+          const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(f, 3)); g.setIndex(o.geometry.index);
+          g.applyMatrix4(o.matrix); o.geometry.dispose(); o.geometry = g;
+          o.position.set(0, 0, 0); o.scale.set(1, 1, 1); o.quaternion.identity();
           o.geometry = toCreasedNormals(o.geometry, Math.PI / 5); // curvas suaves, bordes vivos
           o.userData.color = o.material; meshes.push(o);
         });
+        model.rotation.x = -Math.PI / 2; // los archivos de impresión vienen con Z hacia arriba
+        model.updateMatrixWorld(true);
         // Camas de impresión (256 × 256 mm, como en el laminador), en las coordenadas del archivo.
         const plates = gltf.parser.json.extras?.plates?.length ? gltf.parser.json.extras.plates : null;
         const bedMat = new THREE.MeshStandardMaterial({ map: bedTexture(), roughness: 0.85 });

@@ -6,7 +6,7 @@
 // No usa dependencias nuevas: fflate (ya está en BATBOX) y el lector de src/lib/split/io.js.
 import { unzipSync } from 'fflate';
 import { parse3MF, parseSTL } from '../src/lib/split/io.js';
-import { MeshoptSimplifier } from 'meshoptimizer';
+import { MeshoptSimplifier, MeshoptEncoder } from 'meshoptimizer';
 
 const TARGET_TRIS = 200000; // total aproximado de la vista previa (~1–2 MB)
 globalThis.__BB_MAX_TRIS = 30000000; // modelos muy detallados: se leen igual y se simplifican
@@ -55,21 +55,40 @@ function toGLB(groups, extras) {
     chunks.push(buf, Buffer.alloc(pad)); offset += buf.length + pad;
     return views.length - 1;
   };
+  // Compresión: posiciones cuantizadas a 16 bits (paso < 0,02 mm, invisible) + códec meshopt sin pérdida.
+  let rawOffset = 0;
+  const pushC = (raw, count, stride, mode, target) => {
+    const enc = mode === 'TRIANGLES' ? MeshoptEncoder.encodeIndexBuffer(raw, count, stride) : MeshoptEncoder.encodeVertexBuffer(raw, count, stride);
+    const buf = Buffer.from(enc.buffer, enc.byteOffset, enc.byteLength), pad = (4 - (buf.length % 4)) % 4;
+    const view = { buffer: 1, byteOffset: rawOffset, byteLength: raw.byteLength, target,
+      extensions: { EXT_meshopt_compression: { buffer: 0, byteOffset: offset, byteLength: buf.length, byteStride: stride, count, mode } } };
+    if (mode === 'ATTRIBUTES') view.byteStride = stride;
+    views.push(view); chunks.push(buf, Buffer.alloc(pad)); offset += buf.length + pad;
+    rawOffset += raw.byteLength + ((4 - (raw.byteLength % 4)) % 4);
+    return views.length - 1;
+  };
   for (const g of groups) {
-    const pos = new Float32Array(g.vert), idx = g.vert.length / 3 > 65535 ? new Uint32Array(g.tri) : new Uint16Array(g.tri);
+    const n = g.vert.length / 3;
     const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
-    for (let i = 0; i < pos.length; i += 3) for (let k = 0; k < 3; k++) { min[k] = Math.min(min[k], pos[i + k]); max[k] = Math.max(max[k], pos[i + k]); }
-    accessors.push({ bufferView: push(pos, 34962), componentType: 5126, count: pos.length / 3, type: 'VEC3', min, max });
-    accessors.push({ bufferView: push(idx, 34963), componentType: idx instanceof Uint32Array ? 5125 : 5123, count: idx.length, type: 'SCALAR' });
+    for (let i = 0; i < g.vert.length; i += 3) for (let k = 0; k < 3; k++) { min[k] = Math.min(min[k], g.vert[i + k]); max[k] = Math.max(max[k], g.vert[i + k]); }
+    const scale = min.map((m, k) => Math.max(max[k] - m, 1e-6) / 65535);
+    const q = new Uint16Array(n * 4); // xyz + relleno (cada vértice debe ocupar múltiplo de 4 bytes)
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) q[i * 4 + k] = Math.round((g.vert[i * 3 + k] - min[k]) / scale[k]);
+    const idx = n > 65535 ? new Uint32Array(g.tri) : new Uint16Array(g.tri);
+    accessors.push({ bufferView: pushC(new Uint8Array(q.buffer), n, 8, 'ATTRIBUTES', 34962), componentType: 5123, count: n, type: 'VEC3', min: [0, 0, 0], max: [0, 1, 2].map((k) => { let mx = 0; for (let i = 0; i < n; i++) mx = Math.max(mx, q[i * 4 + k]); return mx; }) });
+    accessors.push({ bufferView: pushC(new Uint8Array(idx.buffer), idx.length, idx.BYTES_PER_ELEMENT, 'TRIANGLES', 34963), componentType: idx instanceof Uint32Array ? 5125 : 5123, count: idx.length, type: 'SCALAR' });
+    g.q = { translation: min, scale };
     const hex = g.color.replace('#', '');
     const lin = [0, 2, 4].map((o) => { const s = parseInt(hex.slice(o, o + 2), 16) / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
     materials.push({ name: g.color, pbrMetallicRoughness: { baseColorFactor: [...lin, 1], metallicFactor: 0.05, roughnessFactor: 0.55 } });
     meshes.push({ name: g.name, primitives: [{ attributes: { POSITION: accessors.length - 2 }, indices: accessors.length - 1, material: materials.length - 1 }] });
-    nodes.push({ mesh: meshes.length - 1, name: g.name });
+    nodes.push({ mesh: meshes.length - 1, name: g.name, translation: g.q.translation, scale: g.q.scale });
   }
   const bin = Buffer.concat(chunks);
   const json = { asset: { version: '2.0', generator: 'BATBOX Biblioteca 3D' }, scene: 0, scenes: [{ nodes: nodes.map((_, i) => i) }],
-    nodes, meshes, materials, accessors, bufferViews: views, buffers: [{ byteLength: bin.length }], extras };
+    extensionsUsed: ['EXT_meshopt_compression', 'KHR_mesh_quantization'], extensionsRequired: ['EXT_meshopt_compression', 'KHR_mesh_quantization'],
+    nodes, meshes, materials, accessors, bufferViews: views,
+    buffers: [{ byteLength: bin.length }, { byteLength: rawOffset, extensions: { EXT_meshopt_compression: { fallback: true } } }], extras };
   let js = Buffer.from(JSON.stringify(json));
   js = Buffer.concat([js, Buffer.alloc((4 - (js.length % 4)) % 4, 0x20)]);
   const head = Buffer.alloc(12); head.writeUInt32LE(0x46546c67, 0); head.writeUInt32LE(2, 4); head.writeUInt32LE(12 + 8 + js.length + 8 + bin.length, 8);
@@ -99,7 +118,7 @@ export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
     mode = 'stl';
   }
   // Simplificación de calidad (meshoptimizer) por pieza y por color, respetando bordes entre colores.
-  await MeshoptSimplifier.ready;
+  await MeshoptSimplifier.ready; await MeshoptEncoder.ready;
   let total = 0; const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   for (const o of objects) {
     total += o.tri.length / 3;

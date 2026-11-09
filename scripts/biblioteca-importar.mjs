@@ -106,6 +106,8 @@ const FILL_PHOTOS = process.argv.includes('--fotos');
 const existing = new Map(), takenSlugs = new Set(); // storage_key → { slug, images, thumb }
 // Vistas previas 3D (migración 063): modelos que todavía no tienen una (ni un error anotado).
 let PREVIEWS = true; const needPreview = [];
+// v3 = GLB comprimido (meshopt + cuantizado 16 bits). --rehacer-3d regenera las vistas de versiones anteriores.
+const PREVIEW_V = 3, REHACER = process.argv.includes('--rehacer-3d');
 if (secretArg || process.env.SUPABASE_SECRET) {
   const k = (process.env.SUPABASE_SECRET || fs.readFileSync(secretArg, 'utf8')).replace(/^﻿/, '').trim();
   for (let from = 0; ; from += 1000) {
@@ -116,7 +118,8 @@ if (secretArg || process.env.SUPABASE_SECRET) {
     const rows = await r.json();
     rows.forEach((x) => {
       existing.set(x.storage_key, { slug: x.slug, images: x.images || [], thumb: x.thumb_key }); takenSlugs.add(x.slug);
-      if (PREVIEWS && !x.preview_key && !x.preview_meta) needPreview.push({ id: x.id, slug: x.slug, storage_key: x.storage_key, thumb: x.thumb_key });
+      const old = REHACER && x.preview_key && x.preview_meta?.v !== PREVIEW_V;
+      if (PREVIEWS && ((!x.preview_key && !x.preview_meta) || old)) needPreview.push({ id: x.id, slug: x.slug, storage_key: x.storage_key, thumb: x.thumb_key, oldKey: x.preview_key });
     });
     if (rows.length < 1000) break;
   }
@@ -314,7 +317,7 @@ if (PREVIEWS && (secretArg || process.env.SUPABASE_SECRET) && !process.argv.incl
     const fresh = await (await fetch(`${SB}/rest/v1/bb_lib_models?select=id,slug,storage_key,thumb_key&preview_key=is.null&preview_meta=is.null`, { headers: h })).json();
     for (const x of fresh) if (!needPreview.some((n) => n.id === x.id)) needPreview.push({ id: x.id, slug: x.slug, storage_key: x.storage_key, thumb: x.thumb_key });
   }
-  const todo = needPreview.slice(0, 15);
+  const todo = needPreview.slice(0, REHACER ? 500 : 15);
   let made = 0;
   for (const m of todo) {
     try {
@@ -331,10 +334,12 @@ if (PREVIEWS && (secretArg || process.env.SUPABASE_SECRET) && !process.argv.incl
         } catch { /* sin ffmpeg o sin portada: color por defecto */ }
       }
       const p = await buildPreview(zip, { bodyColor: body || '#e6e8ec' });
-      const name = `${m.slug}.glb`;
-      const up = await fetch(`${SB}/storage/v1/object/bb-lib-previews/${encodeURIComponent(name)}`, { method: 'POST', headers: { ...h, 'Content-Type': 'model/gltf-binary', 'x-upsert': 'true' }, body: p.glb });
+      // El nombre lleva la versión: así el navegador que la guardó en caché pide la nueva.
+      const name = `${m.slug}.v${PREVIEW_V}.glb`;
+      const up = await fetch(`${SB}/storage/v1/object/bb-lib-previews/${encodeURIComponent(name)}`, { method: 'POST', headers: { ...h, 'Content-Type': 'model/gltf-binary', 'x-upsert': 'true', 'cache-control': 'max-age=31536000' }, body: p.glb });
       if (!up.ok) throw new Error('subida ' + up.status + ' ' + (await up.text()).slice(0, 120));
-      await patch(m.id, { preview_key: name, preview_meta: { mode: p.mode, size_mm: p.size, parts: p.parts, tris: p.tris, colors: p.colors, plates: p.plates, v: 2 } });
+      await patch(m.id, { preview_key: name, preview_meta: { mode: p.mode, size_mm: p.size, parts: p.parts, tris: p.tris, colors: p.colors, plates: p.plates, v: PREVIEW_V } });
+      if (m.oldKey && m.oldKey !== name) await fetch(`${SB}/storage/v1/object/bb-lib-previews`, { method: 'DELETE', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: [m.oldKey] }) }).catch(() => {});
       made++; console.log(`3D ${m.slug}: ${p.mode} · ${p.parts} piezas · ${p.colors} colores · ${p.plates} cama(s) · ${(p.glb.length / 1048576).toFixed(2)} MB`);
     } catch (e) {
       console.log(`3D ${m.slug}: no se pudo (${e.message})`);
