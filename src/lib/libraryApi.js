@@ -32,6 +32,7 @@ export const models = ({ category = null, q = '', sort = 'new', offset = 0, limi
   rpc('bb_lib_models_list', { p_category: category, p_q: q || null, p_sort: sort, p_limit: limit, p_offset: offset, p_status: status, p_tag: tag });
 export const tags = (category = null) => rpc('bb_lib_tags', { p_category: category });
 export const related = (id) => rpc('bb_lib_related', { p_model: id });
+export const weekTop = (limit = 4) => rpc('bb_lib_week_top', { p_limit: limit });
 
 // Valoraciones
 export const reviews = (id) => rpc('bb_lib_reviews_list', { p_model: id });

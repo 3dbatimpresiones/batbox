@@ -402,20 +402,31 @@ function Grid({ filters, cats, empty, all: loadAll = false }) {
   );
 }
 
-// Recién agregados: los últimos modelos (hasta 4) y cuántos entraron desde la última visita.
+// Novedades de la semana: lo que entró en los últimos 7 días y lo más descargado por los miembros.
 function Recent({ cats, lastVisit }) {
   const [items, setItems] = useState(null);
-  useEffect(() => { lib.models({ sort: 'new', limit: 8 }).then(setItems).catch(() => setItems([])); }, []);
-  if (!items?.length) return null;
-  const fresh = items.filter((m) => m.published_at && new Date(m.published_at).getTime() > Date.now() - 14 * 864e5);
-  if (!fresh.length) return null;
+  const [top, setTop] = useState([]);
+  useEffect(() => {
+    lib.models({ sort: 'new', limit: 12 }).then(setItems).catch(() => setItems([]));
+    lib.weekTop(4).then(setTop).catch(() => setTop([]));
+  }, []);
+  if (!items) return null;
+  const fresh = items.filter((m) => m.published_at && new Date(m.published_at).getTime() > Date.now() - 7 * 864e5);
+  if (!fresh.length && !top.length) return null;
   const sinceVisit = lastVisit ? items.filter((m) => new Date(m.published_at).getTime() > lastVisit).length : 0;
   const byId = Object.fromEntries(cats.map((c) => [c.id, c]));
   return (
-    <section className="lib-recent">
-      <h2 className="fo-h2"><Icon name="sparkles" size={16} /> Recién agregados
-        {sinceVisit > 0 && <span className="lib-since">{sinceVisit >= 8 ? '8 o más' : sinceVisit} nuevo{sinceVisit === 1 ? '' : 's'} desde tu última visita</span>}</h2>
-      <div className="ga-grid">{fresh.slice(0, 4).map((m) => <ModelCard key={m.id} m={m} cat={byId[m.category_id]} />)}</div>
+    <section className="lib-recent lib-week">
+      <h2 className="fo-h2"><Icon name="sparkles" size={16} /> Novedades de la semana
+        {sinceVisit > 0 && <span className="lib-since">{sinceVisit >= 12 ? '12 o más' : sinceVisit} nuevo{sinceVisit === 1 ? '' : 's'} desde tu última visita</span>}</h2>
+      {fresh.length > 0 && <>
+        <h3 className="lib-week-sub">Recién llegados <small>{fresh.length >= 12 ? '12 o más' : fresh.length} esta semana</small></h3>
+        <div className="ga-grid">{fresh.slice(0, 8).map((m) => <ModelCard key={m.id} m={m} cat={byId[m.category_id]} />)}</div>
+      </>}
+      {top.length > 0 && <>
+        <h3 className="lib-week-sub">Lo más descargado <small>últimos 7 días</small></h3>
+        <div className="ga-grid">{top.map((m) => <ModelCard key={m.id} m={m} cat={byId[m.category_id]} />)}</div>
+      </>}
     </section>
   );
 }
