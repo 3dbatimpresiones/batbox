@@ -585,6 +585,22 @@ function Reviews({ m, isAdmin, onChange }) {
 
 // "Lo imprimí": los miembros muestran su impresión del modelo (y opcionalmente la publican en la Galería Maker).
 const MODEL_URL = (slug) => `https://3dbat.com.ar/batbox/#/biblioteca/m/${slug}`;
+// Compartir: el enlace a la ficha (solo lo abren miembros del Makers Club; el archivo no se comparte).
+function ShareButton({ m }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const url = location.origin + location.pathname + '#/biblioteca/m/' + m.slug;
+    try {
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) { await navigator.share({ title: m.name, text: m.name + ' · Biblioteca 3D del Makers Club', url }); return; }
+      await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2200);
+    } catch { /* cancelado o sin portapapeles */ }
+  };
+  return (
+    <button type="button" className={'cm-act' + (copied ? ' on' : '')} onClick={share}>
+      <Icon name="link" size={16} /> {copied ? '¡Enlace copiado!' : 'Compartir'}</button>
+  );
+}
+
 function Makes({ m, isAdmin }) {
   const { user } = useAuth();
   const flags = useCommunityFlags();
@@ -774,6 +790,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
           <button type="button" className={'cm-act lib-act-fav' + (m.is_favorite ? ' on' : '')} onClick={fav} aria-pressed={m.is_favorite}>
             <Icon name="heart" size={16} /> {m.is_favorite ? 'En favoritos' : 'Guardar en favoritos'}{favBurst}</button>
           <CollectionPicker m={m} />
+          <ShareButton m={m} />
         </div>
         <QuotaNote q={quota} />
         {ok && <div className="cm-ok">{ok}</div>}
