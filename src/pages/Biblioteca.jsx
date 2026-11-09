@@ -790,7 +790,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
         <div className="lib-actions">
           <button type="button" className="btn primary" disabled={busy !== false || blocked} onClick={() => download()}>
             <Icon name="box" size={16} /> {busy === true ? 'Preparando…' : 'Descargar modelo completo'}</button>
-          <button type="button" className={'cm-act' + (m.is_favorite ? ' on' : '')} onClick={fav} aria-pressed={m.is_favorite}>
+          <button type="button" className={'cm-act lib-act-fav' + (m.is_favorite ? ' on' : '')} onClick={fav} aria-pressed={m.is_favorite}>
             <Icon name="heart" size={16} /> {m.is_favorite ? 'En favoritos' : 'Guardar en favoritos'}{favBurst}</button>
           <CollectionPicker m={m} />
         </div>

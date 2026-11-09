@@ -684,3 +684,6 @@
 .cm-act.lib-act-save.on { color: #f5c542; border-color: rgba(245, 197, 66, .6); background: rgba(245, 197, 66, .1); }
 /* Ficha: foto con reborde cian cuando ya lo descargaste */
 .lib-detail-done .lib-media { border-radius: 18px; box-shadow: 0 0 0 2px var(--cyan), 0 10px 26px rgba(93, 218, 219, .18); }
+/* Ficha: "En favoritos" con el mismo rosa y corazón relleno que las tarjetas */
+.cm-act.lib-act-fav.on { color: var(--pink, #f78eb6); border-color: rgba(247, 142, 182, .6); background: rgba(247, 142, 182, .1); }
+.cm-act.lib-act-fav.on svg { fill: currentColor; animation: lib-pop .35s ease-out; }
