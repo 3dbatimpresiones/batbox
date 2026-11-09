@@ -73,6 +73,12 @@ async function zipParts(id, size) {
   return parts;
 }
 
+// Lo que se guarda de cada pieza. En los ZIP también su ubicación (o = offset, c = tamaño comprimido,
+// m = método) para poder bajar ese archivo suelto (migración 066). ZIP64 / >4 GB: solo nombre y tamaño.
+const BIG = 0xffffffff;
+const publicPart = ({ name, size, _m, _c, _o }) =>
+  (_o != null && _o !== BIG && _c !== BIG && (_m === 0 || _m === 8) ? { name, size, o: _o, c: _c, m: _m } : { name, size });
+
 // Saca las fotos del ZIP (solo esos bytes) y las convierte a WebP con ffmpeg:
 // la primera también como portada liviana (640 px) y todas para la galería de la ficha (1280 px, hasta 8).
 const MAX_PHOTOS = 8;
@@ -163,6 +169,27 @@ if (secretArg || process.env.SUPABASE_SECRET) {
       console.log(`Borrado: limpiados los archivos de "${d.name}".`);
     } catch (e) { console.log(`Borrado: no se pudieron limpiar los archivos de "${d.name}" (${e.message}).`); }
   }
+}
+
+// --rehacer-piezas: completa la ubicación de cada archivo en los ZIP ya cargados (descarga por archivo, 066).
+// Solo lee el índice de cada ZIP (unos KB), no lo baja entero.
+if (process.argv.includes('--rehacer-piezas') && (secretArg || process.env.SUPABASE_SECRET)) {
+  const k = (process.env.SUPABASE_SECRET || fs.readFileSync(secretArg, 'utf8')).replace(/^﻿/, '').trim();
+  const SBU = 'https://llciggitqtseosfklbjl.supabase.co/rest/v1', hk = { apikey: k, Authorization: 'Bearer ' + k, 'Content-Type': 'application/json' };
+  const rows = await (await fetch(`${SBU}/bb_lib_models?select=id,name,storage_key,file_name,size_bytes,parts`, { headers: hk })).json();
+  let ok = 0, skip = 0;
+  for (const r of rows) {
+    if (!/\.zip$/i.test(r.file_name) || !r.size_bytes || (r.parts || []).some((p) => p.o != null)) { skip++; continue; }
+    try {
+      const parts = await zipParts(r.storage_key, Number(r.size_bytes));
+      if (!parts) throw new Error('sin índice');
+      const res = await fetch(`${SBU}/bb_lib_models?id=eq.${r.id}`, { method: 'PATCH', headers: hk, body: JSON.stringify({ parts: parts.map(publicPart) }) });
+      if (!res.ok) throw new Error('supabase ' + res.status);
+      ok++; console.log(`piezas: ${r.name} (${parts.length})`);
+    } catch (e) { console.log(`piezas: ${r.name}: no se pudo (${e.message})`); }
+  }
+  console.log(`Piezas actualizadas: ${ok} · salteados: ${skip}`);
+  process.exit(0);
 }
 
 // Fotos sueltas en Drive al lado del ZIP: "Modelo.jpg", "Modelo - 1.jpg", "Modelo_2.png", "Modelo (3).webp"…
@@ -273,7 +300,7 @@ async function processZip({ f, catSlug, catPath, slug, refill, extra = [], ex, f
     const looseKeys = await addLoose(extra, slug, [], !thumb);
     if (!thumb && looseKeys.length) thumb = slug + '.webp';
     images = [...images, ...looseKeys];
-    if (parts) parts = parts.map(({ name, size }) => ({ name, size }));
+    if (parts) parts = parts.map(publicPart);
     records.push({ cat: catSlug, row: { slug, name: pretty(f.name), storage_key: f.id, file_name: fileName,
       size_bytes: size || null, md5: f.md5Checksum || null, parts: parts || [], thumb_key: thumb, images } });
     lines.push(`insert into public.bb_lib_models (slug, name, category_id, storage_key, file_name, size_bytes, md5, parts, thumb_key)

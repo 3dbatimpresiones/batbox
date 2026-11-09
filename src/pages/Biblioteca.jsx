@@ -506,14 +506,16 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
   if (!m) return <>{back}<Empty icon="alert" title="Este modelo no está disponible" text={error} /></>;
   const cat = cats.find((c) => c.id === m.category_id);
   const blocked = quota && !quota.admin && quota.remaining <= 0;
-  const download = async () => {
-    setBusy(true); setError(''); setOk('');
+  const download = async (part = null) => {
+    setBusy(part ?? true); setError(''); setOk('');
     try {
-      const r = await lib.download(m.id);
-      setOk(r.remaining == null ? 'Descarga iniciada.' : `Descarga iniciada. Te quedan ${r.remaining} en las próximas 24 h.`);
-      setM((cur) => ({ ...cur, downloads: cur.downloads + (r.remaining == null ? 0 : 1) }));
+      const r = await lib.download(m.id, part);
+      const what = part == null ? 'Descarga iniciada.' : `Descargando ${r.file_name}.`;
+      setOk(r.remaining == null ? what : `${what} ${r.counted ? 'Contó como 1 descarga' : 'No suma: este modelo ya contó hoy'}. Te quedan ${r.remaining} en las próximas 24 h.`);
+      if (r.counted && r.remaining != null) setM((cur) => ({ ...cur, downloads: cur.downloads + 1 }));
     } catch (e) { setError(e.message); } finally { setBusy(false); refreshQuota(); }
   };
+  const single = /\.zip$/i.test(m.file_name || '');
   const fav = async () => {
     try { const on = await lib.toggleFavorite(m.id); setM((cur) => ({ ...cur, is_favorite: on, favorites: Math.max(0, cur.favorites + (on ? 1 : -1)) })); }
     catch (e) { setError(e.message); }
@@ -533,20 +535,29 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
         {m.rating_count > 0 && <span className="lib-rating"><Stars value={m.rating} size={16} /> <small>{m.rating} de 5 ({m.rating_count} valoraci{m.rating_count === 1 ? 'ón' : 'ones'})</small></span>}
         {m.description && <p className="cm-body">{m.description}</p>}
         <dl className="ga-specs">
-          <div><dt>Archivo</dt><dd>ZIP{m.size_bytes ? ' · ' + lib.formatBytes(m.size_bytes) : ''}</dd></div>
+          <div><dt>Archivo</dt><dd>{single ? "ZIP" : "RAR"}{m.size_bytes ? ' · ' + lib.formatBytes(m.size_bytes) : ''}</dd></div>
           <div><dt>Diseño</dt><dd>{m.author || 'Desconocido'}</dd></div>
           {m.license && <div><dt>Licencia</dt><dd>{m.license}</dd></div>}
           <div><dt>Descargas</dt><dd>{m.downloads}</dd></div>
         </dl>
         {m.parts?.length > 0 && (
-          <div className="ga-files"><h3>Qué trae el ZIP</h3>
-            {m.parts.map((p, i) => <div key={i} className="ga-file"><Icon name="box" size={16} /><div><b>{p.name}</b>{p.size ? <small className="cm-date">{lib.formatBytes(p.size)}</small> : null}</div></div>)}
+          <div className="ga-files"><h3>Qué trae el {single ? 'ZIP' : 'archivo'}</h3>
+            {single && m.parts.some((p) => p.o != null) && <small className="cm-date">Tocá la flecha para bajar un archivo suelto. Bajar varios archivos del mismo modelo cuenta como 1 sola descarga.</small>}
+            {m.parts.map((p, i) => (
+              <div key={i} className="ga-file"><Icon name="box" size={16} /><div><b>{p.name}</b>{p.size ? <small className="cm-date">{lib.formatBytes(p.size)}</small> : null}</div>
+                {single && p.o != null && (
+                  <button type="button" className="lib-part-dl" disabled={busy !== false} onClick={() => download(i)}
+                    aria-label={`Descargar ${p.name}`} title={`Descargar solo ${p.name}`}>
+                    {busy === i ? <span className="spinner" /> : <Icon name="download" size={18} />}</button>
+                )}
+              </div>
+            ))}
           </div>
         )}
         {m.tags?.length > 0 && <div className="chips">{m.tags.map((t) => <span key={t} className="chip muted">{lib.tagLabel(t)}</span>)}</div>}
         <div className="lib-actions">
-          <button type="button" className="btn primary" disabled={busy || blocked} onClick={download}>
-            <Icon name="box" size={16} /> {busy ? 'Preparando…' : 'Descargar modelo'}</button>
+          <button type="button" className="btn primary" disabled={busy !== false || blocked} onClick={() => download()}>
+            <Icon name="box" size={16} /> {busy === true ? 'Preparando…' : 'Descargar modelo completo'}</button>
           <button type="button" className={'cm-act' + (m.is_favorite ? ' on' : '')} onClick={fav} aria-pressed={m.is_favorite}>
             <Icon name="heart" size={16} /> {m.is_favorite ? 'En favoritos' : 'Guardar en favoritos'}</button>
           <CollectionPicker modelId={m.id} />

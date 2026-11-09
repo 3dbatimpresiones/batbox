@@ -1,5 +1,6 @@
 // Puente de descargas de la Biblioteca 3D (Cloudflare Worker, plan gratis).
-// GET /d/<token>  → canjea el permiso en Supabase y transmite el archivo desde Drive.
+// GET /d/<token>  → canjea el permiso en Supabase y transmite el archivo desde Drive
+//                   (el ZIP entero, o un solo archivo de adentro si el permiso trae "entry").
 // GET /salud      → comprueba que el Worker responde.
 // POST /sync       → (solo administradores) lanza en GitHub la importación de modelos nuevos.
 // GET  /sync       → (solo administradores) estado de la última importación.
@@ -26,6 +27,7 @@ export default {
       const grant = await redeem(env, m[1]);
       if (!grant) return text(403, 'El enlace venció o ya se usó. Volvé a la ficha del modelo y pedí la descarga de nuevo.');
       if (grant.provider !== 'gdrive') return text(501, 'Proveedor de almacenamiento no soportado.');
+      if (grant.entry) return await streamEntry(env, grant);
       return await streamFromDrive(env, req, grant);
     } catch (err) {
       console.error('descarga', err?.message || err);
@@ -127,6 +129,40 @@ async function streamFromDrive(env, req, grant) {
   out.set('Cache-Control', 'private, no-store');
   out.set('X-Content-Type-Options', 'nosniff');
   return new Response(res.body, { status: res.status, headers: out }); // se transmite, no se carga en memoria
+}
+
+// Un solo archivo de adentro del ZIP: se piden a Drive solo sus bytes (encabezado local + datos)
+// y, si viene comprimido (método 8), se descomprime en el momento. No se baja el ZIP entero.
+async function streamEntry(env, grant) {
+  const { o, c, m, size } = grant.entry;
+  const auth = { Authorization: `Bearer ${await getDriveToken(env)}` };
+  const url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(grant.file_key)}?alt=media&supportsAllDrives=true`;
+  const part = (a, b) => fetch(url, { headers: { ...auth, Range: `bytes=${a}-${b}` } });
+  const head = await part(o, o + 29);
+  if (head.status !== 206) {
+    console.error('drive entry', head.status);
+    if (head.status === 404) return text(404, 'El archivo ya no está disponible.');
+    if (head.status === 429 || head.status === 403) return text(503, 'Hay mucha demanda en este momento. Probá de nuevo en unos minutos.', { 'Retry-After': '120' });
+    return text(502, 'No pudimos obtener el archivo. Probá de nuevo en unos minutos.');
+  }
+  const h = new DataView(await head.arrayBuffer());
+  if (h.getUint32(0, true) !== 0x04034b50) return text(502, 'El ZIP cambió en el Drive. Volvé a intentar en unos minutos.');
+  const start = o + 30 + h.getUint16(26, true) + h.getUint16(28, true);
+  const data = c > 0 ? await part(start, start + c - 1) : null;
+  if (data && data.status !== 206) return text(502, 'No pudimos obtener el archivo. Probá de nuevo en unos minutos.');
+
+  let body = data ? data.body : new Uint8Array(0);
+  const out = new Headers({
+    'Content-Type': 'application/octet-stream',
+    'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(grant.file_name)}`,
+    'Cache-Control': 'private, no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  if (m === 8 && data) {
+    body = data.body.pipeThrough(new DecompressionStream('deflate-raw'));
+    if (size > 0) { const fixed = new FixedLengthStream(size); body.pipeTo(fixed.writable).catch(() => {}); body = fixed.readable; } // así el navegador muestra el progreso
+  } else if (c > 0) out.set('Content-Length', String(c));
+  return new Response(body, { status: 200, headers: out });
 }
 
 // Token de acceso de la cuenta de servicio (solo lectura de Drive).

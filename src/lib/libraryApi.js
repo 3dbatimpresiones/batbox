@@ -59,8 +59,9 @@ export const myFavorites = () => rpc('bb_lib_my_favorites');
 export const myDownloads = () => rpc('bb_lib_my_downloads');
 
 // Pide el permiso y arranca la descarga en el navegador (el archivo viene del puente, no de Supabase).
-export async function download(id) {
-  const r = await rpc('bb_lib_download', { p_model: id });
+// part = posición del archivo en m.parts para bajar solo ese archivo (066); sin part, el ZIP entero.
+export async function download(id, part = null) {
+  const r = await rpc('bb_lib_download', part == null ? { p_model: id } : { p_model: id, p_part: part });
   const a = document.createElement('a');
   a.href = `${LIBRARY_DL_URL}/d/${r.token}`;
   a.rel = 'noopener';
