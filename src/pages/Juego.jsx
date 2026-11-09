@@ -5,45 +5,64 @@ import { GAME_URL, useLive, useMt } from '../lib/mtApi.js';
 import { ChallengeCard, Emblem, LiveLine, RankRows, num } from '../components/Tycoon.jsx';
 import { Options, SearchInput } from '../components/ui.jsx';
 import { farmLevel } from '../data/rewards.js';
-import tallerAnim from '../assets/tycoon-taller.webp';
+import { GAMES } from '../data/games.js';
 import fcLogo from '../assets/filacolor-logo.png';
 
 // =====================================================================
-// #/juego — 3DBAT Maker Tycoon dentro de BATBOX: jugar, ranking, retos y granjas.
-// El juego en sí está en /batbox/juego/ (misma web: comparte la sesión de Google).
+// #/juego — Juegos de BATBOX: una tarjeta por juego (src/data/games.js) y,
+// debajo, las secciones del juego elegido (ranking, retos, cómo funciona...).
+// Maker Tycoon vive en /batbox/juego/ (misma web: comparte la sesión de Google).
 // =====================================================================
 
-const TABS = [['ranking', 'Ranking', 'trophy'], ['retos', 'Retos', 'star'], ['granjas', 'Granjas', 'users'], ['como', 'Cómo funciona', 'book']];
+const GAME_TABS = {
+  tycoon: [['ranking', 'Ranking', 'trophy'], ['retos', 'Retos', 'star'], ['granjas', 'Granjas', 'users'], ['como', 'Cómo funciona', 'book']],
+  batcard: [['como', 'Cómo funciona', 'book'], ['ranking', 'Ranking', 'trophy']],
+};
 
 export default function Juego({ query }) {
   const live = useLive();
-  const tab = TABS.some(([k]) => k === query.ver) ? query.ver : 'ranking';
-  const setTab = (k) => navigate('/juego?ver=' + k);
+  const game = GAME_TABS[query.juego] ? query.juego : 'tycoon';
+  const TABS = GAME_TABS[game];
+  const tab = TABS.some(([k]) => k === query.ver) ? query.ver : TABS[0][0];
+  const go = (g, k) => navigate(`/juego?juego=${g}&ver=${k}`);
+  const setTab = (k) => go(game, k);
   const ov = useMt('bb_mt_overview');
+  const pick = (g) => { go(g, GAME_TABS[g][0][0]); setTimeout(() => document.getElementById('gm-detalle')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); };
   return (
     <div className="mt-page">
-      <section className="mt-hero">
-        <div className="mt-hero-media"><img src={tallerAnim} alt="El taller de Maker Tycoon funcionando" /></div>
-        <div className="mt-hero-txt">
-          <div className="section-label">NOVEDAD GRATIS · JUEGO DE 3DBAT</div>
-          <h1>3DBAT Maker Tycoon</h1>
-          <p>Arrancá con una impresora en el escritorio y llegá a tu propia planta de producción. Armá tu taller, producí, creá tu granja con otros makers y competí en los retos de la comunidad.</p>
-          <LiveLine live={live} />
-          <div className="mt-home-cta">
-            <a className="btn primary big" href={GAME_URL}><Icon name="gamepad" size={20} /> Jugar gratis</a>
-            <button className="btn ghost" onClick={() => setTab('como')}><Icon name="book" size={16} /> Cómo funciona</button>
-            <a className="btn ghost" href="#/batcard"><Icon name="star" size={16} /> Nuevo: BATCARD</a>
-          </div>
-          <p className="mt-note">Gratis y sin límites, con o sin cuenta. Con tu cuenta de Google (la misma de BATBOX) guardás la partida en la nube y entrás al ranking. {ov.data?.season && <>Temporada actual: <b>{ov.data.season.name}</b>.</>}</p>
-        </div>
+      <header className="gm-head">
+        <div className="section-label">GRATIS · JUEGOS DE 3DBAT</div>
+        <h1>Juegos</h1>
+        <p>Jugá desde el navegador, en la compu o el celular. Sin cuenta y sin pagar para ganar.</p>
+      </header>
+      <section className="gm-grid">
+        {GAMES.map((g) => (
+          <article key={g.id} className={`gm-card${game === g.id ? ' on' : ''}`}>
+            <a className="gm-media" href={g.href}><img src={g.img} alt={g.imgAlt} />{g.isNew && <span className="gm-new">NUEVO</span>}</a>
+            <div className="gm-body">
+              <small className="gm-tag">{g.tag}</small>
+              <h2>{g.name}</h2>
+              <p>{g.desc}</p>
+              {g.live && <LiveLine live={live} />}
+              <div className="gm-cta">
+                <a className="btn primary" href={g.href}><Icon name="gamepad" size={18} /> Jugar gratis</a>
+                <button className="btn ghost" onClick={() => pick(g.id)} aria-pressed={game === g.id}><Icon name="book" size={15} /> Ver detalles</button>
+              </div>
+            </div>
+          </article>
+        ))}
       </section>
 
+      <div id="gm-detalle" className="gm-switch">
+        <h2>{GAMES.find((g) => g.id === game).name}</h2>
+        {game === 'tycoon' && <p className="mt-note">Con tu cuenta de Google (la misma de BATBOX) guardás la partida en la nube y entrás al ranking. {ov.data?.season && <>Temporada actual: <b>{ov.data.season.name}</b>.</>}</p>}
+      </div>
       <div className="view-toggle mt-tabs" role="tablist">
         {TABS.map(([k, l, ic]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={'seg' + (tab === k ? ' active' : '')} onClick={() => setTab(k)}><Icon name={ic} size={15} /> {l}</button>
         ))}
       </div>
-      {ov.missing && tab !== 'como' ? (
+      {game === 'batcard' ? (tab === 'como' ? <ComoBatcard /> : <RankingBatcard />) : ov.missing && tab !== 'como' ? (
         <div className="card mt-soon"><Icon name="clock" size={22} /><p><b>El juego online arranca muy pronto.</b> Ya podés jugar: tu partida se guarda en tu navegador. En unos días se suman el ranking, las granjas y los retos.</p></div>
       ) : (
         <>
@@ -52,7 +71,7 @@ export default function Juego({ query }) {
           {tab === 'granjas' && <Granjas />}
         </>
       )}
-      {tab === 'como' && <Como />}
+      {game === 'tycoon' && tab === 'como' && <Como />}
 
       <a className="mt-fc-strip" href="#/filacolor">
         <img src={fcLogo} alt="Filacolor" />
@@ -131,6 +150,25 @@ function Granjas() {
       </div>
     </section>
   );
+}
+
+const BC_COMO = [
+  ['🃏', 'Manos de póker', 'Elegí de 1 a 5 cartas: par, trío, escalera, color, full... Cuanto mejor la mano, más Calidad suma tu impresión.'],
+  ['🎯', 'Metas por ronda', 'Cada Lote tiene Prototipo, Tanda y Control de Calidad. Tenés 4 impresiones y 3 descartes para llegar a la meta.'],
+  ['🔥', 'Temperatura de Taller', 'Sobreextruir da +12 Capas pero sube el Calor. Descartar enfría. Algunos Mods premian el calor justo.'],
+  ['🛠️', 'Mods de Taller', 'Con los Créditos que ganás comprás Mods en Suministros: se aplican de izquierda a derecha y el orden importa.'],
+  ['👹', 'Jefes', 'Cada Control de Calidad trae un jefe: Warping, Cama Desnivelada, Bobina Enredada o Hotend Saturado.'],
+  ['💾', 'Sin cuenta', 'Gratis, sin cuenta y sin pagar para ganar. La partida se guarda sola en tu navegador.'],
+];
+function ComoBatcard() {
+  return (
+    <section className="mt-como">
+      {BC_COMO.map(([ic, t, d]) => <div key={t} className="card"><h3>{ic} {t}</h3><p>{d}</p></div>)}
+    </section>
+  );
+}
+function RankingBatcard() {
+  return <div className="card mt-soon"><Icon name="trophy" size={22} /><p><b>El ranking de BATCARD llega pronto, exclusivo para el Makers Club.</b> Va a usar partidas verificadas por el servidor para que nadie pueda hacer trampa. Mientras tanto, tu récord queda guardado en el juego.</p></div>;
 }
 
 function Como() {

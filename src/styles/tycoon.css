@@ -194,3 +194,26 @@
 .mt-rank-row .rs-off { color: var(--muted); font-weight: 400; }
 .mt-av.fr-platino { border-color: #cbd5e1; box-shadow: 0 0 12px rgba(203,213,225,.8); }
 .mt-av.fr-diamante { border-color: #67e8f9; box-shadow: 0 0 14px rgba(103,232,249,.9), 0 0 4px #a78bfa inset; }
+
+/* Página de Juegos: una tarjeta casi cuadrada por juego */
+.gm-head { margin-top: 18px; }
+.gm-head h1 { margin: 2px 0 6px; font-size: clamp(30px, 4vw, 44px); font-weight: 800; color: #fff; letter-spacing: -.8px; }
+.gm-head p { margin: 0; color: #cbd5e1; }
+.gm-grid { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
+.gm-card { display: flex; flex-direction: column; border-radius: 26px; overflow: hidden; background: linear-gradient(160deg, rgba(49,103,255,.18), rgba(135,61,255,.12)); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 18px 40px rgba(0,0,0,.35); transition: transform .2s, border-color .2s; }
+.gm-card:hover { transform: translateY(-3px); border-color: rgba(93,218,219,.5); }
+.gm-card.on { border-color: var(--cyan); }
+.gm-media { position: relative; display: block; aspect-ratio: 16 / 10; background: #0b1030; }
+.gm-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gm-new { position: absolute; top: 12px; right: 12px; background: #FF39B8; color: #fff; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 999px; box-shadow: 0 0 18px #FF39B8; }
+.gm-body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.gm-tag { color: var(--cyan); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.gm-body h2 { margin: 0; font-size: 26px; font-weight: 800; color: #fff; }
+.gm-body p { margin: 0; color: #cbd5e1; font-size: 14.5px; line-height: 1.5; flex: 1; }
+.gm-cta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.gm-switch { margin-top: 30px; scroll-margin-top: 90px; }
+.gm-switch h2 { margin: 0 0 4px; font-size: 24px; font-weight: 800; color: #fff; }
+
+/* En celular las pestañas y filtros se desplazan en vez de desbordar la página */
+.mt-page .view-toggle, .mt-page .mt-panel > :first-child { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.mt-page .view-toggle .seg { flex: none; }

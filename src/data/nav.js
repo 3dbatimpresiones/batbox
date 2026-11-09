@@ -3,7 +3,7 @@
 export const NAV = [
   { to: '/', key: '', label: 'Inicio', short: 'Inicio', icon: 'home' },
   { to: '/tools', key: 'tools', label: 'Herramientas', short: 'Herramientas', icon: 'wrench' },
-  { to: '/juego', key: 'juego', label: '3DBAT Maker Tycoon', short: 'Maker Tycoon', icon: 'gamepad' },
+  { to: '/juego', key: 'juego', label: 'Juegos', short: 'Juegos', icon: 'gamepad' },
   { to: '/academy', key: 'academy', label: 'Tutoriales', short: 'Tutoriales', icon: 'graduation' },
   { to: '/wiki', key: 'wiki', label: 'WikiBAT', short: 'WikiBAT', icon: 'book' },
   { to: '/biblioteca', key: 'biblioteca', label: 'Biblioteca 3D', short: 'Biblioteca 3D', icon: 'box' },

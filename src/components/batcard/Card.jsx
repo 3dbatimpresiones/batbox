@@ -32,6 +32,6 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
       {selected && order && <span className="bc-order">{order}</span>}
     </span>
   );
-  if (!onClick) return <span className={cls} role="img" aria-label={label}>{inner}</span>;
-  return <button type="button" className={cls} aria-pressed={!!selected} aria-label={label} onClick={onClick} disabled={disabled}>{inner}</button>;
+  if (!onClick) return <span className={cls} data-cid={card.id} role="img" aria-label={label}>{inner}</span>;
+  return <button type="button" className={cls} data-cid={card.id} aria-pressed={!!selected} aria-label={label} onClick={onClick} disabled={disabled}>{inner}</button>;
 }

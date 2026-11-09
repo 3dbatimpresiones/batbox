@@ -5,6 +5,7 @@ import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
 import Card from '../components/batcard/Card.jsx';
 import { sfx, setAudio } from '../components/batcard/sfx.js';
+import { confetti, burstAt, popText, shake, music } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
 import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
@@ -23,12 +24,12 @@ const ls = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
   del(k) { try { localStorage.removeItem(k); } catch { /* nada */ } },
 };
-const DEF_SET = { crt: 'suave', motion: 'auto', flashes: true, vol: 0.6, mute: false, speed: 'normal' };
+const DEF_SET = { crt: 'suave', motion: 'auto', flashes: true, vol: 0.6, music: 0.35, mute: false, speed: 'normal' };
 const SPEED = { normal: 320, rapida: 120 };
 
 function useSettings() {
   const [s, setS] = useState(() => ({ ...DEF_SET, ...(ls.get(K_SET) || {}) }));
-  useEffect(() => { ls.set(K_SET, s); setAudio(s.vol, s.mute); }, [s]);
+  useEffect(() => { ls.set(K_SET, s); setAudio(s.vol, s.mute); music.setVolume(s.mute ? 0 : s.music); }, [s]);
   const sysReduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const reduced = s.motion === 'reducido' || (s.motion === 'auto' && sysReduced);
   return [s, (patch) => setS((p) => ({ ...p, ...patch })), reduced];
@@ -47,6 +48,17 @@ export default function Batcard() {
   const [screen, setScreen] = useState('menu');
   const [{ save, problem }, setSaveInfo] = useState(loadSave);
   const [st, setSt] = useState(null);
+  // La música arranca con la primera interacción (los navegadores lo exigen) y se corta al salir.
+  useEffect(() => {
+    const go = () => { if (!set.mute && set.music > 0) music.start(); };
+    window.addEventListener('pointerdown', go); window.addEventListener('keydown', go);
+    return () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); music.stop(); };
+  }, [set.mute, set.music]);
+  useEffect(() => {
+    const lv = screen !== 'juego' || !st || st.phase !== 'round' ? 0 : st.round?.boss || st.round?.heat >= 5 ? 2 : 1;
+    music.setLevel(lv);
+  }, [screen, st]);
+  const fxOn = !reduced && set.flashes;
 
   const start = (s) => { setSt(s); setScreen('juego'); };
   const nueva = () => { ls.del(K_SAVE); start(newGame(newSeed())); };
@@ -66,7 +78,7 @@ export default function Batcard() {
           {screen === 'coleccion' && <Coleccion back={() => setScreen('menu')} />}
           {screen === 'ajustes' && <Ajustes set={set} patch={patch} back={() => setScreen(st ? 'juego' : 'menu')} />}
           {screen === 'juego' && st && (
-            <Juego st={st} setSt={setSt} speed={SPEED[set.speed]} reduced={reduced}
+            <Juego st={st} setSt={setSt} speed={SPEED[set.speed]} reduced={reduced} fxOn={fxOn}
               onMenu={aparcar} onAjustes={() => setScreen('ajustes')} onNew={nueva} />
           )}
         </div>
@@ -102,7 +114,9 @@ function Menu({ save, problem, onNew, onCont, onDropBad, go }) {
 }
 
 // ---------------------------------------------------------------- Juego
-function Juego({ st, setSt, speed, reduced, onMenu, onAjustes, onNew }) {
+function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
+  const [rolled, setRolled] = useState(null); // contador que sube rodando
+  const [banner, setBanner] = useState(null);
   const [sel, setSel] = useState([]);
   const [over, setOver] = useState(false);
   const [msg, setMsg] = useState('');
@@ -143,25 +157,53 @@ function Juego({ st, setSt, speed, reduced, onMenu, onAjustes, onNew }) {
     if (anim.i >= steps) {
       const h = setTimeout(() => {
         setAnim(null);
-        if (st.phase === 'shop' || st.phase === 'victory') sfx.win();
+        if (st.phase === 'shop' || st.phase === 'victory') {
+          const pay = st.lastWin?.pay || 4;
+          sfx.win(); setTimeout(() => sfx.cash(Math.min(10, pay)), 450);
+          if (fxOn) confetti({ n: st.phase === 'victory' ? 260 : 150, coins: pay * 3 });
+          if (st.phase === 'victory' && fxOn) [300, 700, 1100].forEach((d) => setTimeout(() => confetti({ x: Math.random() * innerWidth, n: 120 }), d));
+          setBanner(st.phase === 'victory' ? '¡ORDEN COMPLETA!' : `¡APROBADO! +${pay}`);
+          setTimeout(() => setBanner(null), 1800);
+        }
         if (st.phase === 'defeat') sfx.lose();
-      }, reduced ? 250 : 700);
+      }, reduced ? 250 : 900);
       return () => clearTimeout(h);
     }
     const h = setTimeout(() => {
       const t = anim.last.trace[anim.i];
-      if (t.phase === 'mod' && t.text.includes('Mult')) sfx.mult(); else sfx.tick(anim.i);
+      const prevT = anim.last.trace[anim.i - 1];
+      if (t.phase === 'total') {
+        const best = anim.prev.stats.bestHand;
+        const big = t.total >= anim.prev.round.target * 0.4 || (best > 0 && t.total > best);
+        sfx.tick(10); if (big) sfx.big();
+        const scoreEl = document.querySelector('.bc-score-num');
+        popText(scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true);
+        if (fxOn) { shake(document.querySelector('.bc-game'), big); if (big) burstAt(scoreEl, { n: 60 }); }
+        if (big) { setBanner(best > 0 && t.total > best ? '¡RÉCORD DE MANO!' : '¡GRAN MANO!'); setTimeout(() => setBanner(null), 1300); }
+        const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 650;
+        const roll = (now) => { const k = Math.min(1, (now - t0) / dur); setRolled(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(roll); else setRolled(null); };
+        requestAnimationFrame(roll);
+      } else if (t.cardId) {
+        sfx.tick(anim.i);
+        popText(document.querySelector(`.bc-played [data-cid="${t.cardId}"]`), `+${t.chips - (prevT ? prevT.chips : 0)}`, 'chips');
+      } else if (t.modSlot != null) {
+        const isMult = t.text.includes('Mult');
+        if (isMult) sfx.mult(); else sfx.tick(anim.i);
+        const modEl = document.querySelector(`[data-mslot="${t.modSlot}"]`);
+        popText(modEl, t.text.split(': ')[1], isMult ? 'mult' : 'chips');
+        if (fxOn) shake(modEl);
+      } else sfx.tick(anim.i);
       setAnim((a) => a && { ...a, i: a.i + 1 });
     }, anim.i === 0 ? 250 : speed);
     return () => clearTimeout(h);
-  }, [anim, speed, reduced, st.phase]);
+  }, [anim, speed, reduced, st.phase, fxOn]);
 
   const toggle = (id) => {
     if (anim) return;
     setSel((s) => {
       if (s.includes(id)) { sfx.deselect(); return s.filter((x) => x !== id); }
       if (s.length >= 5) { setMsg('Máximo 5 cartas.'); return s; }
-      sfx.select(); return [...s, id];
+      sfx.select(s.length + 1); return [...s, id];
     });
   };
   const imprimir = () => {
@@ -220,7 +262,7 @@ function Juego({ st, setSt, speed, reduced, onMenu, onAjustes, onNew }) {
           {r && <span className="bc-pill">Meta <b>{r.target.toLocaleString('es-AR')}</b></span>}
         </div>
         <div className="bc-hud-r">
-          {r && <span className="bc-stat"><small>Calidad</small><b className={anim && anim.i >= anim.last.trace.length ? 'bump' : ''}>{shownScore.toLocaleString('es-AR')}</b></span>}
+          {r && <span className="bc-stat"><small>Calidad</small><b className={`bc-score-num${rolled != null ? ' bump' : ''}`}>{(rolled ?? shownScore).toLocaleString('es-AR')}</b></span>}
           {r && <span className="bc-stat"><small>Impresiones</small><b>{r.prints}</b></span>}
           {r && <span className="bc-stat"><small>Descartes</small><b>{r.discards}</b></span>}
           <span className="bc-stat brass"><small>Créditos</small><b>{view.credits}</b></span>
@@ -301,6 +343,7 @@ function Juego({ st, setSt, speed, reduced, onMenu, onAjustes, onNew }) {
       )}
 
       {help && <Ayuda onClose={() => setHelp(false)} />}
+      {banner && <div className="bc-banner" role="status">{banner}</div>}
       {view.phase === 'shop' && <Shop st={view} act={act} />}
       {(view.phase === 'victory' || view.phase === 'defeat') && <End st={view} onNew={onNew} onMenu={onMenu} />}
       <p className="bc-seed">Semilla {st.seed} · {st.deck.length} cartas en el mazo</p>
@@ -362,7 +405,7 @@ function Mods({ st, lit, act, shop }) {
   return (
     <section className="bc-mods" aria-label="Mods de Taller (se aplican de izquierda a derecha)">
       {slots.map((id, i) => id ? (
-        <ModCard key={id} mod={MOD[id]} lit={lit.has(i)}>
+        <ModCard key={id} mod={MOD[id]} lit={lit.has(i)} slot={i}>
           <span className="bc-mod-ctl">
             <button className="bc-mini" disabled={i === 0} onClick={() => act({ type: 'MOVE_MOD', from: i, to: i - 1 })} aria-label={`Mover ${MOD[id].name} a la izquierda`}>◀</button>
             {shop && <button className="bc-mini" onClick={() => act({ type: 'SELL_MOD', idx: i }, () => sfx.coin())}>Vender {Math.floor(MOD[id].price / 2)}</button>}
@@ -374,14 +417,14 @@ function Mods({ st, lit, act, shop }) {
   );
 }
 
-function ModCard({ mod, lit, children }) {
+function ModCard({ mod, lit, children, slot }) {
   const onMove = (e) => {
     const b = e.currentTarget.getBoundingClientRect();
     e.currentTarget.style.setProperty('--mx', ((e.clientX - b.left) / b.width).toFixed(3));
     e.currentTarget.style.setProperty('--my', ((e.clientY - b.top) / b.height).toFixed(3));
   };
   return (
-    <div className={`bc-mod fin-${mod.finish}${lit ? ' lit' : ''}`} onPointerMove={onMove}>
+    <div className={`bc-mod fin-${mod.finish}${lit ? ' lit' : ''}`} data-mslot={slot} onPointerMove={onMove}>
       <span className="bc-mod-name">{mod.name}</span>
       <span className="bc-mod-desc">{mod.desc}</span>
       <span className="bc-mod-rar">{mod.rarity}</span>
@@ -427,7 +470,7 @@ function Shop({ st, act }) {
             <b>{itemName(it)}</b>
             <span>{itemDesc(it, st)}</span>
             <button className="bc-btn small" disabled={it.sold || st.credits < it.price}
-              onClick={() => act({ type: 'BUY', slot: i }, () => sfx.coin())}>
+              onClick={(e) => { const el = e.currentTarget; act({ type: 'BUY', slot: i }, () => { sfx.coin(); burstAt(el, { n: 25 }); }); }}>
               {it.sold ? 'Comprado' : `Comprar · ${it.price}`}
             </button>
           </div>
@@ -519,6 +562,7 @@ function Ajustes({ set, patch, back }) {
         <select value={set.speed} onChange={(e) => patch({ speed: e.target.value })}><option value="normal">Normal</option><option value="rapida">Rápida</option></select>
       </label>
       <label>Volumen <input type="range" min="0" max="1" step="0.05" value={set.vol} onChange={(e) => patch({ vol: +e.target.value })} /></label>
+      <label>Música <input type="range" min="0" max="1" step="0.05" value={set.music} onChange={(e) => patch({ music: +e.target.value })} /></label>
       <label><input type="checkbox" checked={set.mute} onChange={(e) => patch({ mute: e.target.checked })} /> Silenciar</label>
       <p className="muted">Teclado: 1–8 elegir cartas · I imprimir · D descartar · S sobreextruir · Esc limpiar selección.</p>
     </div>
