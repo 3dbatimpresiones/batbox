@@ -104,6 +104,7 @@ const lines = ['-- Generado por scripts/biblioteca-importar.mjs el ' + new Date(
 // --fotos: además completa la galería de los modelos ya cargados que todavía no la tienen.
 const FILL_PHOTOS = process.argv.includes('--fotos');
 const existing = new Map(), takenSlugs = new Set(); // storage_key → { slug, images, thumb }
+const deletedKeys = new Set(); // ZIP borrados desde el panel: no se vuelven a importar
 // Vistas previas 3D (migración 063): modelos que todavía no tienen una (ni un error anotado).
 let PREVIEWS = true; const needPreview = [];
 // v3 = GLB comprimido (meshopt + cuantizado 16 bits). --rehacer-3d regenera las vistas de versiones anteriores.
@@ -122,6 +123,20 @@ if (secretArg || process.env.SUPABASE_SECRET) {
       if (PREVIEWS && ((!x.preview_key && !x.preview_meta) || old)) needPreview.push({ id: x.id, slug: x.slug, storage_key: x.storage_key, thumb: x.thumb_key, oldKey: x.preview_key });
     });
     if (rows.length < 1000) break;
+  }
+  // Modelos borrados desde el panel (065): no se reimportan y se limpian sus archivos.
+  const SBU = 'https://llciggitqtseosfklbjl.supabase.co', hk = { apikey: k, Authorization: 'Bearer ' + k };
+  const dr = await fetch(`${SBU}/rest/v1/bb_lib_deleted?select=storage_key,name,files,cleaned`, { headers: hk });
+  if (dr.ok) for (const d of await dr.json()) {
+    deletedKeys.add(d.storage_key);
+    if (d.cleaned) continue;
+    const del = (bucket, names) => names.length && fetch(`${SBU}/storage/v1/object/${bucket}`, { method: 'DELETE', headers: { ...hk, 'Content-Type': 'application/json' }, body: JSON.stringify({ prefixes: names }) });
+    try {
+      await del('bb-lib-thumbs', (d.files?.thumbs || []).filter(Boolean));
+      if (d.files?.preview) await del('bb-lib-previews', [d.files.preview]);
+      await fetch(`${SBU}/rest/v1/bb_lib_deleted?storage_key=eq.${encodeURIComponent(d.storage_key)}`, { method: 'PATCH', headers: { ...hk, 'Content-Type': 'application/json' }, body: JSON.stringify({ cleaned: true }) });
+      console.log(`Borrado: limpiados los archivos de "${d.name}".`);
+    } catch (e) { console.log(`Borrado: no se pudieron limpiar los archivos de "${d.name}" (${e.message}).`); }
   }
 }
 
@@ -154,6 +169,7 @@ async function walk(folderId, catSlug, catPath) {
     }
     if (IMG_RE.test(f.name)) continue; // fotos sueltas: van con su ZIP
     if (!/\.zip$/i.test(f.name)) { skipped.push(`${catPath || '(raíz)'}/${f.name} (no es ZIP)`); continue; }
+    if (deletedKeys.has(f.id)) continue; // borrado desde el panel
     const extra = loose.get(slugify(pretty(f.name))) || [];
     const ex = existing.get(f.id);
     if (ex) {

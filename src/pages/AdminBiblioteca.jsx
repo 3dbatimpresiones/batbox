@@ -191,6 +191,10 @@ export default function AdminBiblioteca() {
             ? <button type="button" className="cm-link" onClick={() => setStatus(m.id, 'hidden')}>Ocultar</button>
             : <button type="button" className="cm-link" onClick={() => setStatus(m.id, 'published')}>Publicar</button>}
           {m.status !== 'removed' && <button type="button" className="cm-link danger" onClick={() => setStatus(m.id, 'removed')}>Retirar</button>}
+          <button type="button" className="cm-link danger" onClick={async () => {
+            if (!confirm(`¿Borrar "${m.name}" de la biblioteca?\n\nSe borran la ficha, fotos, vista 3D, reseñas y favoritos. El ZIP queda en el Drive pero no se vuelve a importar. No se puede deshacer.`)) return;
+            try { await lib.adminDeleteModel(m.id); await reload(); } catch (e) { setError(e.message); }
+          }}>Borrar</button>
         </div>
       ))}
     </div>
