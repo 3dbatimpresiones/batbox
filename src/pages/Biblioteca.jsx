@@ -216,7 +216,23 @@ function CoverChooser({ photos, value, onChange }) {
 }
 
 // Guardar un modelo: me gusta (favoritos) + colecciones, con nombre y portada para las nuevas.
-function SaveModal({ m, onClose }) {
+// Animación corta: corazoncitos (like) o marcador + "¡Guardado!" (colección). Se borra sola.
+function Burst({ kind }) {
+  const n = kind === 'heart' ? 7 : 1;
+  return (
+    <span className={'lib-burst ' + kind} aria-hidden="true">
+      {Array.from({ length: n }, (_, i) => <span key={i} style={{ '--i': i }}><Icon name={kind === 'heart' ? 'heart' : 'bookmark'} size={kind === 'heart' ? 14 : 22} /></span>)}
+      {kind === 'save' && <b>¡Guardado!</b>}
+    </span>
+  );
+}
+function useBurst() {
+  const [b, setB] = useState(null);
+  const fire = (kind) => { setB({ kind, k: Date.now() }); setTimeout(() => setB((cur) => (cur && Date.now() - cur.k >= 1000 ? null : cur)), 1100); };
+  return [b ? <Burst key={b.k} kind={b.kind} /> : null, fire];
+}
+
+function SaveModal({ m, onClose, onSaved = () => {} }) {
   const st = useMine();
   const [list, setList] = useState(null);
   const [photos, setPhotos] = useState(m.thumb_key ? [m.thumb_key] : []);
@@ -234,11 +250,26 @@ function SaveModal({ m, onClose }) {
   }, [load, m.slug]);
   const run = async (fn) => { setBusy(true); try { await fn(); setError(''); await load(); } catch (e) { setError(e.message); } finally { setBusy(false); } };
   const fav = st.fav?.has(m.id);
+  const [burst, fire] = useBurst();
+  // Tildar una colección la guarda y cierra la ventana; destildar la saca y deja la ventana abierta.
+  const tick = (c) => run(async () => {
+    const added = await lib.toggleInCollection(c.id, m.id);
+    if (added) { onSaved(); closeRef.current(); }
+  });
+  const create = () => {
+    if (!name.trim()) return;
+    run(async () => {
+      const id = await lib.saveCollection(name.trim(), null, cover || null);
+      if (!(await lib.toggleInCollection(id, m.id))) await lib.toggleInCollection(id, m.id); // por si ya estaba
+      onSaved(); closeRef.current();
+    });
+  };
+  const likeIt = () => run(async () => { if (await mineToggleFav(m.id)) fire('heart'); });
   return createPortal(
     <div className="modal-back" onClick={(e) => { e.stopPropagation(); onClose(); }}>
       <div className="modal lib-save" role="dialog" aria-modal="true" aria-labelledby="lib-save-t" onClick={(e) => e.stopPropagation()}>
         <h2 id="lib-save-t">Guardar “{m.name}”</h2>
-        <button type="button" className={'lib-like' + (fav ? ' on' : '')} disabled={busy} onClick={() => run(() => mineToggleFav(m.id))}>
+        <button type="button" className={'lib-like' + (fav ? ' on' : '')} disabled={busy} onClick={likeIt}>{burst}
           <Icon name="heart" size={18} /> {fav ? 'Te gusta · está en Mis favoritos' : 'Me gusta (guardar en Mis favoritos)'}</button>
         <h3 className="lib-save-h">Mis colecciones</h3>
         {list === null ? <span className="spinner xs" /> : list.length === 0 ? <small className="cm-date">Todavía no tenés colecciones: creá la primera abajo.</small>
@@ -246,22 +277,22 @@ function SaveModal({ m, onClose }) {
             const src = collectionCover(c);
             return (
               <label key={c.id} className={'lib-save-row' + (c.has ? ' on' : '')}>
-                <input type="checkbox" checked={c.has} disabled={busy} onChange={() => run(() => lib.toggleInCollection(c.id, m.id))} />
+                <input type="checkbox" checked={c.has} disabled={busy} onChange={() => tick(c)} />
                 {src ? <img src={src} alt="" /> : <span className="lib-save-noimg"><Icon name="bookmark" size={14} /></span>}
                 <span>{c.name} <small className="cm-date">({c.count})</small></span>
               </label>);
           })}</div>}
-        <form className="lib-save-new" onSubmit={(e) => {
-          e.preventDefault();
-          if (name.trim()) run(async () => { const id = await lib.saveCollection(name.trim(), null, cover || null); await lib.toggleInCollection(id, m.id); setName(''); setCover(''); });
-        }}>
+        <form className="lib-save-new" id="lib-save-new" onSubmit={(e) => { e.preventDefault(); create(); }}>
           <h3 className="lib-save-h">Nueva colección</h3>
           <div className="pink-input"><input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Nombre (ej.: Para imprimir, Regalos…)" /></div>
           {name.trim() && <CoverChooser photos={photos} value={cover} onChange={setCover} />}
-          <button type="submit" className="btn ghost" disabled={!name.trim() || busy}><Icon name="sparkles" size={15} /> Crear y guardar acá</button>
         </form>
         {error && <div className="feedback-error">{error}</div>}
-        <div className="modal-actions"><button type="button" className="btn primary" onClick={onClose}>Listo</button></div>
+        <div className="modal-actions">
+          <button type="button" className="btn ghost" onClick={onClose}>Cerrar</button>
+          <button type="submit" form="lib-save-new" className="btn primary" disabled={!name.trim() || busy}>
+            <Icon name="bookmark" size={16} /> {busy ? 'Guardando…' : 'Crear y guardar'}</button>
+        </div>
       </div>
     </div>, document.body);
 }
@@ -272,17 +303,19 @@ function ModelCard({ m, cat }) {
   const [busy, setBusy] = useState(false);
   const fav = st.fav?.has(m.id), done = st.dl?.has(m.id) || !!m.last_download;
   const stop = (fn) => (e) => { e.preventDefault(); e.stopPropagation(); fn(); };
-  const like = async () => { if (busy) return; setBusy(true); try { await mineToggleFav(m.id); } catch { /* sin conexión: queda como estaba */ } finally { setBusy(false); } };
+  const [burst, fire] = useBurst();
+  const like = async () => { if (busy) return; setBusy(true); try { if (await mineToggleFav(m.id)) fire('heart'); } catch { /* sin conexión: queda como estaba */ } finally { setBusy(false); } };
   return (
     <a className={'ga-card' + (done ? ' lib-done' : '')} href={'#/biblioteca/m/' + m.slug}>
       <div className="ga-cover"><Cover m={m} />
         <div className="lib-card-acts">
           <button type="button" className={'lib-card-act' + (fav ? ' on' : '')} onClick={stop(like)} aria-pressed={fav}
-            aria-label={fav ? 'Quitar de favoritos' : 'Me gusta'} title={fav ? 'Quitar de favoritos' : 'Me gusta (guardar en favoritos)'}><Icon name="heart" size={17} /></button>
+            aria-label={fav ? 'Quitar de favoritos' : 'Me gusta'} title={fav ? 'Quitar de favoritos' : 'Me gusta (guardar en favoritos)'}><Icon name="heart" size={17} />{burst?.props.kind === 'heart' && burst}</button>
           <button type="button" className="lib-card-act" onClick={stop(() => setSave(true))} aria-label="Guardar en colección" title="Guardar en colección"><Icon name="bookmark" size={17} /></button>
         </div>
+        {burst?.props.kind === 'save' && burst}
         {done && <span className="lib-done-tag"><Icon name="check" size={12} /> Ya lo descargaste</span>}
-        {save && <SaveModal m={m} onClose={() => setSave(false)} />}
+        {save && <SaveModal m={m} onClose={() => setSave(false)} onSaved={() => fire('save')} />}
         <div className="ga-badges">
           {isNew(m) && <span className="chip lib-new">NUEVO</span>}
           {m.featured && <span className="chip cat"><Icon name="star" size={11} /> Destacado</span>}
@@ -304,7 +337,8 @@ function ModelCard({ m, cat }) {
   );
 }
 
-function Grid({ filters, cats, empty }) {
+// all: trae la lista completa sola (de a 48), sin botón "Ver más" (secciones de "Todas").
+function Grid({ filters, cats, empty, all: loadAll = false }) {
   const [items, setItems] = useState(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
@@ -320,6 +354,7 @@ function Grid({ filters, cats, empty }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   useEffect(() => { setItems(null); load(0); }, [load]);
+  useEffect(() => { if (loadAll && items?.length && !done) load(items.length); }, [loadAll, items, done, load]);
   if (items === null) return <div className="empty"><div className="spinner" /></div>;
   if (error && !items.length) return <div className="gate card gate-wide"><p>{error}</p><button type="button" className="btn ghost" onClick={() => load(0)}><Icon name="refresh" size={16} /> Reintentar</button></div>;
   if (!items.length) return empty;
@@ -327,7 +362,7 @@ function Grid({ filters, cats, empty }) {
   return (
     <>
       <div className="ga-grid">{items.map((m) => <ModelCard key={m.id} m={m} cat={byId[m.category_id]} />)}</div>
-      {!done && <div className="cm-sentinel"><button type="button" className="btn ghost" onClick={() => load(items.length)}>Ver más</button></div>}
+      {!done && !loadAll && <div className="cm-sentinel"><button type="button" className="btn ghost" onClick={() => load(items.length)}>Ver más</button></div>}
     </>
   );
 }
@@ -467,7 +502,7 @@ function Home({ cats, quota, tab, arg, lastVisit }) {
                   <span className="cm-spacer" />
                   <button type="button" className="cm-link" onClick={() => { setCategory(c.id); setTag(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Ver solo {c.name} →</button>
                 </div>
-                <Grid filters={{ category: c.id, sort }} cats={cats} empty={null} />
+                <Grid filters={{ category: c.id, sort, limit: 48 }} all cats={cats} empty={null} />
               </section>
             )) : <Grid filters={{ category, q, sort, tag }} cats={cats}
               empty={<Empty icon="box" title={q || category || tag ? 'No encontramos modelos' : 'La biblioteca se está armando'} text={q || category || tag ? 'Probá con otra búsqueda, categoría o filtro.' : 'Muy pronto vas a encontrar acá los primeros modelos.'} />} />}
@@ -479,9 +514,10 @@ function Home({ cats, quota, tab, arg, lastVisit }) {
 // "Guardar en colección": menú con las colecciones propias (tildar/destildar) y crear una nueva.
 function CollectionPicker({ m }) {
   const [open, setOpen] = useState(false);
+  const [burst, fire] = useBurst();
   return (<>
-    <button type="button" className="cm-act" onClick={() => setOpen(true)}><Icon name="bookmark" size={16} /> Guardar en colección</button>
-    {open && <SaveModal m={m} onClose={() => setOpen(false)} />}
+    <span className="lib-burst-host"><button type="button" className="cm-act" onClick={() => setOpen(true)}><Icon name="bookmark" size={16} /> Guardar en colección</button>{burst}</span>
+    {open && <SaveModal m={m} onClose={() => setOpen(false)} onSaved={() => fire('save')} />}
   </>);
 }
 
@@ -631,6 +667,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
   const [ok, setOk] = useState('');
   const reload = useCallback(() => lib.model(slug).then(setM).catch((e) => { setError(e.message); setM(null); }), [slug]);
   useEffect(() => { setM(undefined); reload(); window.scrollTo(0, 0); }, [reload]);
+  const [favBurst, fireFav] = useBurst();
   const [last, setLast] = useState(null); // "Lo descargaste el…"
   const modelId = m?.id;
   useEffect(() => { setLast(null); if (modelId) lib.myLastDownload(modelId).then((t) => setLast(t || null)); }, [modelId]);
@@ -659,7 +696,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
   const printOf = (name) => print.find((p) => p.file === name);
   const printLine = (p) => `${lib.formatDuration(p.time_s)} · ${p.grams} g · ${p.plates} cama${p.plates === 1 ? '' : 's'}`;
   const fav = async () => {
-    try { const on = await mineToggleFav(m.id); setM((cur) => ({ ...cur, is_favorite: on, favorites: Math.max(0, cur.favorites + (on ? 1 : -1)) })); }
+    try { const on = await mineToggleFav(m.id); if (on) fireFav('heart'); setM((cur) => ({ ...cur, is_favorite: on, favorites: Math.max(0, cur.favorites + (on ? 1 : -1)) })); }
     catch (e) { setError(e.message); }
   };
   return (
@@ -717,7 +754,7 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
           <button type="button" className="btn primary" disabled={busy !== false || blocked} onClick={() => download()}>
             <Icon name="box" size={16} /> {busy === true ? 'Preparando…' : 'Descargar modelo completo'}</button>
           <button type="button" className={'cm-act' + (m.is_favorite ? ' on' : '')} onClick={fav} aria-pressed={m.is_favorite}>
-            <Icon name="heart" size={16} /> {m.is_favorite ? 'En favoritos' : 'Guardar en favoritos'}</button>
+            <Icon name="heart" size={16} /> {m.is_favorite ? 'En favoritos' : 'Guardar en favoritos'}{favBurst}</button>
           <CollectionPicker m={m} />
         </div>
         <QuotaNote q={quota} />

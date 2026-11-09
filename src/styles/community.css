@@ -650,3 +650,31 @@
 .lib-cat-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .lib-cat-head h2 { margin: 0; font-size: clamp(26px, 4vw, 38px); font-weight: 900; letter-spacing: .02em; text-transform: uppercase; color: var(--cyan); }
 .lib-cat-head small { color: var(--muted, #aab); font-weight: 700; }
+/* Biblioteca: animaciones de like (corazoncitos) y de guardado */
+.lib-card-act, .lib-like, .lib-detail .cm-act, .lib-burst-host { position: relative; }
+.lib-burst { position: absolute; left: 50%; top: 50%; pointer-events: none; z-index: 5; }
+.lib-burst.heart > span { position: absolute; left: -7px; top: -7px; color: var(--pink, #f78eb6); animation: lib-heart .95s ease-out forwards; animation-delay: calc(var(--i) * 25ms); opacity: 0; }
+.lib-burst.heart > span svg { fill: currentColor; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .35)); }
+.lib-burst.heart > span:nth-child(1) { --dx: -34px; --dy: -38px; } .lib-burst.heart > span:nth-child(2) { --dx: 30px; --dy: -42px; }
+.lib-burst.heart > span:nth-child(3) { --dx: -12px; --dy: -56px; } .lib-burst.heart > span:nth-child(4) { --dx: 16px; --dy: -60px; }
+.lib-burst.heart > span:nth-child(5) { --dx: -44px; --dy: -12px; } .lib-burst.heart > span:nth-child(6) { --dx: 42px; --dy: -16px; }
+.lib-burst.heart > span:nth-child(7) { --dx: 0px; --dy: -34px; }
+@keyframes lib-heart {
+  0% { opacity: 0; transform: translate(0, 0) scale(.3); }
+  20% { opacity: 1; transform: translate(calc(var(--dx) * .3), calc(var(--dy) * .3)) scale(1.15); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.7) rotate(calc(var(--dx) * .4deg)); }
+}
+.lib-card-act.on svg, .lib-like.on svg { animation: lib-pop .35s ease-out; }
+@keyframes lib-pop { 0% { transform: scale(1); } 45% { transform: scale(1.45); } 100% { transform: scale(1); } }
+.lib-burst.save { left: 50%; top: 50%; display: flex; flex-direction: column; align-items: center; gap: 4px; transform: translate(-50%, -50%); animation: lib-save 1.05s ease-out forwards; }
+.ga-cover > .lib-burst.save { position: absolute; }
+.lib-burst.save > span { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--cyan); color: var(--dark); box-shadow: 0 8px 24px rgba(93, 218, 219, .5); }
+.lib-burst.save > span svg { fill: currentColor; }
+.lib-burst.save b { padding: 3px 10px; border-radius: 999px; background: rgba(10, 16, 40, .85); color: var(--cyan); font-size: 12px; white-space: nowrap; }
+@keyframes lib-save {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+  25% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
+  70% { opacity: 1; transform: translate(-50%, -60%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -80%) scale(.95); }
+}
+@media (prefers-reduced-motion: reduce) { .lib-burst, .lib-burst > span, .lib-card-act.on svg, .lib-like.on svg { animation-duration: .01s !important; } }
