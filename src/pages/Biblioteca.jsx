@@ -542,13 +542,13 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
         </dl>
         {m.parts?.length > 0 && (
           <div className="ga-files"><h3>Qué trae el {single ? 'ZIP' : 'archivo'}</h3>
-            {single && m.parts.some((p) => p.o != null) && <small className="cm-date">Tocá la flecha para bajar un archivo suelto. Bajar varios archivos del mismo modelo cuenta como 1 sola descarga.</small>}
+            {single && m.parts.some((p) => p.o != null) && <small className="cm-date">Podés bajar cada archivo por separado con «Descargar solo este archivo». Bajar varios archivos del mismo modelo cuenta como 1 sola descarga.</small>}
             {m.parts.map((p, i) => (
               <div key={i} className="ga-file"><Icon name="box" size={16} /><div><b>{p.name}</b>{p.size ? <small className="cm-date">{lib.formatBytes(p.size)}</small> : null}</div>
                 {single && p.o != null && (
-                  <button type="button" className="lib-part-dl" disabled={busy !== false} onClick={() => download(i)}
-                    aria-label={`Descargar ${p.name}`} title={`Descargar solo ${p.name}`}>
-                    {busy === i ? <span className="spinner" /> : <Icon name="download" size={18} />}</button>
+                  <button type="button" className="btn primary lib-part-dl" disabled={busy !== false} onClick={() => download(i)}
+                    aria-label={`Descargar solo ${p.name}`} title={`Descargar solo ${p.name}`}>
+                    {busy === i ? <span className="spinner" /> : <Icon name="download" size={16} />} Descargar solo este archivo</button>
                 )}
               </div>
             ))}

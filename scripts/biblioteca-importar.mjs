@@ -136,6 +136,7 @@ const lines = ['-- Generado por scripts/biblioteca-importar.mjs el ' + new Date(
 const FILL_PHOTOS = process.argv.includes('--fotos');
 const existing = new Map(), takenSlugs = new Set(); // storage_key → { slug, images, thumb }
 const deletedKeys = new Set(); // ZIP borrados desde el panel: no se vuelven a importar
+const seenFiles = new Map();    // huella (md5, o tamaño+nombre si Drive no da md5) → nombre del modelo ya cargado
 // Vistas previas 3D (migración 063): modelos que todavía no tienen una (ni un error anotado).
 let PREVIEWS = true; const needPreview = [];
 // v3 = GLB comprimido (meshopt + cuantizado 16 bits). --rehacer-3d regenera las vistas de versiones anteriores.
@@ -143,13 +144,14 @@ const PREVIEW_V = 3, REHACER = process.argv.includes('--rehacer-3d');
 if (secretArg || process.env.SUPABASE_SECRET) {
   const k = (process.env.SUPABASE_SECRET || fs.readFileSync(secretArg, 'utf8')).replace(/^﻿/, '').trim();
   for (let from = 0; ; from += 1000) {
-    const cols = 'id,storage_key,slug,images,thumb_key' + (PREVIEWS ? ',preview_key,preview_meta' : '');
+    const cols = 'id,storage_key,slug,images,thumb_key,md5,size_bytes,name' +(PREVIEWS ? ',preview_key,preview_meta' : '');
     const r = await fetch(`https://llciggitqtseosfklbjl.supabase.co/rest/v1/bb_lib_models?select=${cols}&order=created_at`, { headers: { apikey: k, Authorization: 'Bearer ' + k, Range: `${from}-${from + 999}` } });
     if (!r.ok && PREVIEWS && r.status === 400) { PREVIEWS = false; from -= 1000; console.log('Vistas previas 3D: falta la migración 063, se saltean.'); continue; }
     if (!r.ok) { console.error('No se pudo leer Supabase:', r.status); process.exit(1); }
     const rows = await r.json();
     rows.forEach((x) => {
       existing.set(x.storage_key, { slug: x.slug, images: x.images || [], thumb: x.thumb_key }); takenSlugs.add(x.slug);
+      seenFiles.set(x.md5 ? 'md5:' + x.md5 : `sz:${x.size_bytes}:${slugify(x.name)}`, x.name);
       const old = REHACER && x.preview_key && x.preview_meta?.v !== PREVIEW_V;
       if (PREVIEWS && ((!x.preview_key && !x.preview_meta) || old)) needPreview.push({ id: x.id, slug: x.slug, storage_key: x.storage_key, thumb: x.thumb_key, oldKey: x.preview_key });
     });
@@ -225,6 +227,11 @@ async function walk(folderId, catSlug, catPath) {
     if (deletedKeys.has(f.id)) continue; // borrado desde el panel
     const extra = loose.get(slugify(pretty(f.name))) || [];
     const ex = existing.get(f.id);
+    // Duplicados: un archivo idéntico (mismo contenido, aunque tenga otro nombre o esté en otra carpeta)
+    // a uno ya cargado o a otro de esta misma corrida se ignora.
+    const dupKey = f.md5Checksum ? 'md5:' + f.md5Checksum : `sz:${f.size}:${slugify(pretty(f.name))}`;
+    if (!ex && seenFiles.has(dupKey)) { skipped.push(`${catPath || '(raíz)'}/${f.name} (duplicado de "${seenFiles.get(dupKey)}": se ignora)`); continue; }
+    if (!ex) seenFiles.set(dupKey, pretty(f.name));
     if (ex) {
       // Ya cargado: solo se actualiza la galería si cambiaron las fotos sueltas (o --fotos y no tiene ninguna).
       const zipImgs = ex.images.filter((k) => !k.includes('--d-'));
