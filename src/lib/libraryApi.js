@@ -57,6 +57,10 @@ export const model = (slug) => rpc('bb_lib_model', { p_slug: slug });
 export const toggleFavorite = (id) => rpc('bb_lib_favorite_toggle', { p_model: id });
 export const myFavorites = () => rpc('bb_lib_my_favorites');
 export const myDownloads = () => rpc('bb_lib_my_downloads');
+// Última descarga propia de un modelo (067). Si la función todavía no existe, no muestra nada.
+export const myLastDownload = (id) => rpc('bb_lib_my_last_download', { p_model: id }).catch(() => null);
+// "5 h 13 min" a partir de segundos.
+export const formatDuration = (s) => { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`; };
 
 // Pide el permiso y arranca la descarga en el navegador (el archivo viene del puente, no de Supabase).
 // part = posición del archivo en m.parts para bajar solo ese archivo (066); sin part, el ZIP entero.

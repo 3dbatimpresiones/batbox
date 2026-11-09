@@ -501,6 +501,9 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
   const [ok, setOk] = useState('');
   const reload = useCallback(() => lib.model(slug).then(setM).catch((e) => { setError(e.message); setM(null); }), [slug]);
   useEffect(() => { setM(undefined); reload(); window.scrollTo(0, 0); }, [reload]);
+  const [last, setLast] = useState(null); // "Lo descargaste el…"
+  const modelId = m?.id;
+  useEffect(() => { setLast(null); if (modelId) lib.myLastDownload(modelId).then((t) => setLast(t || null)); }, [modelId]);
   if (m === undefined) return <div className="empty"><div className="spinner" /></div>;
   const back = <a className="cm-back" href="#/biblioteca"><Icon name="arrowLeft" size={16} /> Biblioteca 3D</a>;
   if (!m) return <>{back}<Empty icon="alert" title="Este modelo no está disponible" text={error} /></>;
@@ -513,9 +516,15 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
       const what = part == null ? 'Descarga iniciada.' : `Descargando ${r.file_name}.`;
       setOk(r.remaining == null ? what : `${what} ${r.counted ? 'Contó como 1 descarga' : 'No suma: este modelo ya contó hoy'}. Te quedan ${r.remaining} en las próximas 24 h.`);
       if (r.counted && r.remaining != null) setM((cur) => ({ ...cur, downloads: cur.downloads + 1 }));
+      if (r.counted) setLast(new Date().toISOString());
     } catch (e) { setError(e.message); } finally { setBusy(false); refreshQuota(); }
   };
   const single = /\.zip$/i.test(m.file_name || '');
+  // Datos de impresión reales del laminador (si el 3MF los trae). Si hay uno solo, va en la ficha;
+  // si hay varios 3MF (variantes), cada uno se muestra al lado de su archivo.
+  const print = m.preview_meta?.print || [];
+  const printOf = (name) => print.find((p) => p.file === name);
+  const printLine = (p) => `${lib.formatDuration(p.time_s)} · ${p.grams} g · ${p.plates} cama${p.plates === 1 ? '' : 's'}`;
   const fav = async () => {
     try { const on = await lib.toggleFavorite(m.id); setM((cur) => ({ ...cur, is_favorite: on, favorites: Math.max(0, cur.favorites + (on ? 1 : -1)) })); }
     catch (e) { setError(e.message); }
@@ -539,12 +548,21 @@ function Detail({ slug, cats, quota, refreshQuota, isAdmin }) {
           <div><dt>Diseño</dt><dd>{m.author || 'Desconocido'}</dd></div>
           {m.license && <div><dt>Licencia</dt><dd>{m.license}</dd></div>}
           <div><dt>Descargas</dt><dd>{m.downloads}</dd></div>
+          {print.length === 1 && <>
+            <div><dt>Tiempo de impresión</dt><dd>{lib.formatDuration(print[0].time_s)}</dd></div>
+            <div><dt>Filamento</dt><dd>{print[0].grams} g</dd></div>
+            <div><dt>Camas</dt><dd>{print[0].plates}</dd></div>
+          </>}
+          {print.length === 0 && m.preview_meta?.plates > 0 && <div><dt>Camas (aprox.)</dt><dd>{m.preview_meta.plates} de 256 mm</dd></div>}
         </dl>
+        {print.length === 1 && <small className="cm-date">Tiempo y filamento según el laminador del autor; pueden variar con tu impresora y perfil.</small>}
+        {last && <div className="lib-last-dl"><Icon name="check" size={15} /> Lo descargaste el {new Date(last).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>}
         {m.parts?.length > 0 && (
           <div className="ga-files"><h3>Qué trae el {single ? 'ZIP' : 'archivo'}</h3>
             {single && m.parts.some((p) => p.o != null) && <small className="cm-date">Podés bajar cada archivo por separado con «Descargar solo este archivo». Bajar varios archivos del mismo modelo cuenta como 1 sola descarga.</small>}
             {m.parts.map((p, i) => (
-              <div key={i} className="ga-file"><Icon name="box" size={16} /><div><b>{p.name}</b>{p.size ? <small className="cm-date">{lib.formatBytes(p.size)}</small> : null}</div>
+              <div key={i} className="ga-file"><Icon name="box" size={16} /><div><b>{p.name}</b>{p.size ? <small className="cm-date">{lib.formatBytes(p.size)}</small> : null}
+                {print.length > 1 && printOf(p.name) && <small className="lib-print">{printLine(printOf(p.name))}</small>}</div>
                 {single && p.o != null && (
                   <button type="button" className="btn primary lib-part-dl" disabled={busy !== false} onClick={() => download(i)}
                     aria-label={`Descargar solo ${p.name}`} title={`Descargar solo ${p.name}`}>

@@ -100,8 +100,29 @@ function toGLB(groups, extras) {
   return Buffer.concat([head, jh, js, bh, bin]);
 }
 
+// Datos de impresión REALES que guarda Bambu/Orca en el 3MF laminado (Metadata/slice_info.config):
+// tiempo (s) y filamento (g) por cama. Si el 3MF no fue laminado, no hay datos y no se inventan.
+// Devuelve [{ file, time_s, grams, plates }] (uno por 3MF que los traiga).
+export function printFrom(files) {
+  const out = [];
+  for (const f of files.filter((x) => x.e === '3mf')) {
+    let inner; try { inner = unzipSync(f.data, { filter: (e) => /slice_info\.config$/i.test(e.name) }); } catch { continue; }
+    const key = Object.keys(inner)[0]; if (!key) continue;
+    const xml = new TextDecoder().decode(inner[key]);
+    let time = 0, grams = 0, plates = 0;
+    for (const plate of xml.split(/<plate>/i).slice(1)) {
+      const t = Number(plate.match(/key="prediction"\s+value="([\d.]+)"/)?.[1] || 0), g = Number(plate.match(/key="weight"\s+value="([\d.]+)"/)?.[1] || 0);
+      if (t > 0 || g > 0) { time += t; grams += g; plates++; }
+    }
+    if (plates) out.push({ file: f.name, time_s: Math.round(time), grams: Math.round(grams * 10) / 10, plates });
+  }
+  return out;
+}
+export async function printInfo(zipBuf) { return printFrom(await collect(zipBuf)); }
+
 export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
   const files = await collect(zipBuf);
+  const print = printFrom(files);
   const mf = files.filter((f) => f.e === '3mf').sort((a, b) => b.data.length - a.data.length)[0];
   let objects, palette, mode;
   if (mf) {
@@ -165,7 +186,7 @@ export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
   }
   const plates = layoutPlates(boxes);
   const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]].map((x) => Math.round(x * 10) / 10);
-  return { glb: toGLB([...byColor.values()], { mode, size_mm: size, parts: objects.length, source_tris: total, plates }), tris, mode, size, parts: objects.length, colors: byColor.size, plates: plates.length };
+  return { glb: toGLB([...byColor.values()], { mode, size_mm: size, parts: objects.length, source_tris: total, plates }), tris, mode, size, parts: objects.length, colors: byColor.size, plates: plates.length, print };
 }
 
 // Camas de impresión: agrupa las piezas como estaban en el laminador (varias camas en un 3MF)
