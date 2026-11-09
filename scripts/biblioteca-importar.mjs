@@ -1,7 +1,7 @@
 // Importador de la Biblioteca 3D: lee la carpeta de Drive, saca piezas y foto de cada ZIP y los carga en Supabase.
 // Uso local: node scripts/biblioteca-importar.mjs <clave.json> [salida.sql] [carpeta portadas] [supabase-secret.txt] [--publicar]
 // Uso automático (GitHub Actions): variables GOOGLE_SA_JSON y SUPABASE_SECRET (contenido, no rutas) y --publicar.
-// Estructura esperada en Drive: BIBLIOTECA STLS BATBOX/<Categoría>/<Modelo>.zip
+// Estructura esperada en Drive: BIBLIOTECA STLS BATBOX/<Categoría>/<Modelo>.zip (o .rar: se baja entero, ver biblioteca-rar.mjs)
 // No descarga los ZIP enteros: lee solo el índice final y la foto (pedidos parciales).
 // Sin --publicar los nuevos entran en borrador; con --publicar quedan publicados (licencia verificada por el
 // administrador). Si un modelo ya existe (mismo archivo de Drive), no se duplica ni se pisa lo editado.
@@ -11,6 +11,9 @@ import zlib from 'node:zlib';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+// RAR: se carga solo cuando hay un .rar (en GitHub, --revisar corre antes de instalar dependencias).
+const rarList = async (b) => (await import('./biblioteca-rar.mjs')).rarList(b);
+const rarExtract = async (b, k) => (await import('./biblioteca-rar.mjs')).rarExtract(b, k);
 
 const ROOT_NAME = 'BIBLIOTECA STLS BATBOX';
 const PUBLISH = process.argv.includes('--publicar');
@@ -76,12 +79,26 @@ const MAX_PHOTOS = 8;
 async function photos(id, parts, slug) {
   const imgs = (parts || []).filter((p) => /\.(png|jpe?g|webp)$/i.test(p.name) && p._c > 0 && p._c < 30e6 && (p._m === 0 || p._m === 8))
     .sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true })).slice(0, MAX_PHOTOS);
-  let thumb = null; const images = [];
-  for (const [k, img] of imgs.entries()) {
+  return photoSet(imgs.map((img) => ({ name: img.name, load: async () => {
     const head = await range(id, img._o, img._o + 29);
     const start = img._o + 30 + head.readUInt16LE(26) + head.readUInt16LE(28);
     const data = await range(id, start, start + img._c - 1);
-    const raw = img._m === 8 ? zlib.inflateRawSync(data) : data;
+    return img._m === 8 ? zlib.inflateRawSync(data) : data;
+  } })), slug);
+}
+
+// Fotos de un RAR ya descargado entero.
+async function rarPhotos(buf, slug) {
+  const files = await rarExtract(buf, (n) => /\.(png|jpe?g|webp)$/i.test(n));
+  const imgs = Object.entries(files).map(([name, data]) => ({ name: name.split('/').pop(), data }))
+    .filter((x) => x.data.length < 30e6).sort((a, b) => a.name.localeCompare(b.name, 'es', { numeric: true })).slice(0, MAX_PHOTOS);
+  return photoSet(imgs.map((x) => ({ name: x.name, load: async () => Buffer.from(x.data) })), slug);
+}
+
+async function photoSet(imgs, slug) {
+  let thumb = null; const images = [];
+  for (const [k, img] of imgs.entries()) {
+    const raw = await img.load();
     const tmp = path.join(os.tmpdir(), `bb-lib-${slug}-${k}${path.extname(img.name)}`);
     fs.writeFileSync(tmp, raw);
     const conv = (width, name) => execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', tmp, '-vf', `scale='min(${width},iw)':-2`, '-frames:v', '1', '-quality', '78', path.join(thumbsDir, name)]);
@@ -95,7 +112,14 @@ async function photos(id, parts, slug) {
 
 const slugify = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 110) || 'modelo';
 // Google Drive agrega "-20261109T031425Z-1-001" al descargar carpetas: se quita del nombre.
-const pretty = (file) => file.replace(/\.zip$/i, '').replace(/[-_ ]*\d{8}T\d{6}Z(-\d+){0,2}$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+const ARCH_RE = /\.(zip|rar)$/i;
+const archExt = (name) => (/\.rar$/i.test(name) ? '.rar' : '.zip');
+async function download(id) {
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, { headers: H });
+  if (!r.ok) throw new Error('Drive ' + r.status);
+  return Buffer.from(await r.arrayBuffer());
+}
+const pretty = (file) => file.replace(ARCH_RE, '').replace(/[-_ ]*\d{8}T\d{6}Z(-\d+){0,2}$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
 const sql = (v) => (v == null ? 'null' : `'${String(v).replace(/'/g, "''")}'`);
 
 const roots = await list(`name='${ROOT_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
@@ -169,7 +193,8 @@ async function walk(folderId, catSlug, catPath) {
       continue;
     }
     if (IMG_RE.test(f.name)) continue; // fotos sueltas: van con su ZIP
-    if (!/\.zip$/i.test(f.name)) { skipped.push(`${catPath || '(raíz)'}/${f.name} (no es ZIP)`); continue; }
+    if (!ARCH_RE.test(f.name)) { skipped.push(`${catPath || '(raíz)'}/${f.name} (no es ZIP ni RAR)`); continue; }
+    if (/\.part\d+\.rar$/i.test(f.name)) { skipped.push(`${catPath || '(raíz)'}/${f.name} (RAR en varias partes: subilo como un solo archivo)`); continue; }
     if (deletedKeys.has(f.id)) continue; // borrado desde el panel
     const extra = loose.get(slugify(pretty(f.name))) || [];
     const ex = existing.get(f.id);
@@ -219,7 +244,10 @@ async function processZip({ f, catSlug, catPath, slug, refill, extra = [], ex, f
     // Modelo ya cargado: se rearma la galería (fotos del ZIP + fotos sueltas actuales).
     let zipImgs = ex.images.filter((k) => !k.includes('--d-')), thumb = null;
     if (fromZip) {
-      try { const parts = await zipParts(f.id, Number(f.size || 0)); ({ thumb, images: zipImgs } = await photos(f.id, parts, slug)); newFiles.push(...zipImgs); if (thumb) newFiles.push(thumb); }
+      try {
+        ({ thumb, images: zipImgs } = archExt(f.name) === '.rar' ? await rarPhotos(await download(f.id), slug) : await photos(f.id, await zipParts(f.id, Number(f.size || 0)), slug));
+        newFiles.push(...zipImgs); if (thumb) newFiles.push(thumb);
+      }
       catch (e) { skipped.push(`${f.name}: no se pudieron sacar las fotos (${e.message})`); }
     }
     const looseKeys = await addLoose(extra, slug, ex.images, !ex.thumb && !thumb);
@@ -230,20 +258,27 @@ async function processZip({ f, catSlug, catPath, slug, refill, extra = [], ex, f
   }
   {
     const size = Number(f.size || 0);
-    let parts = null;
-    try { parts = await zipParts(f.id, size); } catch (e) { skipped.push(`${f.name}: no se pudo leer el índice (${e.message}); se carga sin piezas`); }
+    const isRarFile = archExt(f.name) === '.rar';
+    let parts = null, rarBuf = null;
+    try {
+      if (isRarFile) { rarBuf = await download(f.id); parts = await rarList(rarBuf); }
+      else parts = await zipParts(f.id, size);
+    } catch (e) { skipped.push(`${f.name}: no se pudo leer el índice (${e.message}); se carga sin piezas`); }
     let thumb = null, images = [];
-    try { ({ thumb, images } = await photos(f.id, parts, slug)); } catch (e) { skipped.push(`${f.name}: no se pudieron sacar las fotos (${e.message})`); }
+    try { ({ thumb, images } = isRarFile ? (rarBuf ? await rarPhotos(rarBuf, slug) : { thumb: null, images: [] }) : await photos(f.id, parts, slug)); }
+    catch (e) { skipped.push(`${f.name}: no se pudieron sacar las fotos (${e.message})`); }
+    rarBuf = null;
+    const fileName = slugify(pretty(f.name)) + archExt(f.name);
     newFiles.push(...images); if (thumb) newFiles.push(thumb);
     const looseKeys = await addLoose(extra, slug, [], !thumb);
     if (!thumb && looseKeys.length) thumb = slug + '.webp';
     images = [...images, ...looseKeys];
     if (parts) parts = parts.map(({ name, size }) => ({ name, size }));
-    records.push({ cat: catSlug, row: { slug, name: pretty(f.name), storage_key: f.id, file_name: slugify(pretty(f.name)) + '.zip',
+    records.push({ cat: catSlug, row: { slug, name: pretty(f.name), storage_key: f.id, file_name: fileName,
       size_bytes: size || null, md5: f.md5Checksum || null, parts: parts || [], thumb_key: thumb, images } });
     lines.push(`insert into public.bb_lib_models (slug, name, category_id, storage_key, file_name, size_bytes, md5, parts, thumb_key)
   values (${sql(slug)}, ${sql(pretty(f.name))}, ${catSlug ? `(select id from public.bb_lib_categories where slug = ${sql(catSlug)})` : 'null'},
-          ${sql(f.id)}, ${sql(slugify(pretty(f.name)) + '.zip')}, ${size || 'null'}, ${sql(f.md5Checksum)}, ${sql(JSON.stringify(parts || []))}::jsonb, ${sql(thumb)})
+          ${sql(f.id)}, ${sql(fileName)}, ${size || 'null'}, ${sql(f.md5Checksum)}, ${sql(JSON.stringify(parts || []))}::jsonb, ${sql(thumb)})
   on conflict (storage_key) do update set thumb_key = coalesce(excluded.thumb_key, bb_lib_models.thumb_key), parts = excluded.parts;`);
     count++;
     console.log(`+ ${catPath || '(sin categoría)'} → ${pretty(f.name)} · ${(size / 1048576).toFixed(1)} MB · ${parts ? parts.length + ' piezas' : 'sin índice'} · ${images.length} foto(s)`);
@@ -255,6 +290,7 @@ for (const r of roots) await walk(r.id, null, '');
 // --revisar: solo cuenta los ZIP nuevos (para que GitHub instale ffmpeg únicamente si hace falta).
 if (process.argv.includes('--revisar')) {
   console.log(`Para procesar (modelos nuevos o fotos nuevas): ${pending.length} · vistas 3D pendientes: ${needPreview.length}`);
+  if (skipped.length) console.log('Salteados:\n  ' + skipped.join('\n  '));
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `nuevos=${pending.length + needPreview.length}\n`);
   process.exit(0);
 }

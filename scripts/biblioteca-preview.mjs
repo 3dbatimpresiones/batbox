@@ -5,6 +5,7 @@
 //     y la carrocería con el color principal de la foto (si se pasa bodyColor).
 // No usa dependencias nuevas: fflate (ya está en BATBOX) y el lector de src/lib/split/io.js.
 import { unzipSync } from 'fflate';
+import { isRar, rarExtract } from './biblioteca-rar.mjs';
 import { parse3MF, parseSTL } from '../src/lib/split/io.js';
 import { MeshoptSimplifier, MeshoptEncoder } from 'meshoptimizer';
 
@@ -30,7 +31,8 @@ const ext = (n) => n.toLowerCase().split('.').pop();
 const ab = (u8) => u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
 
 // Junta todos los archivos del ZIP, abriendo también un ZIP interno (muy común en estos packs).
-function collect(zipBuf) {
+// También acepta un RAR (se abre con biblioteca-rar.mjs) y ZIP dentro del RAR.
+async function collect(zipBuf) {
   const out = [];
   const walk = (files, depth) => {
     for (const [name, data] of Object.entries(files)) {
@@ -40,7 +42,8 @@ function collect(zipBuf) {
       else if (e === '3mf' || e === 'stl') out.push({ name: name.split('/').pop(), e, data });
     }
   };
-  walk(unzipSync(new Uint8Array(zipBuf)), 0);
+  if (isRar(zipBuf)) walk(await rarExtract(zipBuf, (n) => /\.(3mf|stl|zip)$/i.test(n)), 0);
+  else walk(unzipSync(new Uint8Array(zipBuf)), 0);
   return out;
 }
 
@@ -98,7 +101,7 @@ function toGLB(groups, extras) {
 }
 
 export async function buildPreview(zipBuf, { bodyColor = null } = {}) {
-  const files = collect(zipBuf);
+  const files = await collect(zipBuf);
   const mf = files.filter((f) => f.e === '3mf').sort((a, b) => b.data.length - a.data.length)[0];
   let objects, palette, mode;
   if (mf) {

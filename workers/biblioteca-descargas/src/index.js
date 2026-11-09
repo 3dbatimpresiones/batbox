@@ -44,12 +44,18 @@ async function sync(req, env) {
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
   try {
     // Solo administradores: se valida con la sesión del usuario contra Supabase (bb_lib_admin_stats exige admin).
-    const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
-    if (!jwt) return json(401, { error: 'Tenés que iniciar sesión.' });
-    const check = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/bb_lib_admin_stats`, {
-      method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: '{}',
-    });
-    if (!check.ok) return json(403, { error: 'Solo los administradores pueden actualizar la biblioteca.' });
+    // O bien con la "llave de actualización" (secreto SYNC_KEY) del acceso directo de escritorio:
+    // solo sirve para pedir/ver la actualización, no da acceso a nada más.
+    const key = req.headers.get('X-Llave-Actualizar') || '';
+    const keyOk = !!env.SYNC_KEY && key.length > 20 && await sameText(key, env.SYNC_KEY.trim());
+    if (!keyOk) {
+      const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
+      if (!jwt) return json(401, { error: 'Tenés que iniciar sesión.' });
+      const check = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/bb_lib_admin_stats`, {
+        method: 'POST', headers: { apikey: PUBLISHABLE_KEY, Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: '{}',
+      });
+      if (!check.ok) return json(403, { error: 'Solo los administradores pueden actualizar la biblioteca.' });
+    }
     if (!env.GITHUB_TOKEN) return json(503, { error: 'Falta configurar GITHUB_TOKEN en el puente.' });
 
     const gh = { Authorization: `Bearer ${env.GITHUB_TOKEN.replace(/^FEFF/, "").trim()}`, Accept: 'application/vnd.github+json', 'User-Agent': 'batbox-biblioteca', 'X-GitHub-Api-Version': '2022-11-28' };
@@ -69,6 +75,14 @@ async function sync(req, env) {
     console.error('sync', err?.message || err);
     return json(502, { error: 'No se pudo actualizar la biblioteca.' });
   }
+}
+
+// Comparación en tiempo constante (compara los hash, no el texto).
+async function sameText(a, b) {
+  const h = async (s) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
+  const [x, y] = await Promise.all([h(a), h(b)]);
+  let d = 0; for (let i = 0; i < x.length; i++) d |= x[i] ^ y[i];
+  return d === 0;
 }
 
 async function redeem(env, token) {
