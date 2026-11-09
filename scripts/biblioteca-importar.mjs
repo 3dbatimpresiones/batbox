@@ -94,7 +94,8 @@ async function photos(id, parts, slug) {
 }
 
 const slugify = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 110) || 'modelo';
-const pretty = (file) => file.replace(/\.zip$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
+// Google Drive agrega "-20261109T031425Z-1-001" al descargar carpetas: se quita del nombre.
+const pretty = (file) => file.replace(/\.zip$/i, '').replace(/[-_ ]*\d{8}T\d{6}Z(-\d+){0,2}$/i, '').replace(/[_]+/g, ' ').replace(/\s+/g, ' ').trim();
 const sql = (v) => (v == null ? 'null' : `'${String(v).replace(/'/g, "''")}'`);
 
 const roots = await list(`name='${ROOT_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
