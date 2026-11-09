@@ -48,7 +48,7 @@ function startLive() {
   };
   ping(); setTimeout(counts, 1200);
   setInterval(ping, 45000);
-  setInterval(counts, 30000);
+  setInterval(counts, 120000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ping(); counts(); } });
 }
 export function useLive() {
