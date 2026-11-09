@@ -73,6 +73,7 @@ export const adminStats = () => rpc('bb_lib_admin_stats');
 export const adminSaveModel = (p) => rpc('bb_lib_admin_model_save', { p });
 export const adminSetStatus = (id, status) => rpc('bb_lib_admin_model_status', { p_model: id, p_status: status });
 export const adminSaveCategory = (p) => rpc('bb_lib_admin_category_save', { p });
+export const adminDeleteCategory = (id) => rpc('bb_lib_admin_category_delete', { p_id: id });
 
 // Botón "Actualizar biblioteca" (solo admins): el puente valida que sea admin y lanza la importación en GitHub.
 async function syncCall(method) {

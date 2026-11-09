@@ -33,6 +33,7 @@ function Categories({ cats, reload }) {
           <button type="button" className="cm-link" onClick={() => { const n = prompt('Nuevo nombre', c.name); if (n?.trim()) run(() => lib.adminSaveCategory({ id: c.id, name: n.trim() })); }}>Renombrar</button>
           <button type="button" className="cm-link" onClick={() => { const n = prompt('Orden (número menor = primero)', c.sort_order); if (n !== null && !isNaN(+n)) run(() => lib.adminSaveCategory({ id: c.id, sort_order: +n })); }}>Orden</button>
           <button type="button" className="cm-link" onClick={() => run(() => lib.adminSaveCategory({ id: c.id, visible: !c.visible }))}>{c.visible ? 'Ocultar' : 'Mostrar'}</button>
+          <button type="button" className="cm-link danger" onClick={() => { if (confirm(`¿Borrar la categoría "${c.name}"? Solo se puede si está vacía.`)) run(() => lib.adminDeleteCategory(c.id)); }}>Borrar</button>
         </div>
       ))}
       <form className="cm-row" onSubmit={(e) => { e.preventDefault(); run(async () => { await lib.adminSaveCategory({ name: name.trim(), slug: slugify(name), parent_id: parent || null, sort_order: (cats.length + 1) * 10 }); setName(''); }); }}>
