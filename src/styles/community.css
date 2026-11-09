@@ -687,5 +687,3 @@
 /* Ficha: "En favoritos" con el mismo rosa y corazón relleno que las tarjetas */
 .cm-act.lib-act-fav.on { color: var(--pink, #f78eb6); border-color: rgba(247, 142, 182, .6); background: rgba(247, 142, 182, .1); }
 .cm-act.lib-act-fav.on svg { fill: currentColor; animation: lib-pop .35s ease-out; }
-.lib-week-sub { font-size: 1rem; margin: 18px 0 10px; color: var(--cyan, #00e5ff); display: flex; align-items: baseline; gap: 10px; }
-.lib-week-sub small { color: var(--muted, #9aa4b2); font-weight: 400; font-size: .8rem; }
