@@ -228,7 +228,7 @@ function BatcardSlide() {
 }
 
 const SLIDES = [['Maker Tycoon', TycoonSlide], ['BATCARD', BatcardSlide]];
-const AUTO_MS = 30000;
+const AUTO_MS = 10000;
 
 export function TycoonHomeBlock() {
   const [i, setI] = useState(0);
