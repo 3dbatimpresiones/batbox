@@ -73,7 +73,7 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
   const face = faceUrl(card, skin);
   const suit = SUITS[card.s];
   const mat = card.m && MATERIALS[card.m];
-  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : '', face ? 'has-face' : ''].join(' ');
+  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : '', face ? 'has-face suit-' + card.s : ''].join(' ');
   const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${card.sl ? `, ${SEALS[card.sl].name}` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
     <span className="bc-card-tilt">
