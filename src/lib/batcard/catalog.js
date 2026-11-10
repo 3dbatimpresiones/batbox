@@ -60,6 +60,17 @@ export const CALIBRATIONS = [
 ];
 export const MIN_DECK = 30;
 
+// Materiales (filamentos) de las cartas — reglas v2. Sin material = PLA (base).
+export const MATERIALS = {
+  petg: { name: 'PETG', short: 'PETG', desc: '+6 Capas al puntuar. Es pegajosa: no se puede descartar.' },
+  tpu: { name: 'TPU', short: 'TPU', desc: 'Flexible: después de imprimirla vuelve a tu mano (una vez por ronda).' },
+  asa: { name: 'ASA', short: 'ASA', desc: '×1,5 Mult al puntuar si el Calor está en 4 o más.' },
+  carbono: { name: 'Fibra de carbono', short: 'CF', desc: '+12 Capas al puntuar, pero sube 1 de Calor.' },
+  seda: { name: 'Seda', short: 'SEDA', desc: '+2 Mult al puntuar si es la única carta de su palo en la jugada.' },
+};
+// Bobinas: calibraciones que le ponen un material a una carta de la mano (solo reglas v2).
+export const SPOOLS = Object.keys(MATERIALS).map((m) => ({ id: 'bobina_' + m, name: 'Bobina de ' + MATERIALS[m].name, price: 4, target: 'card', mat: m, desc: `Convierte una carta de tu mano en ${MATERIALS[m].name}: ${MATERIALS[m].desc}` }));
+
 // Perfiles de laminado: suben un nivel a un Patrón (la tabla de suba está en PATTERNS[].lvl).
 export const PROFILES = [
   { id: 'borrador', name: 'Borrador', pattern: 'alta', price: 3 },
@@ -82,7 +93,7 @@ export const BOSSES = [
 ];
 
 export const MOD = Object.fromEntries(MODS.map((m) => [m.id, m]));
-export const CAL = Object.fromEntries(CALIBRATIONS.map((m) => [m.id, m]));
+export const CAL = Object.fromEntries([...CALIBRATIONS, ...SPOOLS].map((m) => [m.id, m]));
 export const PROF = Object.fromEntries(PROFILES.map((m) => [m.id, m]));
 export const BOSS = Object.fromEntries(BOSSES.map((m) => [m.id, m]));
 

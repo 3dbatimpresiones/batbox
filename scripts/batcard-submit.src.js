@@ -29,7 +29,7 @@ export async function handler(req, env) {
   let body;
   try { body = await req.json(); } catch { return json(400, { error: 'Datos inválidos.' }); }
   if (JSON.stringify(body?.log ?? null).length > 200000) return json(413, { error: 'Partida demasiado larga.' });
-  const rep = replayRun(body?.seed, body?.log);
+  const rep = replayRun(body?.seed, body?.log, Number(body?.v) || 1);
   if (!rep.ok) return json(422, { error: rep.error });
 
   // 4. Registrar con service_role (la función SQL valida que la semilla sea suya y no esté usada)

@@ -105,14 +105,48 @@ t('compra repetida falla', !bought.state || !!step(bought.state, { type: 'BUY', 
 
 // Rejugada para el ranking
 const { replayRun } = await import('../src/lib/batcard/verify.js');
-const rep = replayRun('SIM', sim.log);
+const rep = replayRun('SIM', sim.log, sim.v);
 t('replay ok', rep.ok, rep.error);
 t('replay mismo total', rep.ok && rep.result.total === sim.stats.total && rep.result.won === (sim.phase === 'victory'));
 const trucho = JSON.parse(JSON.stringify(sim.log)); const pi = trucho.findIndex((a) => a.t === 'PLAY'); trucho[pi].ids = ['XX'];
-t('replay rechaza jugada falsa', !replayRun('SIM', trucho).ok);
+t('replay rechaza jugada falsa', !replayRun('SIM', trucho, sim.v).ok);
 t('replay rechaza otra semilla', !replayRun('OTRA', sim.log).ok || replayRun('OTRA', sim.log).result.total !== sim.stats.total);
-t('replay rechaza incompleta', !replayRun('SIM', sim.log.slice(0, -1)).ok);
+t('replay rechaza incompleta', !replayRun('SIM', sim.log.slice(0, -1), sim.v).ok);
 t('log no guarda errores', !sim.log.some((a) => a.t === 'PLAY' && a.ids?.includes('ZZ')));
+
+// ---------- Materiales (reglas v2) ----------
+const M = (str, m) => C(str).map((c) => ({ ...c, m }));
+const r0 = { printsDone: 1, discards: 0, lastPattern: null, patternsScored: [], discardedSincePlay: false };
+const sc = (cards, heat = 0) => { const e = evaluate(cards); return scoreHand({ cards, scoringIdx: e.scoring, pattern: e.id, heat, round: r0 }); };
+t('PETG +6 Capas', sc(M('7S 7H', 'petg')).chips === 12 + 14 + 12, sc(M('7S 7H', 'petg')).chips);
+t('Carbono +12 Capas', sc(M('7S', 'carbono')).chips === 5 + 7 + 12);
+t('ASA sin calor no multiplica', sc(M('7S', 'asa'), 2).mult === 1000);
+t('ASA con calor 4: ×1,5', sc(M('7S', 'asa'), 4).mult === 1500);
+const seda = [...M('7S', 'seda'), ...C('7H')];
+t('Seda sola en su palo +2 Mult', sc(seda).mult === 4000, sc(seda).mult);
+t('Seda con otra del palo: nada', sc([...M('7S', 'seda'), ...C('2S')]).mult === 1000);
+// Reducer v2
+let mg2 = step(newGame('MAT'), { type: 'START_ROUND' }).state;
+const h0 = mg2.round.hand[0];
+mg2.deck.find((c) => c.id === h0).m = 'petg';
+t('PETG no se descarta', /pegajoso/.test(step(mg2, { type: 'DISCARD', ids: [h0] }).error || ''));
+mg2.deck.find((c) => c.id === h0).m = 'tpu';
+let mg3 = step(mg2, { type: 'PLAY', ids: [h0] }).state;
+t('TPU vuelve a la mano', mg3.round.hand.includes(h0));
+const mg4 = step(mg3, { type: 'PLAY', ids: [h0] }).state;
+t('TPU solo una vez por ronda', !mg4.round.hand.includes(h0));
+mg2.deck.find((c) => c.id === h0).m = 'carbono';
+t('Carbono sube 1 de Calor', step(mg2, { type: 'PLAY', ids: [h0] }).state.round.heat === 1);
+// Bobina en la tienda/calibración
+let mg5 = step(newGame('BOB'), { type: 'START_ROUND' }).state; mg5.cals = ['bobina_seda'];
+const mg6 = step(mg5, { type: 'USE_CAL', idx: 0, cardId: mg5.round.hand[1] }).state;
+t('Bobina pone el material', mg6.deck.find((c) => c.id === mg5.round.hand[1]).m === 'seda' && mg6.cals.length === 0);
+// Compatibilidad v1: misma semilla, misma tienda que antes (sin bobinas)
+const v1 = newGame('COMPAT', 1); t('partida v1 sigue siendo v1', v1.v === 1 && validateSave(JSON.parse(JSON.stringify(v1))) === null);
+let sv1 = newGame('SIM1', 1), gd = 0;
+while (!['victory', 'defeat'].includes(sv1.phase) && gd++ < 500) sv1 = sv1.phase === 'preview' ? step(sv1, { type: 'START_ROUND' }).state : sv1.phase === 'shop' ? step(sv1, { type: 'LEAVE_SHOP' }).state : step(sv1, { type: 'PLAY', ids: sv1.round.hand.slice(0, 5) }).state;
+const rv1 = replayRun('SIM1', sv1.log, 1);
+t('rejugada v1 ok', rv1.ok && rv1.result.rules_version === 1 && rv1.result.total === sv1.stats.total);
 
 console.log(`${ok} OK, ${bad} fallas`);
 process.exit(bad ? 1 : 0);

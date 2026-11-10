@@ -579,3 +579,23 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 @media (display-mode: fullscreen), (display-mode: standalone) {
   .bc-root { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 }
+
+/* =================== Materiales de las cartas =================== */
+.bc-mat { position: absolute; left: 50%; bottom: 3px; transform: translateX(-50%); font: 400 calc(var(--bc-card-w) * .085) 'Press Start 2P', monospace; padding: 2px 4px 1px;
+  border: 2px solid #090B20; color: #fff; text-shadow: 0 1px 0 #000; white-space: nowrap; z-index: 2; }
+.bc-card.mat-petg .bc-card-in { background-color: #dff8ff; box-shadow: 0 0 0 2px #24DCFF, 0 4px 0 rgba(0,0,0,.5), inset 0 0 0 3px rgba(36,220,255,.35); }
+.bc-card.mat-tpu .bc-card-in { background-color: #ffe6f5; box-shadow: 0 0 0 2px #FF39B8, 0 4px 0 rgba(0,0,0,.5); border-radius: 12px; }
+.bc-card.mat-asa .bc-card-in { background-color: #fff0dc; box-shadow: 0 0 0 2px #ff9a3c, 0 4px 0 rgba(0,0,0,.5); }
+.bc-card.mat-carbono .bc-card-in { background-color: #d7d7e2; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.12) 0 3px, transparent 3px 6px), repeating-linear-gradient(-45deg, rgba(0,0,0,.12) 0 3px, transparent 3px 6px); box-shadow: 0 0 0 2px #181833, 0 4px 0 rgba(0,0,0,.5); }
+.bc-card.mat-seda .bc-card-in { background-image: linear-gradient(120deg, #fff 0%, #f6e7ff 30%, #e3f9ff 55%, #fff4d6 80%); box-shadow: 0 0 0 2px #873DFF, 0 4px 0 rgba(0,0,0,.5); }
+.bc-card.mat-petg .bc-mat, .bc-mat-row.mat-petg .bc-mat { background: #1fa6c4; }
+.bc-card.mat-tpu .bc-mat, .bc-mat-row.mat-tpu .bc-mat { background: #FF39B8; }
+.bc-card.mat-asa .bc-mat, .bc-mat-row.mat-asa .bc-mat { background: #e07a1c; }
+.bc-card.mat-carbono .bc-mat, .bc-mat-row.mat-carbono .bc-mat { background: #181833; }
+.bc-card.mat-seda .bc-mat, .bc-mat-row.mat-seda .bc-mat { background: linear-gradient(90deg, #873DFF, #FF39B8, #24DCFF); }
+
+.bc-mats { display: grid; gap: 8px; }
+.bc-mat-row { display: grid; grid-template-columns: 70px 140px 1fr; align-items: center; gap: 10px; font-size: 14px; }
+.bc-mat-row .bc-mat { position: static; transform: none; font-size: 10px; text-align: center; }
+.bc-trace li.ph-material { color: #ffd27a; }
+@media (max-width: 640px) { .bc-mat-row { grid-template-columns: 60px 1fr; } .bc-mat-row > span:last-child { grid-column: 1 / -1; } }

@@ -7,7 +7,7 @@ import Card from '../components/batcard/Card.jsx';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music, TRACKS } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
-import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK } from '../lib/batcard/catalog.js';
+import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
@@ -399,6 +399,10 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 650;
         const roll = (now) => { const k = Math.min(1, (now - t0) / dur); setRolled(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(roll); else setRolled(null); };
         requestAnimationFrame(roll);
+      } else if (t.cardId && t.phase === 'material') {
+        const isMult = t.text.includes('Mult');
+        if (isMult) sfx.mult(); else sfx.tick(anim.i);
+        popText(document.querySelector(`.bc-played [data-cid="${t.cardId}"]`), t.text.split(': ')[1].replace(' (+1 Calor)', ''), isMult ? 'mult' : 'chips');
       } else if (t.cardId) {
         sfx.tick(anim.i);
         popText(document.querySelector(`.bc-played [data-cid="${t.cardId}"]`), `+${t.chips - (prevT ? prevT.chips : 0)}`, 'chips');
@@ -670,6 +674,7 @@ function Ayuda({ onClose }) {
           <li>Al seleccionar cartas ves el <b>total exacto</b> antes de imprimir.</li>
           <li><b>Descartá</b> las cartas que no te sirven: se reponen y no gastás impresión ({RULES.discards} por ronda).</li>
           <li><b>Sobreextruir</b> da +12 Capas pero sube 2 de Calor. Descartar enfría 1.</li>
+          <li><b>Materiales</b>: con una Bobina le cambiás el filamento a una carta (PETG, TPU, ASA, Carbono o Seda). Cada uno tiene su regla: mirala en la Colección.</li>
           <li>Ganar con impresiones de sobra da más Créditos para comprar Mods en Suministros.</li>
         </ul>
       </div>
@@ -783,7 +788,7 @@ function useSubmit(st) {
   const [res, setRes] = useState(() => sent.get(st.seed) || null);
   const send = async () => {
     setRes({ sending: true });
-    const { data, error } = await sb.functions.invoke('batcard-submit', { body: { seed: st.seed, log: st.log } });
+    const { data, error } = await sb.functions.invoke('batcard-submit', { body: { seed: st.seed, log: st.log, v: st.v } });
     let msg = error?.message;
     if (error?.context?.json) { try { msg = (await error.context.json()).error || msg; } catch { /* nada */ } }
     const r = error ? { error: msg || 'No se pudo enviar.' } : { ok: true, ...data };
@@ -847,8 +852,13 @@ function Coleccion({ back }) {
       <h3>Patrones y Perfiles</h3>
       <table className="bc-table"><thead><tr><th>Patrón</th><th>Base</th><th>Por nivel</th><th>Perfil</th></tr></thead>
         <tbody>{PATTERNS.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td>+{p.lvl[0]} / +{p.lvl[1]}</td><td>{PROFILES.find((x) => x.pattern === p.id)?.name}</td></tr>)}</tbody></table>
+      <h3>Materiales de las cartas</h3>
+      <p className="muted">Las cartas son de PLA hasta que les ponés otro filamento con una <b>Bobina</b> (se compran en Suministros y se usan durante la ronda sobre una carta de tu mano). El material queda para toda la partida.</p>
+      <div className="bc-mats">{Object.entries(MATERIALS).map(([k, m]) => (
+        <div key={k} className={`bc-mat-row mat-${k}`}><span className="bc-mat">{m.short}</span><b>{m.name}</b><span>{m.desc}</span></div>
+      ))}</div>
       <h3>Calibraciones</h3>
-      <ul className="bc-list">{CALIBRATIONS.map((c) => <li key={c.id}><b>{c.name}</b> — {c.desc}</li>)}</ul>
+      <ul className="bc-list">{[...CALIBRATIONS, ...SPOOLS].map((c) => <li key={c.id}><b>{c.name}</b> — {c.desc}</li>)}</ul>
       <p className="muted">Se usan durante una ronda, con 1 carta de tu mano seleccionada (Enfriamiento no necesita carta). Si no hay objetivo válido, no se gastan. El mazo no baja de {MIN_DECK} cartas.</p>
       <h3>Jefes de Control de Calidad</h3>
       <ul className="bc-list">{BOSSES.map((b) => <li key={b.id}><b>{b.name}</b> — {b.desc}</li>)}</ul>

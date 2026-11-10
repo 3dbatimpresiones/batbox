@@ -1,4 +1,5 @@
 import { SUITS, rankLabel, cardText } from '../../lib/batcard/hands.js';
+import { MATERIALS } from '../../lib/batcard/catalog.js';
 
 // Motivos de taller por palo, en píxeles 12×12. a = color del palo, b = tinta, c = latón, d = filamento rosa.
 const MOTIF = {
@@ -37,8 +38,9 @@ function untilt(e) {
 
 export default function Card({ card, selected, scoring, lit, onClick, order, disabled, idx = 0, deal = null, fan = null }) {
   const suit = SUITS[card.s];
-  const cls = ['bc-card', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : ''].join(' ');
-  const label = `${cardText(card)}${card.b ? `, +${card.b} Capas` : ''}${selected ? `, seleccionada ${order}` : ''}`;
+  const mat = card.m && MATERIALS[card.m];
+  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : ''].join(' ');
+  const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
     <span className="bc-card-tilt">
     <span className={`bc-card-in${deal != null ? ' deal' : ''}`} style={{ '--ph': idx * 0.7, '--deal': `${deal || 0}ms` }}>
@@ -46,6 +48,7 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
       <Motif suit={card.s} />
       <span className="bc-corner br"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>
       {card.b > 0 && <span className="bc-bonus">+{card.b}</span>}
+      {mat && <span className="bc-mat" title={`${mat.name}: ${mat.desc}`}>{mat.short}</span>}
       {selected && order && <span className="bc-order">{order}</span>}
     </span>
     </span>

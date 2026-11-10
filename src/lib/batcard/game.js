@@ -2,17 +2,18 @@
 // Una acción inválida devuelve error SIN tocar el estado ni consumir RNG (se trabaja sobre una copia).
 import { RNG_VERSION, seedState, shuffle, randInt } from './rng.js';
 import { standardDeck, evaluate, SUIT_IDS, PATTERNS } from './hands.js';
-import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
+import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
 import { scoreHand } from './score.js';
 
-export const RULES_VERSION = 1;
+export const RULES_VERSION = 2; // v2: materiales en las cartas. Las partidas v1 siguen con sus reglas.
+export const SUPPORTED_RULES = [1, 2];
 export const LOTS = TARGETS.length;
 
-export function newGame(seed) {
+export function newGame(seed, v = RULES_VERSION) {
   const rng = { deck: seedState(seed + '/mazo'), shop: seedState(seed + '/tienda'), boss: seedState(seed + '/jefe') };
   const bosses = shuffle(rng.boss, BOSSES.map((b) => b.id));
   return {
-    v: RULES_VERSION, rngVersion: RNG_VERSION, seed, rng,
+    v, rngVersion: RNG_VERSION, seed, rng,
     phase: 'preview', lot: 0, blind: 0, credits: 4,
     deck: standardDeck(), mods: [], cals: [], levels: {}, bosses,
     round: null, shop: null, last: null,
@@ -83,6 +84,14 @@ function apply(st, a, ev) {
       r.patternsScored.push(evald.id);
       r.discardedSincePlay = false;
       r.hand = r.hand.filter((id) => !a.ids.includes(id));
+      if (st.v >= 2) {
+        const scoredCards = evald.scoring.map((i) => cards[i]);
+        const cf = scoredCards.filter((c) => c.m === 'carbono').length;
+        if (cf) r.heat = Math.min(RULES.heatMax, r.heat + cf);
+        // TPU: rebota a la mano una vez por ronda
+        r.tpuBack = r.tpuBack || [];
+        for (const c of cards) if (c.m === 'tpu' && !r.tpuBack.includes(c.id)) { r.tpuBack.push(c.id); r.hand.push(c.id); }
+      }
       st.stats.prints += 1;
       st.stats.total += result.total;
       st.stats.bestHand = Math.max(st.stats.bestHand, result.total);
@@ -100,6 +109,7 @@ function apply(st, a, ev) {
       if (r.discards <= 0) return 'No quedan descartes.';
       const cards = pickHand(st, a.ids);
       if (typeof cards === 'string') return cards;
+      if (st.v >= 2 && cards.some((c) => c.m === 'petg')) return 'El PETG es pegajoso: no se puede descartar.';
       r.discards -= 1;
       r.heat = Math.max(0, r.heat - 1); // enfría 1 una vez por acción
       r.discardedSincePlay = true;
@@ -119,7 +129,10 @@ function apply(st, a, ev) {
         if (!r.hand.includes(a.cardId)) return 'Elegí una carta de tu mano.';
       }
       const card = st.deck.find((c) => c.id === a.cardId);
-      if (id === 'flujo') card.b = (card.b || 0) + 4;
+      if (cal.mat) {
+        if (card.m === cal.mat) return `Esa carta ya es de ${cal.name.replace('Bobina de ', '')}.`;
+        card.m = cal.mat;
+      } else if (id === 'flujo') card.b = (card.b || 0) + 4;
       else if (id === 'cambio_bobina') {
         if (!SUIT_IDS.includes(a.suit) || a.suit === card.s) return 'Elegí un palo distinto.';
         card.s = a.suit;
@@ -227,7 +240,7 @@ function rollShop(st) {
   }
   for (let i = 0; i < 2; i++) {
     if (randInt(s, 10) < 6) { const p = PROFILES[randInt(s, PROFILES.length)]; items.push({ kind: 'profile', id: p.id, price: p.price }); }
-    else { const c = CALIBRATIONS[randInt(s, CALIBRATIONS.length)]; items.push({ kind: 'cal', id: c.id, price: c.price }); }
+    else { const pool = st.v >= 2 ? [...CALIBRATIONS, ...SPOOLS] : CALIBRATIONS; const c = pool[randInt(s, pool.length)]; items.push({ kind: 'cal', id: c.id, price: c.price }); }
   }
   return items;
 }
@@ -247,7 +260,7 @@ export function preview(st, ids, overextrude) {
 // ---------- Guardado ----------
 export function validateSave(x) {
   if (!x || typeof x !== 'object') return 'vacío';
-  if (x.v !== RULES_VERSION) return `versión de reglas ${x.v} (actual ${RULES_VERSION})`;
+  if (!SUPPORTED_RULES.includes(x.v)) return `versión de reglas ${x.v} (actual ${RULES_VERSION})`;
   if (x.rngVersion !== RNG_VERSION) return 'versión de RNG distinta';
   if (!['preview', 'round', 'shop', 'victory', 'defeat'].includes(x.phase)) return 'fase desconocida';
   if (!Array.isArray(x.deck) || x.deck.length < MIN_DECK) return 'mazo inválido';
