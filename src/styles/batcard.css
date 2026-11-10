@@ -755,3 +755,11 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-card.has-face.suit-H .bc-corner { color: #e0258f; }
 .bc-card.has-face.suit-D .bc-corner { color: #7a3fe0; }
 .bc-card.has-face .bc-mat { bottom: auto; top: 50%; left: auto; right: 3px; transform: none; }
+/* v2 de las skins: sin zoom, índices grandes sin recuadro (el fondo es el mismo papel de la carta y tapa el índice chico) */
+.bc-card.has-face .bc-face { object-fit: contain; transform: none; }
+.bc-card.has-face .bc-card-in { background: #f9f2ff; }
+.bc-card.has-face .bc-corner { background: #f9f2ff; border: 0; box-shadow: none; padding: 1px 2px 2px; border-radius: 3px; }
+.bc-card.has-face .bc-corner b { font-size: calc(var(--bc-card-w) * .22); }
+.bc-card.has-face .bc-corner i { font-size: calc(var(--bc-card-w) * .24); }
+.bc-card.has-face .bc-corner.tl { top: 4px; left: 5px; }
+.bc-card.has-face .bc-corner.br { bottom: 4px; right: 5px; }

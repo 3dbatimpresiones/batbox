@@ -4,6 +4,7 @@ import { useSyncExternalStore } from 'react';
 export const SKINS = {
   clasico: { name: 'Clásico' },
   arcade: { name: 'Arcade', dir: 'arcade' },
+  maker: { name: 'Maker', dir: 'maker' },
 };
 
 const SUIT_FILE = { S: 'spades', H: 'hearts', C: 'clubs', D: 'diamonds' };
