@@ -65,7 +65,7 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
     if (deal == null || !inRef.current) return;
     const pile = document.querySelector('.bc-deckpile');
     if (!pile) return;
-    const a = pile.getBoundingClientRect(), b = inRef.current.parentElement.getBoundingClientRect();
+    const a = pile.getBoundingClientRect(), b = inRef.current.parentElement.getBoundingClientRect(); // .bc-card-tilt: no se mueve con el vuelo
     inRef.current.style.setProperty('--dx', `${Math.round(a.left + a.width / 2 - (b.left + b.width / 2))}px`);
     inRef.current.style.setProperty('--dy', `${Math.round(a.top + a.height / 2 - (b.top + b.height / 2))}px`);
   }, [deal]);
@@ -77,7 +77,8 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
   const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${card.sl ? `, ${SEALS[card.sl].name}` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
     <span className="bc-card-tilt">
-    <span ref={inRef} className={`bc-card-in${deal != null ? ' deal' : ''}`} style={{ '--ph': idx * 0.7, '--deal': `${deal || 0}ms` }}>
+    <span ref={inRef} className={`bc-card-deal${deal != null ? ' deal' : ''}`} style={{ '--deal': `${deal || 0}ms` }}>
+    <span className="bc-card-in" style={{ '--ph': idx * 0.7, '--deal': `${deal || 0}ms` }}>
       {deal != null && <CardBack className="bc-back-ov" />}
       {face && <img className="bc-face" src={face} alt="" draggable="false" />}
       <span className="bc-corner tl"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>
@@ -87,6 +88,7 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
       {card.sl && <span className={`bc-seal s-${card.sl}`} title={`${SEALS[card.sl].name}: ${SEALS[card.sl].desc}`} />}
       {mat && <span className="bc-mat" title={`${mat.name}: ${mat.desc}`}>{mat.short}</span>}
       {selected && order && <span className="bc-order">{order}</span>}
+    </span>
     </span>
     </span>
   );

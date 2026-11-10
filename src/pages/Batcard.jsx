@@ -486,7 +486,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const hand = document.querySelector('.bc-hand');
         if (hand) { hand.classList.remove('bc-full-hit'); void hand.offsetWidth; hand.classList.add('bc-full-hit'); clearTimeout(hand._fh); hand._fh = setTimeout(() => hand.classList.remove('bc-full-hit'), 650); }
         const el = document.querySelector(`.bc-hand [data-cid="${id}"]`);
-        if (el) { popText(el, 'MÁX 5', 'mult'); shake(el); }
+        if (el) { popText(el, 'MÁXIMO 5 CARTAS', 'mult'); shake(el); }
         return s;
       }
       sfx.select(s.length + 1); return [...s, id];
