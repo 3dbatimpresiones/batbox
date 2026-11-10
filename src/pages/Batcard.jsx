@@ -302,7 +302,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
         const big = t.total >= anim.prev.round.target * 0.4 || (best > 0 && t.total > best);
         sfx.tick(10); if (big) sfx.big();
         const scoreEl = document.querySelector('.bc-score-num');
-        popText(scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true);
+        popText(document.querySelector('.bc-pop-anchor') || scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true); // a la derecha de la cama, donde hay lugar
         if (fxOn) { shake(document.querySelector('.bc-game'), big); if (big) burstAt(scoreEl, { n: 60 }); }
         if (big) { setBanner(best > 0 && t.total > best ? '¡RÉCORD DE MANO!' : '¡GRAN MANO!'); setTimeout(() => setBanner(null), 1300); }
         const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 650;
@@ -415,6 +415,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
         <>
           <Heat heat={r.heat} forecast={pv ? pv.heat : over ? Math.min(6, r.heat + 2) : null} boss={r.boss} />
           <section className="bc-bed" aria-label="Cama de impresión">
+            <span className="bc-pop-anchor" aria-hidden="true" />
             {anim ? (
               <>
                 <div className={`bc-played${anim.leaving ? ' leaving' : ''}`}>

@@ -459,3 +459,8 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-live { display: inline-flex; align-items: center; gap: 7px; border-color: #2bd67b; color: #c9ffe0; background: rgba(9, 40, 26, .85); }
 .bc-live i { width: 9px; height: 9px; background: #2bd67b; box-shadow: 0 0 8px #2bd67b; animation: bc-live-dot 1.6s ease-in-out infinite; }
 @keyframes bc-live-dot { 50% { opacity: .35; transform: scale(.7); } }
+
+/* Ancla del número grande: lado derecho libre de la cama de impresión */
+.bc-bed { position: relative; }
+.bc-pop-anchor { position: absolute; right: 16%; top: 50%; width: 1px; height: 1px; pointer-events: none; }
+@media (max-width: 640px) { .bc-pop-anchor { right: 50%; top: 0; } }
