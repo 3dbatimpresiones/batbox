@@ -4,14 +4,14 @@
 // Redondeo único hacia abajo al final (Capas × m / 1000).
 // Orden: contexto del jefe → base del Patrón → cartas puntuadas → cartas en mano → Mods (izq→der) → ajustes finales.
 import { PATTERN, cardChips, rankLabel, SUITS } from './hands.js';
-import { MOD, MATERIALS } from './catalog.js';
+import { MOD, MATERIALS, SEALS } from './catalog.js';
 
 export const MAX_ACTIVATIONS = 64; // tope de disparos por mano (no hay re-disparos en el MVP)
 export const fmtMult = (m) => (m % 1000 === 0 ? String(m / 1000) : (m / 1000).toFixed(2).replace(/0$/, '').replace('.', ','));
 
 // input: { cards, scoringIdx, pattern, level, mods:[ids], boss, heat, overextrude, round }
 export function scoreHand(input) {
-  const { cards, scoringIdx, pattern, level = 0, mods = [], boss, heat, overextrude, round } = input;
+  const { cards, scoringIdx, pattern, level = 0, mods = [], boss, heat, overextrude, round, modData = {} } = input;
   const P = PATTERN[pattern];
   const trace = [];
   let chips = 0, m = 0, activations = 0;
@@ -38,7 +38,19 @@ export function scoreHand(input) {
   if (overextrude) { chips += 12; push('calor', 'Sobreextruir: +12 Capas'); }
 
   // 3. Cartas puntuadas
+  // Re-disparos (v4): Sello Rojo en la carta y Klipper en la primera carta puntuada.
+  let gold = 0;
   scoring.forEach((c, i) => {
+    let reps = 1;
+    if (c.sl === 'rojo') reps++;
+    if (i === 0 && mods.includes('klipper')) reps++;
+    for (let k = 0; k < reps; k++) {
+      if (k > 0) push('repetir', `${k === 1 && c.sl === 'rojo' ? SEALS.rojo.name : 'Klipper'}: ¡otra vez!`, { cardId: c.id });
+      scoreCard(c, i);
+      if (c.sl === 'oro') { gold += 2; push('sello', `${SEALS.oro.name}: +2 Créditos`, { cardId: c.id }); }
+    }
+  });
+  function scoreCard(c, i) {
     const add = i === warpIdx ? 0 : cardChips(c.r) + (c.b || 0);
     chips += add;
     push('carta', `${rankLabel(c.r)}${SUITS[c.s].sym}: +${add} Capas`, { cardId: c.id });
@@ -48,12 +60,12 @@ export function scoreHand(input) {
     else if (mat === 'carbono') { chips += 12; push('material', `${MATERIALS.carbono.name}: +12 Capas (+1 Calor)`, { cardId: c.id }); }
     else if (mat === 'asa' && heat >= 4) { m = Math.floor((m * 1500) / 1000); push('material', `${MATERIALS.asa.name} con Calor ${heat}: ×1,5 Mult`, { cardId: c.id }); }
     else if (mat === 'seda' && cards.filter((x) => x.s === c.s).length === 1) { m += 2000; push('material', `${MATERIALS.seda.name} sola en su palo: +2 Mult`, { cardId: c.id }); }
-  });
+  }
 
   // 4. Cartas en mano: sin efectos en el MVP (fase reservada).
 
   // 5. Mods de izquierda a derecha
-  const ctx = { pattern, scoring, heat, round };
+  const ctx = { pattern, scoring, heat, round, modData, modCount: mods.length };
   mods.forEach((id, slot) => {
     const mod = MOD[id];
     if (!mod || mod.effect.phase !== 'mods') return;
@@ -74,5 +86,5 @@ export function scoreHand(input) {
 
   const total = Math.floor((chips * m) / 1000);
   trace.push({ phase: 'total', text: `${chips} × ${fmtMult(m)} = ${total}`, chips, mult: m, total });
-  return { chips, mult: m, total, trace };
+  return { chips, mult: m, total, trace, gold };
 }

@@ -43,7 +43,27 @@ export const MODS = [
   { id: 'benchy_maestro', name: 'Benchy Maestro', rarity: 'rara', price: 7, finish: 'holografico', tags: ['xmult'],
     desc: '×1,4 al Multiplicador si en esta ronda ya puntuaste dos Patrones diferentes antes de esta mano.',
     effect: { phase: 'mods', when: (c) => new Set(c.round.patternsScored).size >= 2, op: 'xmult', value: 1400 } },
+  // ---- Reglas v4 (since: 4): solo aparecen en partidas nuevas ----
+  { id: 'klipper', since: 4, name: 'Klipper', rarity: 'rara', price: 7, finish: 'policromo', tags: ['repetir'],
+    desc: 'La primera carta puntuada se dispara dos veces.',
+    effect: { phase: 'retrigger' } },
+  { id: 'contador_horas', since: 4, name: 'Contador de Horas', rarity: 'poco común', price: 6, finish: 'metalico', tags: ['capas', 'crece'],
+    desc: 'Crece: +3 Capas por cada impresión que hiciste desde que lo tenés.',
+    effect: { phase: 'mods', when: (c) => (c.modData.contador_horas || 0) > 0, op: 'chips', value: (c) => 3 * (c.modData.contador_horas || 0) } },
+  { id: 'granja', since: 4, name: 'Granja de Impresoras', rarity: 'común', price: 5, finish: 'laminado', tags: ['capas'],
+    desc: '+6 Capas por cada Mod de Taller que tengas (este incluido).',
+    effect: { phase: 'mods', when: () => true, op: 'chips', value: (c) => 6 * c.modCount } },
+  { id: 'camara_cerrada', since: 4, name: 'Cámara Cerrada', rarity: 'poco común', price: 6, finish: 'holografico', tags: ['mult', 'calor'],
+    desc: '+1 al Multiplicador por cada punto de Calor.',
+    effect: { phase: 'mods', when: (c) => c.heat > 0, op: 'mult', value: (c) => c.heat } },
+  { id: 'spool_holder', since: 4, name: 'Porta Bobinas', rarity: 'común', price: 4, finish: 'laminado', tags: ['descarte'],
+    desc: '+1 descarte en cada ronda.',
+    effect: { phase: 'round_start' } },
+  { id: 'volcano', since: 4, name: 'Hotend Volcano', rarity: 'rara', price: 8, finish: 'policromo', tags: ['xmult', 'calor'],
+    desc: '×2 al Multiplicador con Calor 6.',
+    effect: { phase: 'mods', when: (c) => c.heat >= 6, op: 'xmult', value: 2000 } },
 ];
+export const modsFor = (v) => MODS.filter((m) => (m.since || 1) <= v);
 
 function hasLowPair(cards) {
   const cnt = {};
@@ -69,6 +89,12 @@ export const MATERIALS = {
   seda: { name: 'Seda', short: 'SEDA', desc: '+2 Mult al puntuar si es la única carta de su palo en la jugada.' },
 };
 // Bobinas: calibraciones que le ponen un material a una carta de la mano (solo reglas v2).
+// Sellos de calidad (reglas v4): se ponen con una calibración o vienen en los sobres.
+export const SEALS = {
+  oro: { name: 'Sello Dorado', desc: '+2 Créditos cada vez que esta carta puntúa.' },
+  rojo: { name: 'Sello Rojo', desc: 'Esta carta puntúa dos veces.' },
+};
+export const SEAL_CALS = Object.keys(SEALS).map((k) => ({ id: 'sello_' + k, name: SEALS[k].name, price: 5, target: 'card', seal: k, desc: `Le pone a una carta de tu mano el ${SEALS[k].name}: ${SEALS[k].desc}` }));
 export const SPOOLS = Object.keys(MATERIALS).map((m) => ({ id: 'bobina_' + m, name: 'Bobina de ' + MATERIALS[m].name, price: 4, target: 'card', mat: m, desc: `Convierte una carta de tu mano en ${MATERIALS[m].name}: ${MATERIALS[m].desc}` }));
 
 // Sobres (reglas v3): se compran en Suministros, se abren y elegís 1 opción.
@@ -101,7 +127,9 @@ export const BOSSES = [
 ];
 
 export const MOD = Object.fromEntries(MODS.map((m) => [m.id, m]));
-export const CAL = Object.fromEntries([...CALIBRATIONS, ...SPOOLS].map((m) => [m.id, m]));
+export const CAL = Object.fromEntries([...CALIBRATIONS, ...SPOOLS, ...SEAL_CALS].map((m) => [m.id, m]));
+export const calsFor = (v) => [...CALIBRATIONS, ...(v >= 2 ? SPOOLS : []), ...(v >= 4 ? SEAL_CALS : [])];
+export const INTEREST = { per: 5, max: 5 };
 export const PROF = Object.fromEntries(PROFILES.map((m) => [m.id, m]));
 export const BOSS = Object.fromEntries(BOSSES.map((m) => [m.id, m]));
 

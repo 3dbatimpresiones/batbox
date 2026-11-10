@@ -7,7 +7,7 @@ import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music, TRACKS } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
-import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS, PACKS } from '../lib/batcard/catalog.js';
+import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
@@ -414,6 +414,14 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 650;
         const roll = (now) => { const k = Math.min(1, (now - t0) / dur); setRolled(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(roll); else setRolled(null); };
         requestAnimationFrame(roll);
+      } else if (t.cardId && t.phase === 'repetir') {
+        sfx.snap();
+        const el = document.querySelector(`.bc-played [data-cid="${t.cardId}"]`);
+        popText(el, '¡OTRA VEZ!', 'mult');
+        if (fxOn) shake(el);
+      } else if (t.cardId && t.phase === 'sello') {
+        sfx.coin();
+        popText(document.querySelector(`.bc-played [data-cid="${t.cardId}"]`), '+2 $', 'chips');
       } else if (t.cardId && t.phase === 'material') {
         const isMult = t.text.includes('Mult');
         if (isMult) sfx.mult(); else sfx.tick(anim.i);
@@ -520,7 +528,8 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
 
       {msg && <div className="bc-msg" role="status">{msg}</div>}
 
-      {view.phase === 'preview' && <Preview st={view} onStart={() => act({ type: 'START_ROUND' }, () => sfx.print())} />}
+      {view.phase === 'preview' && <Preview st={view} onStart={() => act({ type: 'START_ROUND' }, () => sfx.print())} onSkip={() => act({ type: 'SKIP_BLIND' }, () => sfx.cash(4))} />}
+      {st.pack && !anim && <PackOpen key={st.log.length} st={st} act={act} />}
 
       {view.phase === 'round' && r && (
         <>
@@ -694,6 +703,7 @@ function Ayuda({ onClose }) {
           <li>Al seleccionar cartas ves el <b>total exacto</b> antes de imprimir.</li>
           <li><b>Descartá</b> las cartas que no te sirven: se reponen y no gastás impresión ({RULES.discards} por ronda).</li>
           <li><b>Sobreextruir</b> da +12 Capas pero sube 2 de Calor. Descartar enfría 1.</li>
+          <li><b>Saltear</b>: el Prototipo y la Tanda se pueden saltear para abrir un sobre gratis (no cobrás esa ronda). <b>Ahorro</b>: al ganar cobrás +1 por cada 5 Créditos guardados (máx. +5). <b>Sellos</b>: el Dorado da +2 Créditos al puntuar y el Rojo hace puntuar la carta dos veces.</li>
           <li><b>Sobres</b>: en Suministros hay 2 sobres por visita. Al abrirlo elegís 1 opción: una carta nueva para tu mazo, una calibración, un perfil o (en el Sobre Maker) un Mod.</li>
           <li><b>Materiales</b>: con una Bobina le cambiás el filamento a una carta (PETG, TPU, ASA, Carbono o Seda). Cada uno tiene su regla: mirala en la Colección.</li>
           <li>Ganar con impresiones de sobra da más Créditos para comprar Mods en Suministros.</li>
@@ -723,7 +733,7 @@ function Mods({ st, lit, act, shop }) {
   return (
     <section className="bc-mods" aria-label="Mods de Taller (se aplican de izquierda a derecha)">
       {slots.map((id, i) => id ? (
-        <ModCard key={id} mod={MOD[id]} lit={lit.has(i)} slot={i}>
+        <ModCard key={id} mod={MOD[id]} lit={lit.has(i)} slot={i} extra={id === 'contador_horas' && st.modData ? ` (ahora +${3 * (st.modData.contador_horas || 0)})` : ''}>
           <span className="bc-mod-ctl">
             <button className="bc-mini" disabled={i === 0} onClick={() => act({ type: 'MOVE_MOD', from: i, to: i - 1 })} aria-label={`Mover ${MOD[id].name} a la izquierda`}>◀</button>
             {shop && <button className="bc-mini" onClick={() => act({ type: 'SELL_MOD', idx: i }, () => sfx.coin())}>Vender {Math.floor(MOD[id].price / 2)}</button>}
@@ -735,7 +745,7 @@ function Mods({ st, lit, act, shop }) {
   );
 }
 
-function ModCard({ mod, lit, children, slot }) {
+function ModCard({ mod, lit, children, slot, extra = '' }) {
   const onMove = (e) => {
     const b = e.currentTarget.getBoundingClientRect();
     e.currentTarget.style.setProperty('--mx', ((e.clientX - b.left) / b.width).toFixed(3));
@@ -744,14 +754,14 @@ function ModCard({ mod, lit, children, slot }) {
   return (
     <div className={`bc-mod fin-${mod.finish}${lit ? ' lit' : ''}`} data-mslot={slot} onPointerMove={onMove}>
       <span className="bc-mod-name">{mod.name}</span>
-      <span className="bc-mod-desc">{mod.desc}</span>
+      <span className="bc-mod-desc">{mod.desc}{extra}</span>
       <span className="bc-mod-rar">{mod.rarity}</span>
       {children}
     </div>
   );
 }
 
-function Preview({ st, onStart }) {
+function Preview({ st, onStart, onSkip }) {
   const info = blindInfo(st);
   return (
     <section className="bc-panel bc-preview">
@@ -760,7 +770,11 @@ function Preview({ st, onStart }) {
       <p>{RULES.prints} impresiones · {RULES.discards - (info.boss === 'bobina_enredada' ? 1 : 0)} descartes · mano de {RULES.handSize} · pago {info.pay} Créditos + 1 por impresión que sobre</p>
       {info.boss && <div className="bc-boss"><b>Jefe: {BOSS[info.boss].name}</b><span>{BOSS[info.boss].desc}</span></div>}
       <div className="bc-lotmap">{TARGETS[st.lot].map((t, i) => <span key={i} className={i === st.blind ? 'cur' : i < st.blind ? 'done' : ''}>{BLIND_NAMES[i]}<b>{t}</b></span>)}</div>
-      <button className="bc-btn primary big" onClick={onStart} autoFocus>Arrancar la impresión</button>
+      <div className="bc-actions">
+        <button className="bc-btn primary big" onClick={onStart} autoFocus>Arrancar la impresión</button>
+        {st.v >= 4 && st.blind < 2 && <button className="bc-btn bc-skip" onClick={onSkip} title="No jugás esta ronda ni cobrás su pago, pero abrís un sobre gratis.">Saltear · sobre gratis 🎁</button>}
+      </div>
+      {st.v >= 4 && <p className="muted small">Ahorro: al ganar cobrás +1 Crédito por cada {INTEREST.per} que tengas (máximo +{INTEREST.max}).</p>}
     </section>
   );
 }
@@ -794,7 +808,6 @@ function Shop({ st, act }) {
           ))}
         </div>
       )}
-      {st.pack && <PackOpen key={st.log.length} st={st} act={act} />}
       <div className="bc-items">
         {st.shop.items.map((it, i) => (
           <div key={i} className={`bc-item k-${it.kind}${it.sold ? ' sold' : ''}`}>
@@ -843,7 +856,7 @@ function PackOpen({ st, act }) {
         )}
         {stage === 'reveal' && (
           <>
-            <h2>{PACKS[kind].name}</h2>
+            <h2>{st.pack.free ? '¡Gratis! ' : ''}{PACKS[kind].name}</h2>
             <p className="muted">{done ? 'Elegí 1' : 'Abriendo…'}</p>
             <div className="bc-packopts">
               {opts.map((o, i) => (
@@ -860,7 +873,7 @@ function PackOpen({ st, act }) {
                     </div>
                   </div>
                   {o.kind === 'card' && i < shown && (
-                    <small className="bc-packcap">{o.card.m ? MATERIALS[o.card.m].name : 'PLA'}{o.card.b ? ` · +${o.card.b} Capas` : ''}</small>
+                    <small className="bc-packcap">{o.card.m ? MATERIALS[o.card.m].name : 'PLA'}{o.card.b ? ` · +${o.card.b} Capas` : ''}{o.card.sl ? ` · ${SEALS[o.card.sl].name}` : ''}</small>
                   )}
                 </div>
               ))}
@@ -944,13 +957,17 @@ function Coleccion({ back }) {
       <h3>Patrones y Perfiles</h3>
       <table className="bc-table"><thead><tr><th>Patrón</th><th>Base</th><th>Por nivel</th><th>Perfil</th></tr></thead>
         <tbody>{PATTERNS.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td>+{p.lvl[0]} / +{p.lvl[1]}</td><td>{PROFILES.find((x) => x.pattern === p.id)?.name}</td></tr>)}</tbody></table>
+      <h3>Sellos de calidad</h3>
+      <div className="bc-mats">{Object.entries(SEALS).map(([k, m]) => (
+        <div key={k} className="bc-mat-row"><span className={`bc-seal s-${k}`} /><b>{m.name}</b><span>{m.desc}</span></div>
+      ))}</div>
       <h3>Materiales de las cartas</h3>
       <p className="muted">Las cartas son de PLA hasta que les ponés otro filamento con una <b>Bobina</b> (se compran en Suministros y se usan durante la ronda sobre una carta de tu mano). El material queda para toda la partida.</p>
       <div className="bc-mats">{Object.entries(MATERIALS).map(([k, m]) => (
         <div key={k} className={`bc-mat-row mat-${k}`}><span className="bc-mat">{m.short}</span><b>{m.name}</b><span>{m.desc}</span></div>
       ))}</div>
       <h3>Calibraciones</h3>
-      <ul className="bc-list">{[...CALIBRATIONS, ...SPOOLS].map((c) => <li key={c.id}><b>{c.name}</b> — {c.desc}</li>)}</ul>
+      <ul className="bc-list">{[...CALIBRATIONS, ...SPOOLS, ...SEAL_CALS].map((c) => <li key={c.id}><b>{c.name}</b> — {c.desc}</li>)}</ul>
       <p className="muted">Se usan durante una ronda, con 1 carta de tu mano seleccionada (Enfriamiento no necesita carta). Si no hay objetivo válido, no se gastan. El mazo no baja de {MIN_DECK} cartas.</p>
       <h3>Jefes de Control de Calidad</h3>
       <ul className="bc-list">{BOSSES.map((b) => <li key={b.id}><b>{b.name}</b> — {b.desc}</li>)}</ul>

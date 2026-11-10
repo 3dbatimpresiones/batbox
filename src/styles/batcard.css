@@ -485,7 +485,7 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 /* =================== Pantalla completa en partida: todo entra sin scroll =================== */
 .bc-root.bc-full { position: fixed; inset: 0; z-index: 900; margin: 0; border-radius: 0; padding: 6px; height: 100vh; height: 100dvh; box-sizing: border-box;
   /* Ancho de carta: el menor entre lo que permite el ancho y lo que permite el alto (2 filas de cartas + HUD + controles) */
-  --bc-card-w: clamp(40px, min(9.6vw, calc((100dvh - 400px) / 2.75)), 108px); }
+  --bc-card-w: clamp(40px, min(9.6vw, calc((100dvh - 450px) / 3.4)), 108px); }
 .bc-full .bc-stage { height: 100%; min-height: 0; border-radius: 18px; }
 .bc-full .bc-content { height: 100%; box-sizing: border-box; padding: 8px 12px; display: flex; flex-direction: column; overflow: hidden; }
 .bc-full .bc-game { flex: 1; min-height: 0; gap: 6px; display: flex; flex-direction: column; }
@@ -509,7 +509,7 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 /* Paneles grandes (tienda, previa, final) usan su propio scroll interno si hiciera falta, nunca el de la página */
 .bc-full .bc-shop, .bc-full .bc-preview, .bc-full .bc-end { flex: 1; min-height: 0; overflow: auto; }
 @media (max-width: 640px) {
-  .bc-root.bc-full { padding: 0; --bc-card-w: clamp(38px, min(calc((100vw - 40px) / 6.4), calc((100dvh - 380px) / 2.7)), 80px); }
+  .bc-root.bc-full { padding: 0; --bc-card-w: clamp(38px, min(calc((100vw - 40px) / 6.4), calc((100dvh - 420px) / 2.7)), 80px); }
   .bc-full .bc-stage { border-radius: 0; }
   .bc-full .bc-content { padding: 6px 8px; }
   .bc-full .bc-hand { flex-wrap: nowrap; overflow: visible; justify-content: center; padding-left: 0; padding-right: 0; }
@@ -522,7 +522,7 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
   .bc-full kbd { display: none; }
 }
 @media (max-width: 640px) {
-  .bc-root.bc-full { --bc-card-w: clamp(40px, min(calc((100vw - 24px) / 5.3), calc((100dvh - 400px) / 2.6)), 92px); }
+  .bc-root.bc-full { --bc-card-w: clamp(40px, min(calc((100vw - 24px) / 5.3), calc((100dvh - 440px) / 2.6)), 92px); }
   .bc-full .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.38); }
   .bc-full .bc-hand .bc-card:first-child { margin-left: 0; }
   .bc-full .bc-quick { display: inline-flex; border-right: 0; padding-right: 0; }
@@ -533,7 +533,7 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-full .bc-actions { margin-top: 0; }
 /* Pantallas verticales grandes (iPad parado): cartas según el ancho, más grandes */
 @media (orientation: portrait) and (min-width: 641px) {
-  .bc-root.bc-full { --bc-card-w: clamp(60px, min(calc((100vw - 80px) / 6.6), calc((100dvh - 420px) / 2.6)), 132px); }
+  .bc-root.bc-full { --bc-card-w: clamp(60px, min(calc((100vw - 80px) / 6.6), calc((100dvh - 465px) / 2.6)), 132px); }
 }
 .bc-full .bc-hand { flex-wrap: nowrap; }
 @media (orientation: portrait) and (min-width: 641px) { .bc-full .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.24); } .bc-full .bc-hand .bc-card:first-child { margin-left: 0; } }
@@ -569,7 +569,7 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
   .bc-full .bc-goal-bar { height: 24px !important; } .bc-full .bc-goal-bar span { font-size: 12px !important; line-height: 18px !important; }
   .bc-full .bc-hud { gap: 4px; padding: 4px 6px; }
   .bc-full .bc-game { gap: 4px; }
-  .bc-root.bc-full { --bc-card-w: clamp(38px, min(calc((100vw - 24px) / 5.3), calc((100dvh - 430px) / 2.3)), 92px); }
+  .bc-root.bc-full { --bc-card-w: clamp(38px, min(calc((100vw - 24px) / 5.3), calc((100dvh - 470px) / 2.3)), 92px); }
 }
 
 /* Botón de instalar la app */
@@ -698,3 +698,13 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-back-ov { transform: scaleX(-1); }
 .bc-back-logo { width: 62%; padding: 7%; border-radius: 3px; }
 .bc-pilecard .bc-back-logo { width: 74%; padding: 6%; }
+
+/* =================== Reglas v4: sellos, saltear =================== */
+.bc-seal { position: absolute; top: 4px; right: 4px; width: calc(var(--bc-card-w, 80px) * .2); max-width: 18px; min-width: 10px; aspect-ratio: 1; z-index: 3;
+  border: 2px solid #090B20; box-shadow: 0 0 0 1px #fff, 0 2px 0 rgba(0,0,0,.4); clip-path: polygon(50% 0, 62% 14%, 80% 8%, 84% 28%, 100% 36%, 90% 52%, 100% 68%, 82% 74%, 78% 94%, 60% 88%, 50% 100%, 40% 88%, 22% 94%, 18% 74%, 0 68%, 10% 52%, 0 36%, 16% 28%, 20% 8%, 38% 14%); }
+.bc-seal.s-oro { background: radial-gradient(circle at 35% 35%, #fff6c2, #ffcf3f 45%, #b8860b); }
+.bc-seal.s-rojo { background: radial-gradient(circle at 35% 35%, #ffb3b3, #ff3b3b 45%, #9b1010); }
+.bc-mat-row .bc-seal { position: static; width: 22px; max-width: none; justify-self: center; }
+.bc-skip { border-color: #ffd27a !important; color: #ffd27a !important; }
+.bc-preview .bc-actions { justify-content: center; flex-wrap: wrap; }
+.bc-trace li.ph-repetir { color: #ff8fb8; } .bc-trace li.ph-sello { color: #ffd27a; }

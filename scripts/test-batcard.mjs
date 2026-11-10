@@ -183,5 +183,44 @@ const rv3 = replayRun(seed3, s3.log, 3);
 t('rejugada v3 con sobres ok', rv3.ok && rv3.result.rules_version === 3 && rv3.result.total === s3.stats.total && s3.log.some((x) => x.t === 'OPEN_PACK'), JSON.stringify(rv3).slice(0, 200));
 t('rejugada v3 con reglas v2 no coincide', !replayRun(seed3, s3.log, 2).ok || replayRun(seed3, s3.log, 2).result.total !== s3.stats.total || true);
 
+// ---- Reglas v4 ----
+const cardsS = C('7S 7H');
+const base4 = scoreHand({ cards: cardsS, scoringIdx: [0, 1], pattern: 'par', mods: [], heat: 0, round: { printsDone: 1 } });
+const red = scoreHand({ cards: [{ ...cardsS[0], sl: 'rojo' }, cardsS[1]], scoringIdx: [0, 1], pattern: 'par', mods: [], heat: 0, round: { printsDone: 1 } });
+t('Sello Rojo: la carta suma dos veces', red.chips === base4.chips + 7, red.chips + ' vs ' + base4.chips);
+const kl = scoreHand({ cards: cardsS, scoringIdx: [0, 1], pattern: 'par', mods: ['klipper'], heat: 0, round: { printsDone: 1 } });
+t('Klipper repite la primera', kl.chips === base4.chips + 7);
+const gold4 = scoreHand({ cards: [{ ...cardsS[0], sl: 'oro' }, cardsS[1]], scoringIdx: [0, 1], pattern: 'par', mods: [], heat: 0, round: { printsDone: 1 } });
+t('Sello Dorado da 2 créditos', gold4.gold === 2 && gold4.total === base4.total);
+const ch = scoreHand({ cards: cardsS, scoringIdx: [0, 1], pattern: 'par', mods: ['contador_horas'], heat: 0, round: { printsDone: 1 }, modData: { contador_horas: 4 } });
+t('Contador de Horas crece', ch.chips === base4.chips + 12);
+const vo = scoreHand({ cards: cardsS, scoringIdx: [0, 1], pattern: 'par', mods: ['volcano'], heat: 6, round: { printsDone: 1 } });
+t('Volcano ×2 con Calor 6', vo.mult === base4.mult * 2);
+t('v3 no ve Mods nuevos', !winTo('SOBRE', 3).shop.items.some((it) => MODS.find((m) => m.id === it.id)?.since));
+let k4 = newGame('SALTO', 4);
+const sk = step(k4, { type: 'SKIP_BLIND' });
+t('saltear da sobre gratis y avanza', !sk.error && sk.state.blind === 1 && sk.state.pack?.free && sk.state.credits === k4.credits);
+t('con sobre abierto no arranca', !!step(sk.state, { type: 'START_ROUND' }).error);
+t('v3 no puede saltear', !!step(newGame('SALTO', 3), { type: 'SKIP_BLIND' }).error);
+let ph = step(step(newGame('PORTA', 4), { type: 'SKIP_BLIND' }).state, { type: 'SKIP_PACK' }).state; ph.mods = ['spool_holder'];
+t('Porta Bobinas +1 descarte', step(ph, { type: 'START_ROUND' }).state.round.discards === 4);
+let it4 = newGame('AHORRO', 4); it4 = step(it4, { type: 'START_ROUND' }).state; it4.credits = 23; it4.round.target = 1;
+it4 = step(it4, { type: 'PLAY', ids: it4.round.hand.slice(0, 1) }).state;
+t('Ahorro +4 con 23 créditos', it4.lastWin.extra.includes('Ahorro: +4'), JSON.stringify(it4.lastWin));
+let sl = step(newGame('SELLO', 4), { type: 'START_ROUND' }).state; sl.cals = ['sello_rojo'];
+t('calibración de sello', step(sl, { type: 'USE_CAL', idx: 0, cardId: sl.round.hand[0] }).state.deck.find((c) => c.id === sl.round.hand[0]).sl === 'rojo');
+let s4, seed4;
+for (let k = 0; k < 200; k++) { seed4 = 'VCUATRO' + k; s4 = newGame(seed4, 4); let g = 0;
+  while (!['victory', 'defeat'].includes(s4.phase) && g++ < 800) {
+    if (s4.pack) { const r1 = step(s4, { type: 'PICK_PACK', idx: 0 }); s4 = r1.error ? step(s4, { type: 'SKIP_PACK' }).state : r1.state; }
+    else if (s4.phase === 'preview') s4 = s4.blind === 0 && s4.lot === 0 ? step(s4, { type: 'SKIP_BLIND' }).state : step(s4, { type: 'START_ROUND' }).state;
+    else if (s4.phase === 'shop') { const i = s4.shop.items.findIndex((x) => !x.sold && x.kind === 'mod' && x.price <= s4.credits && s4.mods.length < 4); s4 = i >= 0 ? step(s4, { type: 'BUY', slot: i }).state : step(s4, { type: 'LEAVE_SHOP' }).state; }
+    else s4 = step(s4, { type: 'PLAY', ids: s4.round.hand.slice(0, 5) }).state;
+  }
+  if (s4.log.some((x) => x.t === 'BUY')) break; }
+const rv4 = replayRun(seed4, s4.log, 4);
+t('rejugada v4 ok', rv4.ok && rv4.result.total === s4.stats.total && s4.log.some((x) => x.t === 'SKIP_BLIND'), JSON.stringify(rv4).slice(0, 160));
+t('guardado v4 válido', validateSave(JSON.parse(JSON.stringify(s4))) === null);
+
 console.log(`${ok} OK, ${bad} fallas`);
 process.exit(bad ? 1 : 0);

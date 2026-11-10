@@ -2,22 +2,23 @@
 // Una acción inválida devuelve error SIN tocar el estado ni consumir RNG (se trabaja sobre una copia).
 import { RNG_VERSION, seedState, shuffle, randInt } from './rng.js';
 import { standardDeck, evaluate, SUIT_IDS, PATTERNS } from './hands.js';
-import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
+import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, SEALS, modsFor, calsFor, INTEREST, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
 import { scoreHand } from './score.js';
 
-export const RULES_VERSION = 3; // v2: materiales en las cartas · v3: sobres. Las partidas viejas siguen con sus reglas.
-export const SUPPORTED_RULES = [1, 2, 3];
+export const RULES_VERSION = 4; // v2: materiales · v3: sobres · v4: ahorro, saltear, sellos y Mods nuevos. Las partidas viejas siguen con sus reglas.
+export const SUPPORTED_RULES = [1, 2, 3, 4];
 export const LOTS = TARGETS.length;
 
 export function newGame(seed, v = RULES_VERSION) {
   const rng = { deck: seedState(seed + '/mazo'), shop: seedState(seed + '/tienda'), boss: seedState(seed + '/jefe') };
   if (v >= 3) rng.pack = seedState(seed + '/sobres');
+  const modData = {};
   const bosses = shuffle(rng.boss, BOSSES.map((b) => b.id));
   return {
     v, rngVersion: RNG_VERSION, seed, rng,
     phase: 'preview', lot: 0, blind: 0, credits: 4,
     deck: standardDeck(), mods: [], cals: [], levels: {}, bosses,
-    round: null, shop: null, last: null,
+    round: null, shop: null, last: null, ...(v >= 4 ? { modData } : {}),
     stats: { bestHand: 0, prints: 0, total: 0 },
     log: [], // acciones válidas en orden: el servidor rejuega la partida con esto para el ranking
   };
@@ -50,6 +51,7 @@ function apply(st, a, ev) {
   switch (a.type) {
     case 'START_ROUND': {
       if (st.phase !== 'preview') return 'No es momento de empezar una ronda.';
+      if (st.pack) return 'Terminá de abrir el sobre.';
       const info = blindInfo(st);
       const draw = shuffle(st.rng.deck, st.deck.map((c) => c.id));
       st.round = {
@@ -57,6 +59,7 @@ function apply(st, a, ev) {
         prints: RULES.prints, discards: RULES.discards - (info.boss === 'bobina_enredada' ? 1 : 0),
         heat: 0, draw, hand: [], printsDone: 0, lastPattern: null, patternsScored: [], discardedSincePlay: false,
       };
+      if (st.v >= 4 && st.mods.includes('spool_holder')) st.round.discards += 1;
       refill(st);
       st.phase = 'round';
       st.last = null;
@@ -75,8 +78,12 @@ function apply(st, a, ev) {
       const evald = evaluate(cards);
       const result = scoreHand({
         cards, scoringIdx: evald.scoring, pattern: evald.id, level: st.levels[evald.id] || 0,
-        mods: st.mods, boss: r.boss, heat, overextrude: over, round: r,
+        mods: st.mods, boss: r.boss, heat, overextrude: over, round: r, modData: st.modData || {},
       });
+      if (st.v >= 4) {
+        if (result.gold) st.credits += result.gold;
+        if (st.mods.includes('contador_horas')) st.modData.contador_horas = (st.modData.contador_horas || 0) + 1;
+      }
       r.heat = heat;
       r.score += result.total;
       r.prints -= 1;
@@ -130,7 +137,10 @@ function apply(st, a, ev) {
         if (!r.hand.includes(a.cardId)) return 'Elegí una carta de tu mano.';
       }
       const card = st.deck.find((c) => c.id === a.cardId);
-      if (cal.mat) {
+      if (cal.seal) {
+        if (card.sl === cal.seal) return `Esa carta ya tiene el ${cal.name}.`;
+        card.sl = cal.seal;
+      } else if (cal.mat) {
         if (card.m === cal.mat) return `Esa carta ya es de ${cal.name.replace('Bobina de ', '')}.`;
         card.m = cal.mat;
       } else if (id === 'flujo') card.b = (card.b || 0) + 4;
@@ -165,6 +175,17 @@ function apply(st, a, ev) {
       st.credits += Math.floor(MOD[id].price / 2);
       return null;
     }
+    case 'SKIP_BLIND': {
+      if (st.phase !== 'preview' || st.v < 4) return 'No se puede saltear ahora.';
+      if (st.pack) return 'Terminá de abrir el sobre.';
+      if (st.blind >= 2) return 'El Control de Calidad no se puede saltear.';
+      const kind = pickWeighted(st.rng.pack);
+      st.blind += 1;
+      st.stats.skips = (st.stats.skips || 0) + 1;
+      st.pack = { kind, opts: rollPack(st, kind), free: true };
+      ev.push({ type: 'blind_skipped', kind });
+      return null;
+    }
     case 'OPEN_PACK': {
       if (st.phase !== 'shop' || st.v < 3) return 'Suministros está cerrado.';
       if (st.pack) return 'Terminá de abrir el sobre.';
@@ -184,7 +205,7 @@ function apply(st, a, ev) {
       if (o.kind === 'mod' && st.mods.length >= RULES.maxMods) return `Máximo ${RULES.maxMods} Mods. Vendé uno o salteá.`;
       if (o.kind === 'cal' && st.cals.length >= RULES.maxCals) return `Máximo ${RULES.maxCals} calibraciones guardadas. Salteá o usá una.`;
       if (o.kind === 'card') { st.nextCard = (st.nextCard || 0) + 1; st.deck.push({ ...o.card, id: 'n' + st.nextCard }); }
-      else if (o.kind === 'mod') st.mods.push(o.id);
+      else if (o.kind === 'mod') { st.mods.push(o.id); if (st.modData) st.modData[o.id] = 0; }
       else if (o.kind === 'cal') st.cals.push(o.id);
       else if (o.kind === 'profile') { const p = PROF[o.id].pattern; st.levels[p] = (st.levels[p] || 0) + 1; }
       st.pack = null;
@@ -206,7 +227,7 @@ function apply(st, a, ev) {
       if (it.kind === 'cal' && st.cals.length >= RULES.maxCals) return `Máximo ${RULES.maxCals} calibraciones guardadas.`;
       st.credits -= it.price;
       it.sold = true;
-      if (it.kind === 'mod') st.mods.push(it.id);
+      if (it.kind === 'mod') { st.mods.push(it.id); if (st.modData) st.modData[it.id] = 0; }
       else if (it.kind === 'cal') st.cals.push(it.id);
       else if (it.kind === 'profile') { const p = PROF[it.id].pattern; st.levels[p] = (st.levels[p] || 0) + 1; }
       ev.push({ type: 'bought', item: it });
@@ -250,6 +271,7 @@ function winRound(st, ev) {
   const r = st.round;
   let pay = BLIND_PAY[st.blind] + r.prints;
   const extra = [];
+  if (st.v >= 4) { const it = Math.min(INTEREST.max, Math.floor(st.credits / INTEREST.per)); if (it) { pay += it; extra.push(`Ahorro: +${it}`); } }
   for (const id of st.mods) {
     const e = MOD[id].effect;
     if (e.phase === 'round_win' && e.when({ round: r })) { pay += e.value; extra.push(`${MOD[id].name}: +${e.value}`); }
@@ -286,19 +308,21 @@ function rollPack(st, kind) {
       const card = { r: 2 + randInt(s, 13), s: SUIT_IDS[randInt(s, 4)], b: 0 };
       if (randInt(s, 2) === 0) card.m = mats[randInt(s, mats.length)];
       if (randInt(s, 4) === 0) card.b = 4;
+      if (st.v >= 4 && randInt(s, 5) === 0) card.sl = randInt(s, 2) ? 'oro' : 'rojo';
       return { kind: 'card', card };
     });
   }
-  if (kind === 'calibracion') return take([...CALIBRATIONS, ...SPOOLS]).map((c) => ({ kind: 'cal', id: c.id }));
+  if (kind === 'calibracion') return take(calsFor(Math.max(2, st.v))).map((c) => ({ kind: 'cal', id: c.id }));
   if (kind === 'perfiles') return take(PROFILES).map((p) => ({ kind: 'profile', id: p.id }));
-  const pool = MODS.filter((m) => !st.mods.includes(m.id));
-  return take(pool.length ? pool : MODS).map((m) => ({ kind: 'mod', id: m.id }));
+  const all = modsFor(st.v);
+  const pool = all.filter((m) => !st.mods.includes(m.id));
+  return take(pool.length ? pool : all).map((m) => ({ kind: 'mod', id: m.id }));
 }
 
 // 2 Mods (que no tengas) + 2 consumibles (Perfil 60 % / calibración 40 %).
 function rollShop(st) {
   const s = st.rng.shop;
-  const pool = MODS.filter((m) => !st.mods.includes(m.id));
+  const pool = modsFor(st.v).filter((m) => !st.mods.includes(m.id));
   const items = [];
   for (let i = 0; i < 2 && pool.length; i++) {
     const m = pool.splice(randInt(s, pool.length), 1)[0];
@@ -306,7 +330,7 @@ function rollShop(st) {
   }
   for (let i = 0; i < 2; i++) {
     if (randInt(s, 10) < 6) { const p = PROFILES[randInt(s, PROFILES.length)]; items.push({ kind: 'profile', id: p.id, price: p.price }); }
-    else { const pool = st.v >= 2 ? [...CALIBRATIONS, ...SPOOLS] : CALIBRATIONS; const c = pool[randInt(s, pool.length)]; items.push({ kind: 'cal', id: c.id, price: c.price }); }
+    else { const pool = calsFor(st.v); const c = pool[randInt(s, pool.length)]; items.push({ kind: 'cal', id: c.id, price: c.price }); }
   }
   return items;
 }
@@ -319,7 +343,7 @@ export function preview(st, ids, overextrude) {
   const heat = overextrude ? Math.min(RULES.heatMax, st.round.heat + RULES.overHeat) : st.round.heat;
   const level = st.levels[e.id] || 0;
   // Mismo cálculo que al imprimir: el total estimado es exacto.
-  const score = scoreHand({ cards, scoringIdx: e.scoring, pattern: e.id, level, mods: st.mods, boss: st.round.boss, heat, overextrude: !!overextrude, round: st.round });
+  const score = scoreHand({ cards, scoringIdx: e.scoring, pattern: e.id, level, mods: st.mods, boss: st.round.boss, heat, overextrude: !!overextrude, round: st.round, modData: st.modData || {} });
   return { pattern: e.id, scoring: e.scoring.map((i) => cards[i].id), heat, level, score };
 }
 
