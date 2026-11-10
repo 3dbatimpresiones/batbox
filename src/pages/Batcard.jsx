@@ -5,7 +5,7 @@ import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
 import Card from '../components/batcard/Card.jsx';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
-import { confetti, burstAt, popText, shake, music } from '../components/batcard/juice.js';
+import { confetti, burstAt, popText, shake, music, TRACKS } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
 import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
@@ -27,12 +27,12 @@ const ls = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
   del(k) { try { localStorage.removeItem(k); } catch { /* nada */ } },
 };
-const DEF_SET = { crt: 'completo', motion: 'auto', flashes: true, vol: 0.6, music: 0.35, mute: false, speed: 'normal' };
+const DEF_SET = { crt: 'completo', motion: 'auto', flashes: true, vol: 0.6, music: 0.35, track: 'synthwave', mute: false, speed: 'normal' };
 const SPEED = { normal: 320, rapida: 120 };
 
 function useSettings() {
   const [s, setS] = useState(() => ({ ...DEF_SET, ...(ls.get(K_SET) || {}) }));
-  useEffect(() => { ls.set(K_SET, s); setAudio(s.vol, s.mute); music.setVolume(s.mute ? 0 : s.music); }, [s]);
+  useEffect(() => { ls.set(K_SET, s); setAudio(s.vol, s.mute); music.setTrack(s.track); music.setVolume(s.mute ? 0 : s.music); }, [s]);
   const sysReduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Solo se reduce si el jugador lo elige en el juego: con 'reducir animaciones' de Windows el juego quedaba casi sin vida.
   const reduced = s.motion === 'reducido' || (s.motion === 'auto' && sysReduced && false);
@@ -425,6 +425,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
               aria-pressed={set.motion !== 'reducido'} title={set.motion === 'reducido' ? 'Activar fondo animado' : 'Quitar movimiento del fondo'} aria-label="Fondo animado">🌀</button>
             <button className={`bc-icon${set.mute || !set.music ? ' off' : ''}`} onClick={() => patch(set.mute || !set.music ? { mute: false, music: set.music || 0.35 } : { music: 0 })}
               aria-pressed={!set.mute && !!set.music} title={set.mute || !set.music ? 'Activar música' : 'Apagar música'} aria-label="Música">♪</button>
+            <button className="bc-icon" onClick={() => { const ids = Object.keys(TRACKS); const nx = ids[(ids.indexOf(set.track) + 1) % ids.length]; patch({ track: nx, mute: false, music: set.music || 0.35 }); setMsg(`🎵 ${TRACKS[nx].name}`); }} title="Cambiar de música" aria-label="Cambiar de música">⏭</button>
             <button className="bc-icon" onClick={() => setFb(true)} title="Enviar una sugerencia" aria-label="Sugerencias">💡</button>
           </span>
           <button className="bc-icon" onClick={() => setHelp(true)} aria-label="¿Cómo se puntúa?">?</button>
@@ -815,6 +816,7 @@ function Ajustes({ set, patch, back }) {
         <select value={set.speed} onChange={(e) => patch({ speed: e.target.value })}><option value="normal">Normal</option><option value="rapida">Rápida</option></select>
       </label>
       <label>Volumen <input type="range" min="0" max="1" step="0.05" value={set.vol} onChange={(e) => patch({ vol: +e.target.value })} /></label>
+      <label>Pista <select value={set.track} onChange={(e) => patch({ track: e.target.value })}>{Object.entries(TRACKS).map(([id, t]) => <option key={id} value={id}>{t.name}</option>)}</select></label>
       <label>Música <input type="range" min="0" max="1" step="0.05" value={set.music} onChange={(e) => patch({ music: +e.target.value })} /></label>
       <label><input type="checkbox" checked={set.mute} onChange={(e) => patch({ mute: e.target.checked })} /> Silenciar</label>
       <p className="muted">Teclado: 1–8 elegir cartas · I imprimir · D descartar · S sobreextruir · Esc limpiar selección.</p>

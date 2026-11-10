@@ -72,11 +72,17 @@ export function shake(el, strong = false) {
   el.classList.add(strong ? 'bc-shake-big' : 'bc-shake');
 }
 
-// ---------- Música ambiente (synthwave de taller, generada en vivo) ----------
-// Am – F – C – G a 96 BPM. Intensidad 0 (menú) / 1 (ronda) / 2 (jefe o calor alto).
-const CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+// ---------- Música (generada en vivo, sin archivos) ----------
+// Varias pistas para elegir. Intensidad 0 (menú) / 1 (ronda) / 2 (jefe o calor alto) suma capas.
 const mtof = (m) => 440 * 2 ** ((m - 69) / 12);
-let ac = null, master = null, filt = null, timer = 0, stepN = 0, nextT = 0, level = 1, vol = 0.35, on = false;
+export const TRACKS = {
+  synthwave: { name: 'Synthwave de taller', bpm: 96, chords: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], pad: 'sawtooth', arp: 'triangle', bass: 'square', cutoff: [900, 1500, 2600] },
+  lofi: { name: 'Lo-fi del laminador', bpm: 74, swing: 0.18, chords: [[50, 53, 57, 60], [55, 59, 62, 65], [48, 52, 55, 59], [57, 60, 64, 67]], pad: 'triangle', arp: 'sine', bass: 'sine', cutoff: [700, 1100, 1600], vinyl: true },
+  chip: { name: 'Chiptune de la granja', bpm: 138, chords: [[60, 64, 67], [57, 60, 64], [53, 57, 60], [55, 59, 62]], pad: 'square', arp: 'square', bass: 'triangle', cutoff: [2200, 3200, 5000], arpFast: true },
+  ambiente: { name: 'Ambiente nocturno', bpm: 60, chords: [[52, 55, 59, 62], [48, 52, 55, 59], [45, 48, 52, 55], [47, 50, 54, 57]], pad: 'sine', arp: 'sine', bass: 'sine', cutoff: [600, 900, 1300], noDrums: true },
+  stepper: { name: 'Motores paso a paso', bpm: 112, chords: [[45, 52, 57], [43, 50, 55], [41, 48, 53], [40, 47, 52]], pad: 'sawtooth', arp: 'square', bass: 'sawtooth', cutoff: [800, 1400, 2400], stepper: true },
+};
+let ac = null, master = null, filt = null, timer = 0, stepN = 0, nextT = 0, level = 1, vol = 0.35, on = false, track = TRACKS.synthwave;
 
 function audio() {
   if (!ac) {
@@ -96,22 +102,36 @@ function note(f, t, dur, type, g, dest = filt, detune = 0) {
   e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(e).connect(dest); o.start(t); o.stop(t + dur + 0.05);
 }
-function hat(t, g) {
-  const b = ac.createBuffer(1, ac.sampleRate * 0.04, ac.sampleRate), d = b.getChannelData(0);
+function hat(t, g, f = 7000, len = 0.04) {
+  const b = ac.createBuffer(1, Math.floor(ac.sampleRate * len), ac.sampleRate), d = b.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
   const s = ac.createBufferSource(), hp = ac.createBiquadFilter(), e = ac.createGain();
-  hp.type = 'highpass'; hp.frequency.value = 7000; e.gain.value = g;
+  hp.type = 'highpass'; hp.frequency.value = f; e.gain.value = g;
   s.buffer = b; s.connect(hp).connect(e).connect(master); s.start(t);
 }
 function schedule() {
-  const spb = 60 / 96 / 4; // semicorchea
+  const T = track, spb = 60 / T.bpm / 4; // semicorchea
   while (nextT < ac.currentTime + 0.2) {
-    const bar = Math.floor(stepN / 16) % 4, s = stepN % 16, ch = CHORDS[bar];
-    if (s === 0) ch.forEach((m, i) => { note(mtof(m), nextT, spb * 16, 'sawtooth', 0.035, filt, i * 7 - 7); note(mtof(m), nextT, spb * 16, 'sawtooth', 0.025, filt, 9); });
-    if (s % 4 === 0) note(mtof(ch[0] - 24), nextT, spb * 3, 'square', 0.05);
-    if (level >= 1 && s % 2 === 0) note(mtof(ch[(s / 2) % 3] + 12 + (s >= 8 ? 12 : 0)), nextT, spb * 1.5, 'triangle', 0.03);
-    if (level >= 2 && s % 2 === 1) hat(nextT, 0.03);
-    if (level >= 2 && s % 4 === 0) note(55, nextT, 0.12, 'sine', 0.12, master); // bombo suave
+    const bar = Math.floor(stepN / 16) % 4, s = stepN % 16, ch = T.chords[bar];
+    const t = nextT + (T.swing && s % 2 ? spb * T.swing : 0);
+    // Colchón de acordes
+    if (s === 0) ch.forEach((m, i) => { note(mtof(m), t, spb * 16, T.pad, T.pad === 'sine' ? 0.05 : 0.03, filt, i * 6 - 6); if (T.pad !== 'sine') note(mtof(m), t, spb * 16, T.pad, 0.02, filt, 9); });
+    // Bajo
+    if (T.stepper) { if (s % 2 === 0) note(mtof(ch[0] - 12 + (s % 8 === 6 ? 7 : 0)), t, spb * 0.9, T.bass, 0.035); }
+    else if (s % 4 === 0) note(mtof(ch[0] - 24), t, spb * (T.noDrums ? 8 : 3), T.bass, T.bass === 'sine' ? 0.09 : 0.05);
+    // Arpegio (desde la ronda)
+    if (level >= 1) {
+      if (T.arpFast) note(mtof(ch[s % ch.length] + 12 + (Math.floor(s / 4) % 2) * 12), t, spb * 0.8, T.arp, 0.022);
+      else if (s % 2 === 0 && !(T.noDrums && s % 4)) note(mtof(ch[(s / 2) % ch.length] + 12 + (s >= 8 ? 12 : 0)), t, spb * (T.noDrums ? 6 : 1.5), T.arp, T.noDrums ? 0.025 : 0.03);
+    }
+    // Batería
+    if (!T.noDrums) {
+      const drums = level >= 2 || (level >= 1 && T !== TRACKS.synthwave);
+      if (drums && s % 2 === 1) hat(t, T.vinyl ? 0.018 : 0.03, T.vinyl ? 5000 : 7000);
+      if (drums && (s === 0 || s === 8 || (T.arpFast && s % 4 === 0))) note(55, t, 0.14, 'sine', 0.13, master);
+      if (drums && (s === 4 || s === 12)) hat(t, 0.06, 1800, 0.09); // caja suave
+    }
+    if (T.vinyl && s === 0 && Math.random() < 0.6) hat(t + spb * 3, 0.01, 2500, 0.02); // chasquido de vinilo
     nextT += spb; stepN++;
   }
 }
@@ -131,7 +151,11 @@ export const music = {
   },
   setLevel(n) {
     level = n;
-    if (filt) filt.frequency.setTargetAtTime([900, 1500, 2600][n] || 1500, ac.currentTime, 0.5);
+    if (filt) filt.frequency.setTargetAtTime(track.cutoff[n] || 1500, ac.currentTime, 0.5);
+  },
+  setTrack(id) {
+    track = TRACKS[id] || TRACKS.synthwave; stepN = 0;
+    if (filt && ac) filt.frequency.setTargetAtTime(track.cutoff[level] || 1500, ac.currentTime, 0.3);
   },
   setVolume(v) {
     vol = v;
