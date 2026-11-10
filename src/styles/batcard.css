@@ -1003,3 +1003,20 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .p-royal { --pc1: #ffd27a; --pc2: #ffffff; --pbg: rgba(255,210,122,.55); }
 .p-royal span { background: linear-gradient(90deg, #fff6c2, #ffd27a, #e07a1c, #ffd27a, #fff6c2); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
   filter: drop-shadow(0 5px 0 #7a4b00) drop-shadow(0 0 26px #ffd27a); animation: pat-in 1.5s cubic-bezier(.2,1.6,.35,1) forwards, bc-foil .8s linear infinite; }
+
+/* =================== Ediciones de cartas (v6) =================== */
+.bc-edfx { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2; mix-blend-mode: screen; }
+.bc-card.ed-lam .bc-edfx { background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.75) 45%, rgba(180,220,255,.5) 50%, transparent 62%); background-size: 260% 100%; animation: ed-sheen 2.4s linear infinite; }
+.bc-card.ed-holo .bc-edfx { background: repeating-linear-gradient(calc(var(--my, .5) * 120deg + 20deg), rgba(36,220,255,.35) 0 6px, rgba(135,61,255,.35) 6px 12px, rgba(255,57,184,.35) 12px 18px, rgba(61,255,162,.3) 18px 24px); background-size: 200% 200%; animation: ed-holo 3s linear infinite; }
+.bc-card.ed-poli .bc-edfx { background: conic-gradient(from var(--lg, 0deg), rgba(255,93,116,.45), rgba(255,210,122,.45), rgba(61,255,162,.45), rgba(36,220,255,.45), rgba(135,61,255,.45), rgba(255,93,116,.45)); animation: bc-legspin 2.5s linear infinite; opacity: .8; }
+@keyframes ed-sheen { 0% { background-position: 160% 0; } 100% { background-position: -60% 0; } }
+@keyframes ed-holo { 0% { background-position: 0 0; } 100% { background-position: 100% 100%; } }
+.bc-card.ed-lam .bc-card-in { box-shadow: 0 0 0 2px #c8e6ff, 0 0 14px rgba(200,230,255,.7), 0 4px 0 rgba(0,0,0,.5); }
+.bc-card.ed-holo .bc-card-in { box-shadow: 0 0 0 2px #24DCFF, 0 0 16px rgba(36,220,255,.7), 0 4px 0 rgba(0,0,0,.5); }
+.bc-card.ed-poli .bc-card-in { box-shadow: 0 0 0 2px #ffd27a, 0 0 18px rgba(255,93,116,.6), 0 4px 0 rgba(0,0,0,.5); }
+.bc-edtag { position: absolute; top: 50%; left: 2px; transform: translateY(-50%) rotate(-90deg); transform-origin: left center; font: 400 calc(var(--bc-card-w, 80px) * .07) 'Press Start 2P', monospace; padding: 2px 3px; z-index: 3; color: #090B20; background: #c8e6ff; border: 1px solid #090B20; white-space: nowrap; }
+.bc-card.ed-holo .bc-edtag, .bc-edtag.ed-holo { background: linear-gradient(90deg, #24DCFF, #FF39B8); color: #fff; }
+.bc-card.ed-poli .bc-edtag, .bc-edtag.ed-poli { background: linear-gradient(90deg, #ffd27a, #ff5d74, #873DFF); color: #fff; }
+.bc-mat-row .bc-edtag { position: static; transform: none; font-size: 10px; text-align: center; }
+.bc-trace li.ph-edicion { color: #7cf0ff; }
+.reduced .bc-edfx { animation: none !important; }

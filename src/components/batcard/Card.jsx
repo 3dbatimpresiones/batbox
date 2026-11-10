@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import logo3dbat from '../../assets/logo-3dbat.webp';
 import { useSkin, faceUrl, backUrl } from './skins.js';
 import { SUITS, rankLabel, cardText } from '../../lib/batcard/hands.js';
-import { MATERIALS, SEALS } from '../../lib/batcard/catalog.js';
+import { MATERIALS, SEALS, EDITIONS } from '../../lib/batcard/catalog.js';
 
 // Motivos de taller por palo, en píxeles 12×12. a = color del palo, b = tinta, c = latón, d = filamento rosa.
 const MOTIF = {
@@ -73,8 +73,8 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
   const face = faceUrl(card, skin);
   const suit = SUITS[card.s];
   const mat = card.m && MATERIALS[card.m];
-  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : '', face ? 'has-face suit-' + card.s + ' skin-' + skin : ''].join(' ');
-  const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${card.sl ? `, ${SEALS[card.sl].name}` : ''}${selected ? `, seleccionada ${order}` : ''}`;
+  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : '', card.ed ? 'ed-' + card.ed : '', face ? 'has-face suit-' + card.s + ' skin-' + skin : ''].join(' ');
+  const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${card.sl ? `, ${SEALS[card.sl].name}` : ''}${card.ed ? `, edición ${EDITIONS[card.ed].name}` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
     <span className="bc-card-tilt">
     <span ref={inRef} className={`bc-card-deal${deal != null ? ' deal' : ''}`} style={{ '--deal': `${deal || 0}ms` }}>
@@ -85,6 +85,8 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
       <Motif suit={card.s} />
       <span className="bc-corner br"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>
       {card.b > 0 && <span className="bc-bonus">+{card.b}</span>}
+      {card.ed && <span className="bc-edfx" aria-hidden="true" />}
+      {card.ed && <span className="bc-edtag" title={`${EDITIONS[card.ed].name}: ${EDITIONS[card.ed].desc}`}>{EDITIONS[card.ed].name.slice(0, 4).toUpperCase()}</span>}
       {card.sl && <span className={`bc-seal s-${card.sl}`} title={`${SEALS[card.sl].name}: ${SEALS[card.sl].desc}`} />}
       {mat && <span className="bc-mat" title={`${mat.name}: ${mat.desc}`}>{mat.short}</span>}
       {selected && order && <span className="bc-order">{order}</span>}

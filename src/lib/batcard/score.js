@@ -4,7 +4,7 @@
 // Redondeo único hacia abajo al final (Capas × m / 1000).
 // Orden: contexto del jefe → base del Patrón → cartas puntuadas → cartas en mano → Mods (izq→der) → ajustes finales.
 import { PATTERN, cardChips, rankLabel, SUITS } from './hands.js';
-import { MOD, MATERIALS, SEALS } from './catalog.js';
+import { MOD, MATERIALS, SEALS, EDITIONS } from './catalog.js';
 
 export const MAX_ACTIVATIONS = 64; // tope de disparos por mano (no hay re-disparos en el MVP)
 export const fmtMult = (m) => (m % 1000 === 0 ? String(m / 1000) : (m / 1000).toFixed(2).replace(/0$/, '').replace('.', ','));
@@ -59,7 +59,8 @@ export function scoreHand(input) {
   });
   function scoreCard(c, i) {
     const blocked = i === warpIdx || (boss === 'atasco' && i === 0) || (boss === 'pie_elefante' && c.r <= 5);
-    const add = blocked ? 0 : cardChips(c.r) + (c.b || 0);
+    let add = blocked ? 0 : cardChips(c.r) + (c.b || 0);
+    if (!blocked && c.s === 'H' && mods.includes('corazon_benchy')) add += cardChips(c.r);
     chips += add;
     push('carta', `${rankLabel(c.r)}${SUITS[c.s].sym}: +${add} Capas`, { cardId: c.id });
     // Material de la carta (reglas v2)
@@ -68,6 +69,10 @@ export function scoreHand(input) {
     else if (mat === 'carbono') { chips += 12; push('material', `${MATERIALS.carbono.name}: +12 Capas (+1 Calor)`, { cardId: c.id }); }
     else if (mat === 'asa' && heat >= 4) { m = Math.floor((m * 1500) / 1000); push('material', `${MATERIALS.asa.name} con Calor ${heat}: ×1,5 Mult`, { cardId: c.id }); }
     else if (mat === 'seda' && cards.filter((x) => x.s === c.s).length === 1) { m += 2000; push('material', `${MATERIALS.seda.name} sola en su palo: +2 Mult`, { cardId: c.id }); }
+    // Edición de la carta (reglas v6)
+    if (c.ed === 'lam') { chips += 30; push('edicion', `${EDITIONS.lam.name}: +30 Capas`, { cardId: c.id }); }
+    else if (c.ed === 'holo') { m += 8000; push('edicion', `${EDITIONS.holo.name}: +8 Mult`, { cardId: c.id }); }
+    else if (c.ed === 'poli') { m = Math.floor((m * 1500) / 1000); push('edicion', `${EDITIONS.poli.name}: ×1,5 Mult`, { cardId: c.id }); }
   }
 
   // 4. Cartas en mano: sin efectos en el MVP (fase reservada).

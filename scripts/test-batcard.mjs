@@ -246,5 +246,25 @@ for (let k = 0; k < 200; k++) { seed5 = 'VCINCO' + k; s5 = newGame(seed5, 5); le
 const rv5 = replayRun(seed5, s5.log, 5);
 t('rejugada v5 ok', rv5.ok && rv5.result.total === s5.stats.total, JSON.stringify(rv5).slice(0, 120));
 
+// ---- Reglas v6 ----
+t('Laminada +30', pr([{ ...c7[0], ed: 'lam' }, c7[1]]).chips === pr(c7).chips + 30);
+t('Holográfica +8 Mult', pr([{ ...c7[0], ed: 'holo' }, c7[1]]).mult === pr(c7).mult + 8000);
+t('Policroma ×1,5', pr([{ ...c7[0], ed: 'poli' }, c7[1]]).mult === pr(c7).mult * 1.5);
+t('Calibración del 3 ×3', pr(c3, { mods: ['numero_magico'] }).mult === pr(c3).mult * 3);
+t('Corazón de Benchy dobla Capas', pr(c7, { mods: ['corazon_benchy'] }).chips === pr(c7).chips + 7);
+t('Imprenta crece', pr(c7, { mods: ['imprenta_exp'], modData: { imprenta_exp: 5 } }).mult === pr(c7).mult * 2);
+t('v5 no ve Mods v6', !winTo('SOBRE', 5).shop.items.some((it) => ['numero_magico', 'corazon_benchy', 'imprenta_exp'].includes(it.id)));
+let s6, seed6;
+for (let k = 0; k < 200; k++) { seed6 = 'VSEIS' + k; s6 = newGame(seed6, 6); let g = 0;
+  while (!['victory', 'defeat'].includes(s6.phase) && g++ < 800) {
+    if (s6.pack) { const r1 = step(s6, { type: 'PICK_PACK', idx: 0 }); s6 = r1.error ? step(s6, { type: 'SKIP_PACK' }).state : r1.state; }
+    else if (s6.phase === 'preview') s6 = step(s6, { type: 'START_ROUND' }).state;
+    else if (s6.phase === 'shop') { const i = s6.shop.packs?.findIndex((x) => !x.sold && x.price <= s6.credits); s6 = i >= 0 ? step(s6, { type: 'OPEN_PACK', slot: i }).state : step(s6, { type: 'LEAVE_SHOP' }).state; }
+    else s6 = step(s6, { type: 'PLAY', ids: s6.round.hand.slice(0, 5) }).state;
+  }
+  if (s6.lot >= 1) break; }
+const rv6 = replayRun(seed6, s6.log, 6);
+t('rejugada v6 ok', rv6.ok && rv6.result.total === s6.stats.total);
+
 console.log(`${ok} OK, ${bad} fallas`);
 process.exit(bad ? 1 : 0);

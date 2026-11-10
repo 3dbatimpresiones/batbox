@@ -5,8 +5,8 @@ import { standardDeck, evaluate, SUIT_IDS, PATTERNS } from './hands.js';
 import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, SEALS, modsFor, shopModsFor, bossesFor, calsFor, INTEREST, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
 import { scoreHand } from './score.js';
 
-export const RULES_VERSION = 5; // v2: materiales · v3: sobres · v4: ahorro, saltear, sellos y Mods nuevos. Las partidas viejas siguen con sus reglas.
-export const SUPPORTED_RULES = [1, 2, 3, 4, 5];
+export const RULES_VERSION = 6; // v2: materiales · v3: sobres · v4: ahorro, saltear, sellos y Mods nuevos. Las partidas viejas siguen con sus reglas.
+export const SUPPORTED_RULES = [1, 2, 3, 4, 5, 6];
 export const LOTS = TARGETS.length;
 
 export function newGame(seed, v = RULES_VERSION) {
@@ -277,6 +277,7 @@ function winRound(st, ev) {
     if (e.phase === 'round_win' && e.when({ round: r })) { pay += e.value; extra.push(`${MOD[id].name}: +${e.value}`); }
   }
   st.credits += pay;
+  if (st.v >= 6 && st.mods.includes('imprenta_exp')) st.modData.imprenta_exp = (st.modData.imprenta_exp || 0) + 1;
   ev.push({ type: 'round_won', pay, extra, base: BLIND_PAY[st.blind], left: r.prints });
   st.lastWin = { pay, extra, base: BLIND_PAY[st.blind], left: r.prints, score: r.score, target: r.target };
   if (st.lot === LOTS - 1 && st.blind === 2) { st.phase = 'victory'; ev.push({ type: 'victory' }); return null; }
@@ -309,6 +310,7 @@ function rollPack(st, kind) {
       if (randInt(s, 2) === 0) card.m = mats[randInt(s, mats.length)];
       if (randInt(s, 4) === 0) card.b = 4;
       if (st.v >= 4 && randInt(s, 5) === 0) card.sl = randInt(s, 2) ? 'oro' : 'rojo';
+      if (st.v >= 6 && randInt(s, 4) === 0) card.ed = ['lam', 'holo', 'poli'][randInt(s, 3)];
       return { kind: 'card', card };
     });
   }

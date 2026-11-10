@@ -8,7 +8,7 @@ import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
-import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, BLIND_PAY, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST } from '../lib/batcard/catalog.js';
+import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, BLIND_PAY, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST, EDITIONS } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
@@ -490,6 +490,12 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
       } else if (t.cardId && t.phase === 'sello') {
         sfx.coin();
         popText(document.querySelector(`.bc-played [data-cid="${t.cardId}"]`), '+2 $', 'chips');
+      } else if (t.cardId && t.phase === 'edicion') {
+        const isMult = t.text.includes('Mult');
+        if (t.text.includes('×')) { sfx.xmult(); if (fxOn) fxChroma(); } else if (isMult) sfx.mult(); else sfx.tick(anim.i);
+        const eEl = document.querySelector(`.bc-played [data-cid="${t.cardId}"]`);
+        popText(eEl, t.text.split(': ')[1], isMult ? 'mult' : 'chips');
+        if (fxOn) burstAt(eEl, { n: 30 });
       } else if (t.cardId && t.phase === 'material') {
         const isMult = t.text.includes('Mult');
         if (isMult) sfx.mult(); else sfx.tick(anim.i);
@@ -805,6 +811,7 @@ function Ayuda({ onClose }) {
           <li>Al seleccionar cartas ves el <b>total exacto</b> antes de imprimir.</li>
           <li><b>Descartá</b> las cartas que no te sirven: se reponen y no gastás impresión ({RULES.discards} por ronda).</li>
           <li><b>Sobreextruir</b> da +12 Capas pero sube 2 de Calor. Descartar enfría 1.</li>
+          <li><b>Ediciones</b>: algunas cartas de los sobres vienen Laminadas (+30 Capas), Holográficas (+8 Mult) o Policromas (×1,5 Mult).</li>
           <li><b>Saltear</b>: el Prototipo y la Tanda se pueden saltear para abrir un sobre gratis (no cobrás esa ronda). <b>Ahorro</b>: al ganar cobrás +1 por cada 5 Créditos guardados (máx. +5). <b>Sellos</b>: el Dorado da +2 Créditos al puntuar y el Rojo hace puntuar la carta dos veces.</li>
           <li><b>Sobres</b>: en Suministros hay 2 sobres por visita. Al abrirlo elegís 1 opción: una carta nueva para tu mazo, una calibración, un perfil o (en el Sobre Maker) un Mod.</li>
           <li><b>Materiales</b>: con una Bobina le cambiás el filamento a una carta (PETG, TPU, ASA, Carbono o Seda). Cada uno tiene su regla: mirala en la Colección.</li>
@@ -835,7 +842,7 @@ function Mods({ st, lit, act, shop }) {
   return (
     <section className="bc-mods" aria-label="Mods de Taller (se aplican de izquierda a derecha)">
       {slots.map((id, i) => id ? (
-        <ModCard key={id} mod={MOD[id]} lit={lit.has(i)} slot={i} extra={id === 'contador_horas' && st.modData ? ` (ahora +${3 * (st.modData.contador_horas || 0)})` : ''}>
+        <ModCard key={id} mod={MOD[id]} lit={lit.has(i)} slot={i} extra={id === 'contador_horas' && st.modData ? ` (ahora +${3 * (st.modData.contador_horas || 0)})` : id === 'imprenta_exp' && st.modData ? ` (ahora ×${(1 + 0.2 * (st.modData.imprenta_exp || 0)).toFixed(1).replace('.', ',')})` : ''}>
           <span className="bc-mod-ctl">
             <button className="bc-mini" disabled={i === 0} onClick={() => act({ type: 'MOVE_MOD', from: i, to: i - 1 })} aria-label={`Mover ${MOD[id].name} a la izquierda`}>◀</button>
             {shop && <button className="bc-mini" onClick={() => act({ type: 'SELL_MOD', idx: i }, () => sfx.coin())}>Vender {Math.floor(MOD[id].price / 2)}</button>}
@@ -1086,6 +1093,10 @@ function Coleccion({ back }) {
       <h3>Patrones y Perfiles</h3>
       <table className="bc-table"><thead><tr><th>Patrón</th><th>Base</th><th>Por nivel</th><th>Perfil</th></tr></thead>
         <tbody>{PATTERNS.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td>+{p.lvl[0]} / +{p.lvl[1]}</td><td>{PROFILES.find((x) => x.pattern === p.id)?.name}</td></tr>)}</tbody></table>
+      <h3>Ediciones de las cartas</h3>
+      <div className="bc-mats">{Object.entries(EDITIONS).map(([k, m]) => (
+        <div key={k} className="bc-mat-row"><span className={`bc-edtag ed-${k}`}>{m.name.slice(0, 4).toUpperCase()}</span><b>{m.name}</b><span>{m.desc} Salen en los Sobres de Cartas.</span></div>
+      ))}</div>
       <h3>Sellos de calidad</h3>
       <div className="bc-mats">{Object.entries(SEALS).map(([k, m]) => (
         <div key={k} className="bc-mat-row"><span className={`bc-seal s-${k}`} /><b>{m.name}</b><span>{m.desc}</span></div>

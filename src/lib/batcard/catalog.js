@@ -69,7 +69,23 @@ export const MODS = [
   { id: 'benchy_oro', since: 5, legendary: true, name: 'Benchy de Oro', rarity: 'legendaria', price: 10, finish: 'legendario', tags: ['xmult', 'benchy'],
     desc: '×1,5 al Multiplicador por cada carta de Corazones (Benchy) puntuada.',
     effect: { phase: 'mods', when: (c) => c.scoring.some((x) => x.s === 'H'), op: 'xmult', value: (c) => Math.round(1000 * Math.pow(1.5, c.scoring.filter((x) => x.s === 'H').length)) } },
+  // ---- Reglas v6 ----
+  { id: 'numero_magico', since: 6, name: 'Calibración del 3', rarity: 'rara', price: 7, finish: 'policromo', tags: ['xmult'],
+    desc: '×3 al Multiplicador si entre las cartas puntuadas hay un 3.',
+    effect: { phase: 'mods', when: (c) => c.scoring.some((x) => x.r === 3), op: 'xmult', value: 3000 } },
+  { id: 'corazon_benchy', since: 6, name: 'Corazón de Benchy', rarity: 'poco común', price: 6, finish: 'holografico', tags: ['capas', 'benchy'],
+    desc: 'Las cartas de Corazones suman el doble de Capas.',
+    effect: { phase: 'card' } },
+  { id: 'imprenta_exp', since: 6, name: 'Imprenta Exponencial', rarity: 'rara', price: 8, finish: 'policromo', tags: ['xmult', 'crece'],
+    desc: 'Crece: +×0,2 al Multiplicador por cada ronda que ganaste desde que la tenés.',
+    effect: { phase: 'mods', when: (c) => (c.modData.imprenta_exp || 0) > 0, op: 'xmult', value: (c) => 1000 + 200 * (c.modData.imprenta_exp || 0) } },
 ];
+// Ediciones de las cartas (reglas v6): acabados especiales que vienen en los sobres.
+export const EDITIONS = {
+  lam: { name: 'Laminada', desc: '+30 Capas al puntuar.' },
+  holo: { name: 'Holográfica', desc: '+8 al Multiplicador al puntuar.' },
+  poli: { name: 'Policroma', desc: '×1,5 al Multiplicador al puntuar.' },
+};
 export const modsFor = (v) => MODS.filter((m) => (m.since || 1) <= v);
 export const shopModsFor = (v) => modsFor(v).filter((m) => !m.legendary);
 
