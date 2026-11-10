@@ -435,13 +435,16 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
       if (t.phase === 'base') {
         // Anuncio de la jugada: cartel, efecto gráfico y sonido propios de cada Patrón
         const pid = anim.last.pattern;
+        document.querySelectorAll('.bc-patfx.mini').forEach((e) => e.remove());
         sfx.pattern(pid);
         const bed = document.querySelector('.bc-bed');
         if (bed) {
           const d = document.createElement('div');
           d.className = `bc-patfx p-${pid}${fxOn ? '' : ' calm'}`;
           d.innerHTML = `<span>${PATTERN[pid].name}</span>`;
-          bed.appendChild(d);
+          const br = bed.getBoundingClientRect(); // fuera de la mesa: el golpe la desenfoca y el cartel tiene que verse nítido
+          Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${br.left}px`, top: `${br.top}px`, width: `${br.width}px`, height: `${br.height}px`, zIndex: 1045 });
+          document.body.appendChild(d);
           setTimeout(() => d.remove(), 1500);
         }
         if (fxOn) {
@@ -555,6 +558,24 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
   });
 
   const pv = !anim && st.phase === 'round' ? preview(st, sel, over) : null;
+  // Jugada armada en la mano (antes de imprimir): cartel chico, sonido propio y brillo en las cartas que la forman.
+  const pvPat = pv && sel.length ? pv.pattern : null;
+  const lastPat = useRef(null);
+  useEffect(() => {
+    const prevP = lastPat.current; lastPat.current = pvPat;
+    if (!pvPat || pvPat === prevP || pvPat === 'alta') return;
+    sfx.pattern(pvPat);
+    const hand = document.querySelector('.bc-hand');
+    if (!hand) return;
+    const r = hand.getBoundingClientRect();
+    document.querySelectorAll('.bc-patfx.mini').forEach((e) => e.remove());
+    const d = document.createElement('div');
+    d.className = `bc-patfx mini p-${pvPat}${fxOn ? '' : ' calm'}`;
+    d.innerHTML = `<span>${PATTERN[pvPat].name}</span>`;
+    Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${r.left}px`, width: `${r.width}px`, top: `${Math.max(8, r.top - 70)}px`, height: '90px', zIndex: 1045 });
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 1300);
+  }, [pvPat]); // eslint-disable-line react-hooks/exhaustive-deps
   const canOver = st.phase === 'round' && st.round.heat <= RULES.overLimit;
   const tShown = anim ? anim.last.trace[Math.min(anim.i, anim.last.trace.length) - 1] : null;
   const shownScore = anim ? (anim.i >= anim.last.trace.length ? anim.prev.round.score + anim.last.total : anim.prev.round.score) : r?.score ?? 0;
@@ -648,7 +669,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
 
           <Tutorial step={tuto} setStep={setTuto} />
 
-          <section className={`bc-hand${reduced ? '' : ' float'}${sel.length >= 5 ? ' is-full' : ''}`} aria-label="Tu mano">
+          <section className={`bc-hand${reduced ? '' : ' float'}${sel.length >= 5 ? ' is-full' : ''}${pvPat ? ' pat-' + pvPat : ''}`} aria-label="Tu mano">
             {hand.map((id, i) => (
               <Card key={id} card={byId[id]} idx={i} fan={{ i, n: hand.length }} deal={dealDelay(id)} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
                 scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim} />

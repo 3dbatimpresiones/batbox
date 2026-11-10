@@ -969,3 +969,25 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .p-ecolor span { background: linear-gradient(90deg, #ffd27a, #FF39B8, #24DCFF, #3dffa2, #ffd27a); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 6px 0 #090B20) drop-shadow(0 0 24px #fff); animation: pat-in 1.5s cubic-bezier(.2,1.6,.35,1) forwards, bc-foil 1s linear infinite; }
 .bc-patfx.calm span, .reduced .bc-patfx span { animation: pat-calm 1.4s ease forwards; }
 @keyframes pat-calm { 0% { opacity: 0; } 15%, 75% { opacity: 1; } 100% { opacity: 0; } }
+.bc-card.has-face.skin-original.suit-D .bc-corner { color: #0b84e6; }
+.bc-patfx { border-radius: 12px; } .bc-patfx span { -webkit-font-smoothing: none; }
+/* Jugada armada en la mano */
+.bc-patfx.mini { background: none; }
+.bc-patfx.mini span { font-size: clamp(16px, 3.2vw, 34px); animation: pat-mini 1.3s cubic-bezier(.2,1.6,.35,1) forwards; }
+.bc-patfx.mini::after { display: none; }
+@keyframes pat-mini { 0% { transform: scale(2.2) translateY(20px); opacity: 0; filter: blur(5px); } 18% { transform: scale(.95); opacity: 1; filter: none; } 28%, 70% { transform: scale(1); opacity: 1; } 100% { transform: translateY(-24px) scale(.9); opacity: 0; } }
+.bc-hand[class*=" pat-"] .bc-card.scoring .bc-card-in { box-shadow: 0 0 0 3px var(--hp, #24DCFF), 0 0 22px var(--hp, #24DCFF); }
+.bc-hand[class*=" pat-"] .bc-card.scoring .bc-card-tilt { animation: hand-hop .45s cubic-bezier(.3,1.8,.5,1); }
+@keyframes hand-hop { 0% { transform: translateY(0); } 40% { transform: translateY(-14px) scale(1.05); } 100% { transform: none; } }
+.bc-hand.pat-par, .bc-hand.pat-doble { --hp: #24DCFF; } .bc-hand.pat-trio { --hp: #873DFF; } .bc-hand.pat-escalera { --hp: #3dffa2; }
+.bc-hand.pat-color { --hp: #FF39B8; } .bc-hand.pat-full { --hp: #ffd27a; } .bc-hand.pat-poker { --hp: #ff2b4a; } .bc-hand.pat-ecolor { --hp: #ffffff; } .bc-hand.pat-alta { --hp: #8f88c8; }
+.bc-card.has-face .bc-card-in { overflow: visible; } .bc-card.has-face .bc-face { border-radius: 6px; } .bc-card.has-face .bc-order { z-index: 6; }
+/* Cartel de jugada siempre nítido (solo un desenfoque al entrar) */
+@keyframes pat-in {
+  0% { transform: scale(3) rotate(-8deg); opacity: 0; filter: blur(6px); }
+  10% { filter: none; }
+  14% { transform: scale(.9) rotate(2deg); opacity: 1; }
+  22% { transform: scale(1.08) rotate(-1deg); }
+  30%, 75% { transform: scale(1) rotate(0); opacity: 1; filter: none; }
+  100% { transform: scale(.85) translateY(-30px); opacity: 0; filter: none; }
+}
