@@ -2,15 +2,16 @@
 // Una acción inválida devuelve error SIN tocar el estado ni consumir RNG (se trabaja sobre una copia).
 import { RNG_VERSION, seedState, shuffle, randInt } from './rng.js';
 import { standardDeck, evaluate, SUIT_IDS, PATTERNS } from './hands.js';
-import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
+import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
 import { scoreHand } from './score.js';
 
-export const RULES_VERSION = 2; // v2: materiales en las cartas. Las partidas v1 siguen con sus reglas.
-export const SUPPORTED_RULES = [1, 2];
+export const RULES_VERSION = 3; // v2: materiales en las cartas · v3: sobres. Las partidas viejas siguen con sus reglas.
+export const SUPPORTED_RULES = [1, 2, 3];
 export const LOTS = TARGETS.length;
 
 export function newGame(seed, v = RULES_VERSION) {
   const rng = { deck: seedState(seed + '/mazo'), shop: seedState(seed + '/tienda'), boss: seedState(seed + '/jefe') };
+  if (v >= 3) rng.pack = seedState(seed + '/sobres');
   const bosses = shuffle(rng.boss, BOSSES.map((b) => b.id));
   return {
     v, rngVersion: RNG_VERSION, seed, rng,
@@ -164,8 +165,40 @@ function apply(st, a, ev) {
       st.credits += Math.floor(MOD[id].price / 2);
       return null;
     }
+    case 'OPEN_PACK': {
+      if (st.phase !== 'shop' || st.v < 3) return 'Suministros está cerrado.';
+      if (st.pack) return 'Terminá de abrir el sobre.';
+      const pk = st.shop.packs?.[a.slot];
+      if (!pk || pk.sold) return 'Ese sobre ya no está.';
+      if (st.credits < pk.price) return 'No te alcanzan los Créditos.';
+      st.credits -= pk.price;
+      pk.sold = true;
+      st.pack = { kind: pk.kind, opts: rollPack(st, pk.kind) };
+      ev.push({ type: 'pack_opened', kind: pk.kind });
+      return null;
+    }
+    case 'PICK_PACK': {
+      if (!st.pack) return 'No hay sobre abierto.';
+      const o = st.pack.opts[a.idx];
+      if (!o) return 'Esa opción no existe.';
+      if (o.kind === 'mod' && st.mods.length >= RULES.maxMods) return `Máximo ${RULES.maxMods} Mods. Vendé uno o salteá.`;
+      if (o.kind === 'cal' && st.cals.length >= RULES.maxCals) return `Máximo ${RULES.maxCals} calibraciones guardadas. Salteá o usá una.`;
+      if (o.kind === 'card') { st.nextCard = (st.nextCard || 0) + 1; st.deck.push({ ...o.card, id: 'n' + st.nextCard }); }
+      else if (o.kind === 'mod') st.mods.push(o.id);
+      else if (o.kind === 'cal') st.cals.push(o.id);
+      else if (o.kind === 'profile') { const p = PROF[o.id].pattern; st.levels[p] = (st.levels[p] || 0) + 1; }
+      st.pack = null;
+      ev.push({ type: 'pack_pick', opt: o });
+      return null;
+    }
+    case 'SKIP_PACK': {
+      if (!st.pack) return 'No hay sobre abierto.';
+      st.pack = null;
+      return null;
+    }
     case 'BUY': {
       if (st.phase !== 'shop') return 'Suministros está cerrado.';
+      if (st.pack) return 'Terminá de abrir el sobre.';
       const it = st.shop.items[a.slot];
       if (!it || it.sold) return 'Ese producto ya no está.';
       if (st.credits < it.price) return 'No te alcanzan los Créditos.';
@@ -181,6 +214,7 @@ function apply(st, a, ev) {
     }
     case 'REROLL': {
       if (st.phase !== 'shop') return 'Suministros está cerrado.';
+      if (st.pack) return 'Terminá de abrir el sobre.';
       if (st.credits < st.shop.rerollCost) return 'No te alcanzan los Créditos.';
       st.credits -= st.shop.rerollCost;
       st.shop.rerollCost += 1;
@@ -189,6 +223,7 @@ function apply(st, a, ev) {
     }
     case 'LEAVE_SHOP': {
       if (st.phase !== 'shop') return 'Suministros está cerrado.';
+      if (st.pack) return 'Terminá de abrir el sobre.';
       st.shop = null;
       st.blind += 1;
       if (st.blind > 2) { st.blind = 0; st.lot += 1; }
@@ -226,7 +261,38 @@ function winRound(st, ev) {
   st.phase = 'shop';
   st.shop = { rerollCost: 2, items: [] };
   st.shop.items = rollShop(st);
+  if (st.v >= 3) st.shop.packs = rollPacks(st);
   return null;
+}
+
+// Dos sobres por visita (no cambian al refrescar). Stream de RNG propio: no altera mazo ni tienda.
+const PACK_IDS = Object.keys(PACKS);
+function pickWeighted(s) {
+  let x = randInt(s, PACK_IDS.reduce((t, k) => t + PACKS[k].weight, 0));
+  for (const k of PACK_IDS) { if (x < PACKS[k].weight) return k; x -= PACKS[k].weight; }
+  return PACK_IDS[0];
+}
+function rollPacks(st) {
+  const s = st.rng.pack;
+  return [0, 1].map(() => { const k = pickWeighted(s); return { kind: k, price: PACKS[k].price }; });
+}
+function rollPack(st, kind) {
+  const s = st.rng.pack;
+  const n = PACKS[kind].n;
+  const take = (arr) => { const pool = [...arr]; const out = []; for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(randInt(s, pool.length), 1)[0]); return out; };
+  if (kind === 'cartas') {
+    const mats = Object.keys(MATERIALS);
+    return Array.from({ length: n }, () => {
+      const card = { r: 2 + randInt(s, 13), s: SUIT_IDS[randInt(s, 4)], b: 0 };
+      if (randInt(s, 2) === 0) card.m = mats[randInt(s, mats.length)];
+      if (randInt(s, 4) === 0) card.b = 4;
+      return { kind: 'card', card };
+    });
+  }
+  if (kind === 'calibracion') return take([...CALIBRATIONS, ...SPOOLS]).map((c) => ({ kind: 'cal', id: c.id }));
+  if (kind === 'perfiles') return take(PROFILES).map((p) => ({ kind: 'profile', id: p.id }));
+  const pool = MODS.filter((m) => !st.mods.includes(m.id));
+  return take(pool.length ? pool : MODS).map((m) => ({ kind: 'mod', id: m.id }));
 }
 
 // 2 Mods (que no tengas) + 2 consumibles (Perfil 60 % / calibración 40 %).
@@ -264,7 +330,7 @@ export function validateSave(x) {
   if (x.rngVersion !== RNG_VERSION) return 'versión de RNG distinta';
   if (!['preview', 'round', 'shop', 'victory', 'defeat'].includes(x.phase)) return 'fase desconocida';
   if (!Array.isArray(x.deck) || x.deck.length < MIN_DECK) return 'mazo inválido';
-  for (const k of ['deck', 'shop', 'boss']) if (!Array.isArray(x.rng?.[k]) || x.rng[k].length !== 4) return 'RNG inválido';
+  for (const k of ['deck', 'shop', 'boss', ...(x.v >= 3 ? ['pack'] : [])]) if (!Array.isArray(x.rng?.[k]) || x.rng[k].length !== 4) return 'RNG inválido';
   if (!x.mods.every((id) => MOD[id]) || !x.cals.every((id) => CAL[id])) return 'catálogo desconocido';
   if (x.lot < 0 || x.lot >= LOTS || x.blind < 0 || x.blind > 2) return 'progreso inválido';
   if (x.phase === 'round' && (!x.round || !Array.isArray(x.round.hand))) return 'ronda inválida';

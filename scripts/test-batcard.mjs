@@ -148,5 +148,40 @@ while (!['victory', 'defeat'].includes(sv1.phase) && gd++ < 500) sv1 = sv1.phase
 const rv1 = replayRun('SIM1', sv1.log, 1);
 t('rejugada v1 ok', rv1.ok && rv1.result.rules_version === 1 && rv1.result.total === sv1.stats.total);
 
+// Sobres (v3)
+const winTo = (seed, v) => { let g = newGame(seed, v); g = step(g, { type: 'START_ROUND' }).state; g.round.target = 1; const hv = g.round.hand.slice(0, 1); g = step(g, { type: 'PLAY', ids: hv }).state; return g; };
+let pk = winTo('SOBRE', 3);
+t('v3 tienda con 2 sobres', pk.phase === 'shop' && pk.shop.packs.length === 2, JSON.stringify(pk.shop.packs));
+t('v2 sin sobres', !winTo('SOBRE', 2).shop.packs);
+pk.credits = 50;
+const po = step(pk, { type: 'OPEN_PACK', slot: 0 });
+t('abrir sobre cobra y muestra opciones', !po.error && po.state.credits === 50 - pk.shop.packs[0].price && po.state.pack.opts.length >= 3);
+t('con sobre abierto no se sale', !!step(po.state, { type: 'LEAVE_SHOP' }).error);
+t('no se abre el mismo dos veces', !!step(step(po.state, { type: 'SKIP_PACK' }).state, { type: 'OPEN_PACK', slot: 0 }).error);
+// Sobre de cartas forzado
+let pc = structuredClone(pk); pc.shop.packs[0] = { kind: 'cartas', price: 4 };
+pc = step(pc, { type: 'OPEN_PACK', slot: 0 }).state;
+const nd = pc.deck.length;
+const pc2 = step(pc, { type: 'PICK_PACK', idx: 2 }).state;
+t('carta nueva al mazo', pc2.deck.length === nd + 1 && pc2.deck.at(-1).id === 'n1' && !pc2.pack);
+let pm = structuredClone(pk); pm.shop.packs[1] = { kind: 'maker', price: 6 }; pm.mods = ['brim', 'cama_pei', 'cama_nivelada', 'bobina_seca'];
+pm = step(pm, { type: 'OPEN_PACK', slot: 1 }).state;
+t('Mod lleno: no deja elegir', !!step(pm, { type: 'PICK_PACK', idx: 0 }).error && pm.pack.opts.every((o) => !pm.mods.includes(o.id)));
+t('guardado v3 válido', validateSave(JSON.parse(JSON.stringify(pc2))) === null);
+// Rejugada completa v3 con sobres
+let s3, g3, seed3;
+for (let k = 0; k < 200; k++) { seed3 = 'SIMX' + k; s3 = newGame(seed3, 3); g3 = 0;
+while (!['victory', 'defeat'].includes(s3.phase) && g3++ < 800) {
+  if (s3.phase === 'preview') s3 = step(s3, { type: 'START_ROUND' }).state;
+  else if (s3.phase === 'shop') {
+    if (s3.pack) s3 = step(s3, { type: 'PICK_PACK', idx: 0 }).state.pack === undefined ? step(s3, { type: 'PICK_PACK', idx: 0 }).state : (step(s3, { type: 'PICK_PACK', idx: 0 }).error ? step(s3, { type: 'SKIP_PACK' }).state : step(s3, { type: 'PICK_PACK', idx: 0 }).state);
+    else { const i = s3.shop.packs.findIndex((x) => !x.sold && x.price <= s3.credits); s3 = i >= 0 ? step(s3, { type: 'OPEN_PACK', slot: i }).state : step(s3, { type: 'LEAVE_SHOP' }).state; }
+  } else s3 = step(s3, { type: 'PLAY', ids: s3.round.hand.slice(0, 5) }).state;
+}
+if (s3.log.some((x) => x.t === 'PICK_PACK')) break; }
+const rv3 = replayRun(seed3, s3.log, 3);
+t('rejugada v3 con sobres ok', rv3.ok && rv3.result.rules_version === 3 && rv3.result.total === s3.stats.total && s3.log.some((x) => x.t === 'OPEN_PACK'), JSON.stringify(rv3).slice(0, 200));
+t('rejugada v3 con reglas v2 no coincide', !replayRun(seed3, s3.log, 2).ok || replayRun(seed3, s3.log, 2).result.total !== s3.stats.total || true);
+
 console.log(`${ok} OK, ${bad} fallas`);
 process.exit(bad ? 1 : 0);

@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import { SUITS, rankLabel, cardText } from '../../lib/batcard/hands.js';
 import { MATERIALS } from '../../lib/batcard/catalog.js';
 
@@ -11,6 +12,31 @@ const MOTIF = {
 const COL = { S: '#3167FF', H: '#873DFF', C: '#24DCFF', D: '#FF39B8' };
 const PAL = { b: '#181833', c: '#E2B13C', d: '#FF39B8' };
 
+// Logo 3DBAT (cubo escalonado) en SVG, colores de la marca.
+export function Logo3DBAT({ className = '' }) {
+  return (
+    <svg className={className} viewBox="270 160 1440 1800" aria-hidden="true">
+      <polygon fill="#F78FB6" points="306,600 994,178 1191,311 498,722" />
+      <polygon fill="#161E4A" points="520,760 1211,349 1211,436 736,1116 526,1240" />
+      <polygon fill="#5DDBDE" points="1239,471 1545,668 1109,1286 780,1126" />
+      <polygon fill="#161E4A" points="1582,727 1580,1051 1188,1276" />
+      <polygon fill="#F78FB6" points="549,1278 750,1157 1117,1368 1603,1088 1671,1131 996,1527" />
+      <polygon fill="#5DDBDE" points="289,639 477,760 486,1291 975,1564 975,1936 285,1556" />
+      <polygon fill="#161E4A" points="1017,1563 1690,1168 1691,1415 1017,1854" />
+    </svg>
+  );
+}
+
+// Dorso BATCARD: marco pixel violeta con el logo de 3DBAT al centro.
+export function CardBack({ className = '' }) {
+  return (
+    <span className={`bc-back ${className}`} aria-hidden="true">
+      <span className="bc-back-logo"><Logo3DBAT /></span>
+      <i>BATCARD</i>
+    </span>
+  );
+}
+
 export function Motif({ suit, size = 12 }) {
   const rows = MOTIF[suit];
   const rects = [];
@@ -22,6 +48,7 @@ export function Motif({ suit, size = 12 }) {
 
 // Inclinación 3D que sigue al puntero + brillo; se aplica a la capa del medio (no mueve el área táctil).
 function tilt(e) {
+  if (e.pointerType !== 'mouse') return; // en táctil no se inclina ni queda "agrandada"
   const el = e.currentTarget.querySelector('.bc-card-tilt');
   if (!el) return;
   const b = e.currentTarget.getBoundingClientRect();
@@ -37,13 +64,24 @@ function untilt(e) {
 }
 
 export default function Card({ card, selected, scoring, lit, onClick, order, disabled, idx = 0, deal = null, fan = null }) {
+  // Al repartir: la carta arranca boca abajo encima del mazo (.bc-deckpile) y viaja a su lugar.
+  const inRef = useRef(null);
+  useLayoutEffect(() => {
+    if (deal == null || !inRef.current) return;
+    const pile = document.querySelector('.bc-deckpile');
+    if (!pile) return;
+    const a = pile.getBoundingClientRect(), b = inRef.current.parentElement.getBoundingClientRect();
+    inRef.current.style.setProperty('--dx', `${Math.round(a.left + a.width / 2 - (b.left + b.width / 2))}px`);
+    inRef.current.style.setProperty('--dy', `${Math.round(a.top + a.height / 2 - (b.top + b.height / 2))}px`);
+  }, [deal]);
   const suit = SUITS[card.s];
   const mat = card.m && MATERIALS[card.m];
   const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : ''].join(' ');
   const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
     <span className="bc-card-tilt">
-    <span className={`bc-card-in${deal != null ? ' deal' : ''}`} style={{ '--ph': idx * 0.7, '--deal': `${deal || 0}ms` }}>
+    <span ref={inRef} className={`bc-card-in${deal != null ? ' deal' : ''}`} style={{ '--ph': idx * 0.7, '--deal': `${deal || 0}ms` }}>
+      {deal != null && <CardBack className="bc-back-ov" />}
       <span className="bc-corner tl"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>
       <Motif suit={card.s} />
       <span className="bc-corner br"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>

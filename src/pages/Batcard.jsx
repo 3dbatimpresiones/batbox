@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom';
 import '../styles/batcard.css';
 import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
-import Card from '../components/batcard/Card.jsx';
+import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music, TRACKS } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
-import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS } from '../lib/batcard/catalog.js';
+import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS, PACKS } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
@@ -317,14 +317,29 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
   const [fb, setFb] = useState(false);
   const fx = useRef(null);
   // Reparto: cada carta que entra a la mano vuela desde el mazo, una detrás de otra.
-  const seen = useRef(new Set());
+  // Cada vez que una carta entra a la mano (aunque ya haya estado antes) sale boca abajo desde el mazo.
+  const dealt = useRef(new Map());
   const dealQ = useRef(0);
   const dealDelay = (id) => {
-    if (seen.current.has(id)) return null;
-    seen.current.add(id);
-    return dealQ.current++ * 70;
+    const now = performance.now();
+    let d = dealt.current.get(id);
+    if (!d) { const delay = dealQ.current++ * 90; d = { delay, until: now + delay + 900 }; dealt.current.set(id, d); }
+    return now < d.until ? d.delay : null;
   };
   useEffect(() => { const h = setTimeout(() => { dealQ.current = 0; }, 50); return () => clearTimeout(h); });
+  // Las cartas que salieron de la mano se olvidan: si vuelven, se reparten de nuevo desde el mazo.
+  useEffect(() => {
+    const inHand = new Set(st.round?.hand || []);
+    for (const id of [...dealt.current.keys()]) if (!inHand.has(id)) dealt.current.delete(id);
+  });
+  // Re-render al terminar el reparto para soltar la clase de reparto.
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const left = [...dealt.current.values()].map((d) => d.until - performance.now()).filter((x) => x > 0);
+    if (!left.length) return undefined;
+    const h = setTimeout(() => bump((n) => n + 1), Math.max(...left) + 20);
+    return () => clearTimeout(h);
+  });
 
   // Guardado tras cada transición confirmada (incluye compra y refresco).
   useEffect(() => {
@@ -554,7 +569,12 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
                 scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim} />
             ))}
           </section>
-          <div className="bc-draw">Mazo: {r.draw.length} / {view.deck.length}</div>
+          <div className="bc-draw">
+            <span className="bc-deckpile" aria-hidden="true">
+              {Array.from({ length: Math.min(4, Math.max(1, Math.ceil(r.draw.length / 8))) }, (_, k) => <CardBack key={k} className="bc-pilecard" />)}
+            </span>
+            <span>Mazo: {r.draw.length} / {view.deck.length}</span>
+          </div>
 
           <div className="bc-actions">
             <button className="bc-btn primary big" onClick={imprimir} disabled={!!anim || !sel.length}>Imprimir <kbd>I</kbd></button>
@@ -674,6 +694,7 @@ function Ayuda({ onClose }) {
           <li>Al seleccionar cartas ves el <b>total exacto</b> antes de imprimir.</li>
           <li><b>Descartá</b> las cartas que no te sirven: se reponen y no gastás impresión ({RULES.discards} por ronda).</li>
           <li><b>Sobreextruir</b> da +12 Capas pero sube 2 de Calor. Descartar enfría 1.</li>
+          <li><b>Sobres</b>: en Suministros hay 2 sobres por visita. Al abrirlo elegís 1 opción: una carta nueva para tu mazo, una calibración, un perfil o (en el Sobre Maker) un Mod.</li>
           <li><b>Materiales</b>: con una Bobina le cambiás el filamento a una carta (PETG, TPU, ASA, Carbono o Seda). Cada uno tiene su regla: mirala en la Colección.</li>
           <li>Ganar con impresiones de sobra da más Créditos para comprar Mods en Suministros.</li>
         </ul>
@@ -760,6 +781,20 @@ function Shop({ st, act }) {
     <section className="bc-panel bc-shop">
       {w && <div className="bc-cash">¡Control superado! {w.score.toLocaleString('es-AR')} / {w.target.toLocaleString('es-AR')} · cobrás <b>{w.pay}</b> Créditos ({w.base} base + {w.left} por impresiones sobrantes{w.extra.length ? ' + ' + w.extra.join(', ') : ''})</div>}
       <h2>Suministros</h2>
+      {st.shop.packs && (
+        <div className="bc-packs">
+          {st.shop.packs.map((pk, i) => (
+            <button key={i} className={`bc-pack p-${pk.kind}${pk.sold ? ' sold' : ''}`} disabled={pk.sold || st.credits < pk.price}
+              title={PACKS[pk.kind].desc}
+              onClick={() => act({ type: 'OPEN_PACK', slot: i }, () => sfx.coin())}>
+              <span className="bc-pack-art"><i>BATCARD</i><b>{PACKS[pk.kind].name.replace('Sobre ', '')}</b><em>3DBAT</em></span>
+              <span className="bc-pack-info"><b>{PACKS[pk.kind].name}</b><small>{PACKS[pk.kind].desc}</small>
+                <span className="bc-btn small">{pk.sold ? 'Abierto' : `Abrir · ${pk.price}`}</span></span>
+            </button>
+          ))}
+        </div>
+      )}
+      {st.pack && <PackOpen key={st.log.length} st={st} act={act} />}
       <div className="bc-items">
         {st.shop.items.map((it, i) => (
           <div key={i} className={`bc-item k-${it.kind}${it.sold ? ' sold' : ''}`}>
@@ -779,6 +814,63 @@ function Shop({ st, act }) {
         <button className="bc-btn primary big" onClick={() => act({ type: 'LEAVE_SHOP' })}>Siguiente ronda</button>
       </div>
     </section>
+  );
+}
+
+// Apertura de sobre: tiembla → se rompe → las opciones se dan vuelta de a una → elegís 1.
+function PackOpen({ st, act }) {
+  const { kind, opts } = st.pack;
+  const [stage, setStage] = useState('shake');
+  const [shown, setShown] = useState(0);
+  const boxRef = useRef(null);
+  useEffect(() => {
+    const t1 = setTimeout(() => { setStage('rip'); sfx.rip(); burstAt(boxRef.current, { n: 40 }); }, 750);
+    const t2 = setTimeout(() => setStage('reveal'), 1150);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+  useEffect(() => {
+    if (stage !== 'reveal' || shown >= opts.length) return undefined;
+    const h = setTimeout(() => { sfx.flip(shown); setShown((n) => n + 1); if (shown === opts.length - 1 && kind === 'maker') sfx.shimmer(); }, 230);
+    return () => clearTimeout(h);
+  }, [stage, shown, opts.length, kind]);
+  const pick = (i, el) => act({ type: 'PICK_PACK', idx: i }, () => { sfx.cash(5); burstAt(el, { n: 50 }); confetti({ n: 70 }); });
+  const done = shown >= opts.length;
+  return createPortal(
+    <div className="bc-root bc-modal bc-packopen" role="dialog" aria-modal="true" aria-label={PACKS[kind].name}>
+      <div className="bc-packstage" ref={boxRef}>
+        {stage !== 'reveal' && (
+          <div className={`bc-pack-art big p-${kind} ${stage}`}><i>BATCARD</i><b>{PACKS[kind].name.replace('Sobre ', '')}</b><em>3DBAT</em></div>
+        )}
+        {stage === 'reveal' && (
+          <>
+            <h2>{PACKS[kind].name}</h2>
+            <p className="muted">{done ? 'Elegí 1' : 'Abriendo…'}</p>
+            <div className="bc-packopts">
+              {opts.map((o, i) => (
+                <div key={i} className={`bc-packopt${i < shown ? ' up' : ''}`} style={{ '--i': i }}>
+                  <div className="bc-flip">
+                    <div className="bc-flip-back"><CardBack /></div>
+                    <div className="bc-flip-front">
+                      {o.kind === 'card'
+                        ? <Card card={{ ...o.card, id: 'pk' + i }} onClick={(e) => done && pick(i, e.currentTarget)} />
+                        : <button className={`bc-item k-${o.kind}`} disabled={!done} onClick={(e) => pick(i, e.currentTarget)}>
+                            <small>{KIND[o.kind]}{o.kind === 'mod' ? ' · ' + MOD[o.id].rarity : ''}</small>
+                            <b>{itemName(o)}</b><span>{itemDesc(o, st)}</span>
+                          </button>}
+                    </div>
+                  </div>
+                  {o.kind === 'card' && i < shown && (
+                    <small className="bc-packcap">{o.card.m ? MATERIALS[o.card.m].name : 'PLA'}{o.card.b ? ` · +${o.card.b} Capas` : ''}</small>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="bc-actions"><button className="bc-btn" disabled={!done} onClick={() => act({ type: 'SKIP_PACK' })}>Saltear</button></div>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }
 

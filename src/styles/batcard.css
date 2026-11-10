@@ -336,14 +336,14 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.16); transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(var(--fr, 0deg));
   transition: transform .42s cubic-bezier(.25,1.65,.45,1), --lift .42s cubic-bezier(.25,1.65,.45,1); }
 .bc-hand .bc-card:first-child { margin-left: 0; }
-.bc-hand .bc-card:not(:disabled):hover { --lift: 16px; z-index: 30 !important; transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(0deg) scale(1.1); }
+@media (hover: hover) and (pointer: fine) { .bc-hand .bc-card:not(:disabled):hover { --lift: 16px; z-index: 30 !important; transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(0deg) scale(1.1); } }
 .bc-hand .bc-card.sel { --lift: 34px; z-index: 20 !important; transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(calc(var(--fr, 0deg) * .3)); }
-.bc-hand .bc-card.sel:hover { transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(0deg) scale(1.1); }
+@media (hover: hover) and (pointer: fine) { .bc-hand .bc-card.sel:hover { transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(0deg) scale(1.1); } }
 /* Inclinación 3D + brillo que sigue al puntero */
 .bc-card-tilt { position: absolute; inset: 0; display: block; transform: perspective(520px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .2s ease-out; }
 .bc-card-tilt::after { content: ''; position: absolute; inset: 0; border-radius: 6px; pointer-events: none; opacity: 0; transition: opacity .2s;
   background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255,255,255,.55), rgba(255,255,255,0) 55%); mix-blend-mode: overlay; }
-.bc-card:hover .bc-card-tilt::after { opacity: 1; }
+@media (hover: hover) and (pointer: fine) { .bc-card:hover .bc-card-tilt::after { opacity: 1; } }
 .noflash .bc-card-tilt::after { display: none; }
 /* Vaivén continuo (cada carta con su fase) + reparto */
 .bc-hand.float .bc-card:not(.sel) .bc-card-in { animation: bc-sway 3.6s ease-in-out infinite; animation-delay: calc(var(--ph) * -1s); }
@@ -599,3 +599,85 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-mat-row .bc-mat { position: static; transform: none; font-size: 10px; text-align: center; }
 .bc-trace li.ph-material { color: #ffd27a; }
 @media (max-width: 640px) { .bc-mat-row { grid-template-columns: 60px 1fr; } .bc-mat-row > span:last-child { grid-column: 1 / -1; } }
+
+/* =================== Sobres =================== */
+.bc-packs { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-bottom: 10px; }
+.bc-pack { display: flex; gap: 10px; align-items: stretch; text-align: left; background: rgba(9,11,32,.75); border: 2px solid var(--bc-violet); border-radius: 10px; padding: 8px; color: #fff; cursor: pointer; font: inherit; }
+.bc-pack:hover:not(:disabled) .bc-pack-art { transform: translateY(-4px) rotate(-3deg); }
+.bc-pack:disabled { cursor: default; }
+.bc-pack.sold { opacity: .45; }
+.bc-pack-info { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.bc-pack-info b { font: 700 13px 'Silkscreen', monospace; }
+.bc-pack-info small { font-size: 12px; opacity: .85; flex: 1; }
+.bc-pack-info .bc-btn { align-self: flex-start; pointer-events: none; }
+.bc-pack-art { --pa: #873DFF; --pb: #24DCFF; position: relative; flex: 0 0 64px; height: 92px; border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  background: linear-gradient(135deg, var(--pa), var(--pb)); border: 2px solid #090B20; box-shadow: 0 4px 0 rgba(0,0,0,.5); transition: transform .15s; color: #fff; text-shadow: 0 2px 0 #000; }
+.bc-pack-art::before, .bc-pack-art::after { content: ''; position: absolute; left: 0; right: 0; height: 8px; background: repeating-linear-gradient(90deg, rgba(255,255,255,.55) 0 4px, transparent 4px 8px); }
+.bc-pack-art::before { top: 0; } .bc-pack-art::after { bottom: 0; }
+.bc-pack-art i { font: 400 7px 'Press Start 2P', monospace; font-style: normal; }
+.bc-pack-art b { font: 400 8px 'Press Start 2P', monospace; text-align: center; line-height: 1.4; }
+.bc-pack-art em { font: 700 9px 'Silkscreen', monospace; font-style: normal; opacity: .85; }
+.bc-pack-art { background-size: 200% 200%; animation: bc-foil 3s linear infinite; }
+.p-calibracion .bc-pack-art, .bc-pack-art.p-calibracion { --pa: #c9902a; --pb: #ffd27a; }
+.p-perfiles .bc-pack-art, .bc-pack-art.p-perfiles { --pa: #1fa6c4; --pb: #7cf0ff; }
+.p-maker .bc-pack-art, .bc-pack-art.p-maker { --pa: #FF39B8; --pb: #ffd27a; box-shadow: 0 0 14px #FF39B8, 0 4px 0 rgba(0,0,0,.5); }
+@keyframes bc-foil { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+.bc-packopen { z-index: 200; background: rgba(5,6,20,.93); }
+.bc-packstage { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: min(96vw, 820px); max-height: 94vh; overflow: auto; padding: 12px; text-align: center; }
+.bc-packstage h2 { margin: 0; }
+.bc-pack-art.big { flex: none; width: 150px; height: 215px; gap: 14px; }
+.bc-pack-art.big i { font-size: 12px; } .bc-pack-art.big b { font-size: 14px; } .bc-pack-art.big em { font-size: 16px; }
+.bc-pack-art.big.shake { animation: bc-foil 3s linear infinite, bc-packshake .75s ease-in both; }
+.bc-pack-art.big.rip { animation: bc-packrip .4s ease-out forwards; }
+@keyframes bc-packshake { 0% { transform: scale(.4) rotate(-10deg); opacity: 0; } 25% { transform: scale(1.05); opacity: 1; } 40%,60%,80% { transform: rotate(-5deg) scale(1.05); } 50%,70%,90% { transform: rotate(5deg) scale(1.08); } 100% { transform: scale(1.15); } }
+@keyframes bc-packrip { 0% { transform: scale(1.15); clip-path: inset(0); filter: brightness(1); } 40% { filter: brightness(2.5); } 100% { transform: scale(1.5) translateY(-30px); opacity: 0; clip-path: inset(0 0 0 0); filter: brightness(3); } }
+.bc-packopts { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; perspective: 900px; }
+.bc-packopt { display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0; transform: translateY(40px) scale(.7); transition: opacity .25s, transform .35s cubic-bezier(.3,1.6,.5,1); }
+.bc-packopt.up { opacity: 1; transform: none; }
+.bc-flip { position: relative; transform-style: preserve-3d; transition: transform .45s ease .12s; transform: rotateY(180deg); }
+.bc-packopt.up .bc-flip { transform: rotateY(0); }
+.bc-flip-front, .bc-flip-back { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.bc-flip-back { position: absolute; inset: 0; transform: rotateY(180deg); border-radius: 8px; border: 2px solid #090B20; background: repeating-linear-gradient(45deg, #873DFF 0 6px, #5a22c0 6px 12px); display: flex; align-items: center; justify-content: center; }
+.bc-flip-back span { font: 400 9px 'Press Start 2P', monospace; color: #fff; }
+.bc-packopt .bc-item { width: 180px; min-height: 150px; text-align: left; cursor: pointer; font: inherit; }
+.bc-packopt .bc-item:hover:not(:disabled), .bc-packopt .bc-card:hover { transform: translateY(-6px); }
+.bc-packopt .bc-item:disabled { cursor: default; }
+.bc-packcap { font: 700 11px 'Silkscreen', monospace; color: #ffd27a; }
+@media (max-width: 640px) { .bc-packopts { gap: 8px; } .bc-packopt .bc-item { width: 150px; min-height: 130px; } .bc-pack-art.big { width: 120px; height: 172px; } }
+
+/* =================== Dorso + mazo visible =================== */
+.bc-back { position: absolute; inset: 0; border-radius: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6%;
+  background: radial-gradient(circle at 50% 42%, #2a1a6e 0 38%, transparent 39%), repeating-linear-gradient(45deg, #873DFF 0 5px, #5a22c0 5px 10px);
+  border: 2px solid #090B20; box-shadow: inset 0 0 0 3px #24DCFF, inset 0 0 0 5px #090B20, inset 0 0 0 7px #FF39B8; overflow: hidden; }
+.bc-back-logo { width: 52%; aspect-ratio: 1; display: grid; place-items: center; background: #fff; border: 2px solid #090B20; box-shadow: 3px 3px 0 #090B20; padding: 6%; image-rendering: pixelated; }
+.bc-back-logo svg { width: 100%; height: 100%; }
+.bc-back i { font: 400 clamp(5px, calc(var(--bc-card-w, 80px) * .08), 9px) 'Press Start 2P', monospace; font-style: normal; color: #fff; text-shadow: 0 1px 0 #000; letter-spacing: 1px; }
+.bc-back::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.28) 45%, transparent 60%); background-size: 250% 100%; animation: bc-backshine 3.5s linear infinite; }
+@keyframes bc-backshine { 0% { background-position: 150% 0; } 100% { background-position: -100% 0; } }
+
+.bc-draw { display: flex !important; align-items: center; gap: 10px; }
+.bc-deckpile { position: relative; display: inline-block; width: clamp(30px, calc(var(--bc-card-w, 80px) * .5), 52px); aspect-ratio: 5 / 7; flex: none; }
+.bc-pilecard { position: absolute; inset: 0; border-radius: 4px; }
+.bc-pilecard:nth-child(2) { transform: translate(-2px, -2px); } .bc-pilecard:nth-child(3) { transform: translate(-4px, -4px); } .bc-pilecard:nth-child(4) { transform: translate(-6px, -6px); }
+.bc-pilecard .bc-back-logo { box-shadow: 1px 1px 0 #090B20; border-width: 1px; }
+.bc-pilecard i { display: none; }
+.bc-pilecard::after { display: none; }
+.bc-pilecard:last-child::after { display: block; }
+
+/* Repartir desde el mazo: sale boca abajo, gira y muestra el frente */
+.bc-back-ov { z-index: 5; animation: bc-backhide .7s linear var(--deal) both; }
+@keyframes bc-backhide { 0%, 48% { opacity: 1; } 52%, 100% { opacity: 0; visibility: hidden; } }
+@keyframes bc-receive {
+  0% { transform: translate(var(--dx, 380px), var(--dy, 160px)) rotateY(180deg) scale(.55); }
+  50% { transform: translate(calc(var(--dx, 380px) * .35), calc(var(--dy, 160px) * .35 - 40px)) rotateY(90deg) scale(.95); }
+  70% { transform: translate(-6px, -18px) rotate(-4deg) rotateY(0deg) scale(1.1); filter: brightness(1.35); }
+  85% { transform: translate(2px, 3px) rotate(1.5deg) scale(.98); filter: brightness(1); }
+  100% { transform: none; }
+}
+.reduced .bc-back-ov { display: none; }
+.bc-packopt .bc-flip-back { overflow: hidden; }
+.bc-packopt .bc-flip-back .bc-back { border: 0; }
+
+/* Durante el reparto solo corre el vuelo desde el mazo (el balanceo empieza al aterrizar) */
+.bc-hand.float .bc-card:not(.sel) .bc-card-in.deal, .bc-card-in.deal { animation: bc-receive .75s cubic-bezier(.25,1.2,.4,1) var(--deal) both !important; }

@@ -71,6 +71,14 @@ export const MATERIALS = {
 // Bobinas: calibraciones que le ponen un material a una carta de la mano (solo reglas v2).
 export const SPOOLS = Object.keys(MATERIALS).map((m) => ({ id: 'bobina_' + m, name: 'Bobina de ' + MATERIALS[m].name, price: 4, target: 'card', mat: m, desc: `Convierte una carta de tu mano en ${MATERIALS[m].name}: ${MATERIALS[m].desc}` }));
 
+// Sobres (reglas v3): se compran en Suministros, se abren y elegís 1 opción.
+export const PACKS = {
+  cartas: { name: 'Sobre de Cartas', price: 4, n: 4, weight: 40, desc: 'Elegí 1 de 4 cartas nuevas para tu mazo (algunas traen material o Capas extra).' },
+  calibracion: { name: 'Sobre de Calibración', price: 4, n: 3, weight: 25, desc: 'Elegí 1 de 3 calibraciones o bobinas de filamento.' },
+  perfiles: { name: 'Sobre de Perfiles', price: 4, n: 3, weight: 20, desc: 'Elegí 1 de 3 perfiles de laminado: sube de nivel un Patrón.' },
+  maker: { name: 'Sobre Maker', price: 6, n: 3, weight: 15, desc: 'Raro. Elegí 1 de 3 Mods de Taller.' },
+};
+
 // Perfiles de laminado: suben un nivel a un Patrón (la tabla de suba está en PATTERNS[].lvl).
 export const PROFILES = [
   { id: 'borrador', name: 'Borrador', pattern: 'alta', price: 3 },

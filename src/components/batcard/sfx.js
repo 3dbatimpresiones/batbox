@@ -93,6 +93,9 @@ export const sfx = {
   },
   // Cobrar: cascada de monedas que suben
   cash: (n = 5) => { for (let i = 0; i < n; i++) { const k = PENTA[Math.min(PENTA.length - 1, i)], pan = (i % 2 ? 0.4 : -0.4); tone({ f: 1318 * semi(k), dur: 0.09, type: 'square', gain: 0.05, at: i * 0.075, pan, wet: 0.3 }); tone({ f: 1760 * semi(k), dur: 0.16, type: 'sine', gain: 0.07, at: i * 0.075 + 0.04, pan, wet: 0.4 }); } },
+  rip: () => { sweep({ dur: 0.35, gain: 0.35, f1: 1200, f2: 5200, q: 0.8 }); sweep({ dur: 0.2, gain: 0.25, at: 0.12, f1: 3000, f2: 900, q: 1.5, pan: 0.3 }); tone({ f: 220, f2: 880, dur: 0.3, type: 'triangle', gain: 0.08, wet: 0.4 }); },
+  flip: (i = 0) => { sweep({ dur: 0.06, gain: 0.2, f1: 2000, f2: 4500, q: 2, pan: -0.4 + i * 0.25 }); tone({ f: 880 * semi(PENTA[Math.min(6, i)]), dur: 0.12, type: 'sine', gain: 0.08, wet: 0.4 }); },
+  shimmer: () => { for (let i = 0; i < 6; i++) tone({ f: 1760 * semi(PENTA[i % PENTA.length]), dur: 0.25, type: 'sine', gain: 0.05, at: i * 0.05, pan: i % 2 ? 0.5 : -0.5, wet: 0.6 }); },
   coin: () => { tone({ f: 1318, dur: 0.08, type: 'square', gain: 0.06, wet: 0.3 }); tone({ f: 1760, dur: 0.22, type: 'sine', gain: 0.09, at: 0.06, wet: 0.45 }); },
   snap: () => { sweep({ dur: 0.05, gain: 0.4, f1: 3000, f2: 6000, q: 2 }); tone({ f: 1400, f2: 700, dur: 0.06, type: 'square', gain: 0.06 }); },
   // Aprobar la ronda: fanfarria ascendente + acorde final + platillo
