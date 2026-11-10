@@ -13,7 +13,7 @@ import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { sb } from '../lib/supabase.js';
-import { useBatcardPresence } from '../lib/mtApi.js';
+import { useBatcardPresence, useLive } from '../lib/mtApi.js';
 
 // =====================================================================
 // #/batcard — BATCARD · Un juego de 3DBAT IMPRESIONES.
@@ -178,10 +178,19 @@ function Crack() {
 }
 
 // ---------------------------------------------------------------- Menú
+// Gente jugando ahora (mismo contador en vivo que Maker Tycoon; se actualiza solo).
+function LiveChip() {
+  const live = useLive();
+  if (!live || live.batcard == null) return null;
+  const n = Math.max(1, live.batcard); // vos estás jugando
+  return <span className="bc-pill bc-live" title={`${live.online} makers en BATBOX ahora`}><i /> {n} {n === 1 ? 'jugando' : 'jugando'} ahora</span>;
+}
+
 function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont, onDropBad, go }) {
   const rec = ls.get(K_REC);
   return (
     <div className="bc-menu">
+      <LiveChip />
       <img className="bc-cover" src={portada} alt="BATCARD: la A del título es un alicate de corte al ras. Un juego de 3DBAT IMPRESIONES." />
       <h1 className="sr-only">BATCARD · Un juego de 3DBAT IMPRESIONES</h1>
       <p className="bc-tag">Cada partida es una orden de producción. Armá combinaciones, mejorá tu taller y pasá los controles de calidad.</p>
@@ -373,6 +382,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
     <div className="bc-game" ref={fx}>
       <header className="bc-hud">
         <div className="bc-hud-l">
+          <LiveChip />
           <span className="bc-pill">Lote {view.lot + 1}/{LOTS}</span>
           <span className={`bc-pill ${info.boss ? 'boss' : ''}`}>{info.name}</span>
           {r && <span className="bc-pill">Meta <b>{r.target.toLocaleString('es-AR')}</b></span>}

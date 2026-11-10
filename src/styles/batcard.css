@@ -454,3 +454,8 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
   100% { transform: none; opacity: 1; }
 }
 .reduced .bc-played .bc-card-in, .reduced .bc-played.leaving .bc-card-in { animation: none !important; }
+
+/* Indicador de gente jugando ahora */
+.bc-live { display: inline-flex; align-items: center; gap: 7px; border-color: #2bd67b; color: #c9ffe0; background: rgba(9, 40, 26, .85); }
+.bc-live i { width: 9px; height: 9px; background: #2bd67b; box-shadow: 0 0 8px #2bd67b; animation: bc-live-dot 1.6s ease-in-out infinite; }
+@keyframes bc-live-dot { 50% { opacity: .35; transform: scale(.7); } }
