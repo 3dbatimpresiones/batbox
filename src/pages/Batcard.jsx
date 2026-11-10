@@ -256,7 +256,7 @@ function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
           setTimeout(() => setBanner(null), 1800);
         }
         if (st.phase === 'defeat') {
-          sfx.shatter(); setTimeout(() => sfx.lose(), 700);
+          sfx.shatter(); setTimeout(() => sfx.lose(), 1400);
           const root = document.querySelector('.bc-root');
           if (root) { root.classList.remove('tv-break'); void root.offsetWidth; root.classList.add('tv-break', 'tv-broken'); }
         }
@@ -313,7 +313,7 @@ function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
   };
   const descartar = () => {
     if (anim || !sel.length) return;
-    if (act({ type: 'DISCARD', ids: sel })) { sfx.snap(); setSel([]); if (tuto === 1) setTuto(2); }
+    if (act({ type: 'DISCARD', ids: sel })) { sfx.discard(sel.length); setSel([]); if (tuto === 1) setTuto(2); }
   };
   const usarCal = (idx, suit) => {
     const cal = CAL[st.cals[idx]];
