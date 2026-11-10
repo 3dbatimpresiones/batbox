@@ -584,8 +584,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
     const prevP = lastPat.current; lastPat.current = pvPat;
     if (!pvPat || pvPat === prevP || pvPat === 'alta') return;
     sfx.pattern(pvPat);
-    const royal = showPattern(pvPat, (pv?.scoring || []).map((id) => byId[id]).filter(Boolean), true, fxOn);
-    if (royal) sfx.legend();
+    if (pvPat === 'ecolor' && isRoyal((pv?.scoring || []).map((id) => byId[id]).filter(Boolean))) sfx.legend();
   }, [pvPat]); // eslint-disable-line react-hooks/exhaustive-deps
   const canOver = st.phase === 'round' && st.round.heat <= RULES.overLimit;
   const tShown = anim ? anim.last.trace[Math.min(anim.i, anim.last.trace.length) - 1] : null;
@@ -670,6 +669,8 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
                     <b>{PATTERN[pv.pattern].name}</b>{pv.level > 0 && <small> nivel {pv.level + 1}</small>}
                     <span className="bc-cm small"><span className="chips">{pv.score.chips}</span><span className="x">×</span><span className="mult">{fmtMult(pv.score.mult)}</span></span>
                     <span className="bc-est">= <b>{pv.score.total.toLocaleString('es-AR')}</b> de Calidad</span>
+                    {pv.pattern !== 'alta' && (() => { const royal = pv.pattern === 'ecolor' && isRoyal(pv.scoring.map((id) => byId[id])); const k = royal ? 'royal' : pv.pattern; return (
+                      <div key={k} className={`bc-patlabel p-${k}`}><span>{royal ? 'Escalera real' : PATTERN[pv.pattern].name}</span></div>); })()}
                     <small>{pv.score.total + r.score >= r.target ? '¡Con esta mano pasás la meta!' : `Después te faltarían ${(r.target - r.score - pv.score.total).toLocaleString('es-AR')}`} · puntúan {pv.scoring.length} carta{pv.scoring.length > 1 ? 's' : ''}</small>
                   </>
                 ) : <span className="muted">Elegí de 1 a 5 cartas para ver cuánto suman. Te faltan <b>{(r.target - r.score).toLocaleString('es-AR')}</b> de Calidad. <button className="bc-mini" onClick={() => setHelp(true)}>¿Cómo se puntúa?</button></span>}

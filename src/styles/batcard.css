@@ -1020,3 +1020,14 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-mat-row .bc-edtag { position: static; transform: none; font-size: 10px; text-align: center; }
 .bc-trace li.ph-edicion { color: #7cf0ff; }
 .reduced .bc-edfx { animation: none !important; }
+/* Cartel fijo de la jugada armada, debajo del contador */
+.bc-forecast { flex-wrap: wrap; justify-content: center; }
+.bc-patlabel { flex-basis: 100%; display: flex; justify-content: center; margin: 6px 0 2px; pointer-events: none; }
+.bc-patlabel span { font: 400 clamp(22px, 4.6vw, 52px) 'Press Start 2P', monospace; color: #fff; white-space: nowrap; letter-spacing: 2px;
+  text-shadow: 4px 0 var(--pc2, #FF39B8), -4px 0 var(--pc1, #24DCFF), 0 6px 0 #090B20, 0 0 30px var(--pc1, #24DCFF);
+  animation: patl-in .55s cubic-bezier(.2,1.6,.35,1) both, patl-pulse 1.6s ease-in-out .55s infinite; }
+@keyframes patl-in { 0% { transform: scale(2.4) rotate(-6deg); opacity: 0; filter: blur(5px); } 60% { transform: scale(.94); opacity: 1; filter: none; } 100% { transform: none; } }
+@keyframes patl-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+.bc-patlabel.p-escalera span, .bc-patlabel.p-ecolor span, .bc-patlabel.p-royal span { animation: patl-in .55s cubic-bezier(.2,1.6,.35,1) both, patl-pulse 1.6s ease-in-out .55s infinite, bc-foil 1.2s linear infinite; }
+.bc-patlabel.p-full span { color: #ffd27a; }
+.reduced .bc-patlabel span { animation: none; }
