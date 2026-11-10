@@ -480,7 +480,15 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
     if (anim) return;
     setSel((s) => {
       if (s.includes(id)) { sfx.deselect(); return s.filter((x) => x !== id); }
-      if (s.length >= 5) { setMsg('Máximo 5 cartas.'); return s; }
+      if (s.length >= 5) {
+        // Mano llena: ruido de bloqueo y el resto de las cartas se tiñen de rojo un instante (sin cartel arriba).
+        sfx.blocked();
+        const hand = document.querySelector('.bc-hand');
+        if (hand) { hand.classList.remove('bc-full-hit'); void hand.offsetWidth; hand.classList.add('bc-full-hit'); clearTimeout(hand._fh); hand._fh = setTimeout(() => hand.classList.remove('bc-full-hit'), 650); }
+        const el = document.querySelector(`.bc-hand [data-cid="${id}"]`);
+        if (el) { popText(el, 'MÁX 5', 'mult'); shake(el); }
+        return s;
+      }
       sfx.select(s.length + 1); return [...s, id];
     });
   };
@@ -617,7 +625,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
 
           <Tutorial step={tuto} setStep={setTuto} />
 
-          <section className={`bc-hand${reduced ? '' : ' float'}`} aria-label="Tu mano">
+          <section className={`bc-hand${reduced ? '' : ' float'}${sel.length >= 5 ? ' is-full' : ''}`} aria-label="Tu mano">
             {hand.map((id, i) => (
               <Card key={id} card={byId[id]} idx={i} fan={{ i, n: hand.length }} deal={dealDelay(id)} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
                 scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim} />

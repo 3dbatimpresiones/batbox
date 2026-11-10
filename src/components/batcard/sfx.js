@@ -100,6 +100,7 @@ export const sfx = {
   coin: () => { tone({ f: 1318, dur: 0.08, type: 'square', gain: 0.06, wet: 0.3 }); tone({ f: 1760, dur: 0.22, type: 'sine', gain: 0.09, at: 0.06, wet: 0.45 }); },
   snap: () => { sweep({ dur: 0.05, gain: 0.4, f1: 3000, f2: 6000, q: 2 }); tone({ f: 1400, f2: 700, dur: 0.06, type: 'square', gain: 0.06 }); },
   // Aprobar la ronda: fanfarria ascendente + acorde final + platillo
+  blocked: () => { tone({ f: 140, dur: 0.09, type: 'square', gain: 0.12 }); tone({ f: 104, dur: 0.14, type: 'square', gain: 0.12, at: 0.1 }); sweep({ dur: 0.08, gain: 0.15, f1: 400, f2: 200, type: 'lowpass', q: 3 }); },
   boss: () => { tone({ f: 55, f2: 40, dur: 0.9, type: 'sawtooth', gain: 0.18, wet: 0.5 }); tone({ f: 110, f2: 82, dur: 0.7, type: 'square', gain: 0.06, at: 0.05, wet: 0.6 }); sweep({ dur: 0.5, gain: 0.25, f1: 200, f2: 60, type: 'lowpass', q: 4 }); },
   xmult: () => { [0, 4, 7, 12].forEach((k, i) => tone({ f: 523 * semi(k), dur: 0.14, type: 'square', gain: 0.07, at: i * 0.045, wet: 0.35 })); sweep({ dur: 0.25, gain: 0.3, f1: 800, f2: 6000, q: 1.5, at: 0.05 }); tone({ f: 80, f2: 40, dur: 0.25, type: 'sine', gain: 0.35 }); },
   legend: () => { for (let i = 0; i < 10; i++) tone({ f: 1046 * semi(PENTA[i % PENTA.length]) * (i > 4 ? 2 : 1), dur: 0.3, type: 'triangle', gain: 0.05, at: i * 0.06, pan: i % 2 ? 0.6 : -0.6, wet: 0.7 }); tone({ f: 130, dur: 0.8, type: 'sine', gain: 0.2, wet: 0.5 }); },

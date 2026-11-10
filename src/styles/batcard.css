@@ -860,3 +860,16 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
   100% { filter: none; transform: none; }
 }
 .reduced .bc-bed, .reduced .bc-cm, .noflash .bc-bed, .noflash .bc-cm { animation: none !important; }
+
+/* Mano llena (5 elegidas): las demás quedan bloqueadas */
+.bc-hand.is-full .bc-card:not(.sel) .bc-card-in { filter: saturate(.55) brightness(.8); transition: filter .2s; }
+.bc-hand.is-full .bc-card:not(.sel) { cursor: not-allowed; }
+.bc-hand.bc-full-hit .bc-card:not(.sel) .bc-card-in { animation: bc-locked .65s ease-out !important; }
+@keyframes bc-locked {
+  0% { filter: blur(2.5px) sepia(1) hue-rotate(-50deg) saturate(5) brightness(.85); transform: translateX(-4px); }
+  15% { transform: translateX(4px); } 30% { transform: translateX(-3px); } 45% { transform: translateX(2px); }
+  60% { filter: blur(1.5px) sepia(1) hue-rotate(-50deg) saturate(4) brightness(.9); transform: none; }
+  100% { filter: saturate(.55) brightness(.8); }
+}
+.bc-hand.bc-full-hit .bc-card:not(.sel)::after { content: ''; position: absolute; inset: 0; border-radius: 8px; box-shadow: inset 0 0 0 3px #ff2b4a, 0 0 18px rgba(255,43,74,.7); animation: bc-lockring .65s ease-out forwards; pointer-events: none; z-index: 5; }
+@keyframes bc-lockring { 0% { opacity: 1; } 100% { opacity: 0; } }
