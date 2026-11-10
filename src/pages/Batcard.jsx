@@ -565,14 +565,14 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
     const prevP = lastPat.current; lastPat.current = pvPat;
     if (!pvPat || pvPat === prevP || pvPat === 'alta') return;
     sfx.pattern(pvPat);
-    const hand = document.querySelector('.bc-hand');
-    if (!hand) return;
-    const r = hand.getBoundingClientRect();
+    const bed = document.querySelector('.bc-bed');
+    if (!bed) return;
+    const r = bed.getBoundingClientRect(); // en el centro de la mesa
     document.querySelectorAll('.bc-patfx.mini').forEach((e) => e.remove());
     const d = document.createElement('div');
     d.className = `bc-patfx mini p-${pvPat}${fxOn ? '' : ' calm'}`;
     d.innerHTML = `<span>${PATTERN[pvPat].name}</span>`;
-    Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${r.left}px`, width: `${r.width}px`, top: `${Math.max(8, r.top - 70)}px`, height: '90px', zIndex: 1045 });
+    Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${r.left}px`, width: `${r.width}px`, top: `${r.top}px`, height: `${r.height}px`, zIndex: 1045 });
     document.body.appendChild(d);
     setTimeout(() => d.remove(), 1300);
   }, [pvPat]); // eslint-disable-line react-hooks/exhaustive-deps
