@@ -262,6 +262,11 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
     if (!anim) return undefined;
     const steps = anim.last.trace.length;
     if (anim.i >= steps) {
+      // 1) pausa para disfrutar el total, 2) las cartas jugadas salen volando, 3) se cierra la jugada
+      if (!anim.leaving) {
+        const h0 = setTimeout(() => setAnim((a) => a && { ...a, leaving: true }), reduced ? 200 : 900);
+        return () => clearTimeout(h0);
+      }
       const h = setTimeout(() => {
         setAnim(null);
         if (st.phase === 'shop' || st.phase === 'victory') {
@@ -277,7 +282,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
           const root = document.querySelector('.bc-root');
           if (root) { root.classList.remove('tv-break'); void root.offsetWidth; root.classList.add('tv-break', 'tv-broken'); }
         }
-      }, reduced ? 250 : 900);
+      }, reduced ? 120 : 520);
       return () => clearTimeout(h);
     }
     const h = setTimeout(() => {
@@ -402,7 +407,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
           <section className="bc-bed" aria-label="Cama de impresión">
             {anim ? (
               <>
-                <div className="bc-played">
+                <div className={`bc-played${anim.leaving ? ' leaving' : ''}`}>
                   {anim.last.played.map((id) => <Card key={id} card={anim.prev.deck.find((c) => c.id === id)} scoring={anim.last.scoring.includes(id)} lit={litCards.has(id)} />)}
                 </div>
                 <div className="bc-trace" aria-live="polite">
