@@ -481,3 +481,62 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-goal.done .bc-goal-r b { color: #2bd67b; }
 .bc-goal.done .bc-goal-bar i { background: repeating-linear-gradient(90deg, #2bd67b 0 10px, #7cf0b0 10px 14px); }
 @media (max-width: 640px) { .bc-goal { grid-template-columns: 1fr auto; } .bc-goal-bar { grid-column: 1 / -1; order: 3; } .bc-goal-l b { font-size: 16px; } }
+
+/* =================== Pantalla completa en partida: todo entra sin scroll =================== */
+.bc-root.bc-full { position: fixed; inset: 0; z-index: 900; margin: 0; border-radius: 0; padding: 6px; height: 100vh; height: 100dvh; box-sizing: border-box;
+  /* Ancho de carta: el menor entre lo que permite el ancho y lo que permite el alto (2 filas de cartas + HUD + controles) */
+  --bc-card-w: clamp(40px, min(9.6vw, calc((100dvh - 400px) / 2.75)), 108px); }
+.bc-full .bc-stage { height: 100%; min-height: 0; border-radius: 18px; }
+.bc-full .bc-content { height: 100%; box-sizing: border-box; padding: 8px 12px; display: flex; flex-direction: column; overflow: hidden; }
+.bc-full .bc-game { flex: 1; min-height: 0; gap: 6px; display: flex; flex-direction: column; }
+.bc-full .bc-hud { padding: 5px 8px; }
+.bc-full .bc-stat b { font-size: 16px; } .bc-full .bc-stat { padding: 2px 6px; }
+.bc-full .bc-icon { width: 34px; height: 34px; }
+.bc-full .bc-nomods { padding: 3px 10px; font-size: 12px; }
+.bc-full .bc-goal { padding: 6px 12px; }
+.bc-full .bc-goal-l b { font-size: 18px; } .bc-full .bc-goal-bar { height: 22px; } .bc-full .bc-goal-bar span { line-height: 16px; }
+.bc-full .bc-heat { padding: 3px 8px; }
+.bc-full .bc-bed { padding: 6px 10px; min-height: calc(var(--bc-card-w) * 1.417 + 16px); flex: none; }
+.bc-full .bc-trace ol { max-height: calc(var(--bc-card-w) * 1.2); }
+.bc-full .bc-hand { padding-top: calc(var(--bc-card-w) * .45); padding-bottom: 4px; flex: none; }
+.bc-full .bc-tip { padding: 4px 10px; font-size: 13px; }
+.bc-full .bc-seed { display: none; }
+.bc-full .bc-draw { margin-top: -4px; }
+.bc-full .bc-actions { margin-top: auto; }
+.bc-full .bc-btn.big { padding: 9px 18px; }
+.bc-full .bc-mods { flex: none; } .bc-full .bc-mod { min-height: 0; padding: 5px 7px 4px; }
+.bc-full .bc-mod-desc { font-size: 11px; }
+/* Paneles grandes (tienda, previa, final) usan su propio scroll interno si hiciera falta, nunca el de la página */
+.bc-full .bc-shop, .bc-full .bc-preview, .bc-full .bc-end { flex: 1; min-height: 0; overflow: auto; }
+@media (max-width: 640px) {
+  .bc-root.bc-full { padding: 0; --bc-card-w: clamp(38px, min(calc((100vw - 40px) / 6.4), calc((100dvh - 380px) / 2.7)), 80px); }
+  .bc-full .bc-stage { border-radius: 0; }
+  .bc-full .bc-content { padding: 6px 8px; }
+  .bc-full .bc-hand { flex-wrap: nowrap; overflow: visible; justify-content: center; padding-left: 0; padding-right: 0; }
+  .bc-full .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.22); }
+  .bc-full .bc-quick { display: none; }
+  .bc-full .bc-hud-l .bc-pill { font-size: 10px; padding: 3px 7px; }
+  .bc-full .bc-actions .bc-over small { display: none; }
+  .bc-full .bc-actions { gap: 6px; }
+  .bc-full .bc-btn.big { padding: 8px 10px; font-size: 13px; }
+  .bc-full kbd { display: none; }
+}
+@media (max-width: 640px) {
+  .bc-root.bc-full { --bc-card-w: clamp(40px, min(calc((100vw - 24px) / 5.3), calc((100dvh - 400px) / 2.6)), 92px); }
+  .bc-full .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.38); }
+  .bc-full .bc-hand .bc-card:first-child { margin-left: 0; }
+  .bc-full .bc-quick { display: inline-flex; border-right: 0; padding-right: 0; }
+  .bc-full .bc-icon { width: 32px; height: 32px; font-size: 14px; }
+}
+/* La mano va abajo, pegada a los botones (cómodo con el pulgar); el espacio libre queda entre la cama y la mano */
+.bc-full .bc-hand { margin-top: auto; }
+.bc-full .bc-actions { margin-top: 0; }
+/* Pantallas verticales grandes (iPad parado): cartas según el ancho, más grandes */
+@media (orientation: portrait) and (min-width: 641px) {
+  .bc-root.bc-full { --bc-card-w: clamp(60px, min(calc((100vw - 80px) / 6.6), calc((100dvh - 420px) / 2.6)), 132px); }
+}
+.bc-full .bc-hand { flex-wrap: nowrap; }
+@media (orientation: portrait) and (min-width: 641px) { .bc-full .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.24); } .bc-full .bc-hand .bc-card:first-child { margin-left: 0; } }
+/* "Mazo: X / Y" centrado debajo de las cartas, sin pisarse con nada */
+.bc-draw { align-self: center !important; text-align: center; margin: 2px auto 0 !important; position: relative; z-index: 2; }
+.bc-full .bc-draw { margin-top: 2px !important; }

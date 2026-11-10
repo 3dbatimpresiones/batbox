@@ -66,6 +66,13 @@ export default function Batcard() {
     music.setLevel(lv);
   }, [screen, st]);
   const fxOn = !reduced && set.flashes;
+  // En partida el juego ocupa toda la pantalla (sin scroll de la página).
+  useEffect(() => {
+    if (screen !== 'juego') return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [screen]);
   useBatcardPresence(screen === 'juego');
 
   const start = (s) => { setSt(s); setScreen('juego'); };
@@ -87,7 +94,7 @@ export default function Batcard() {
   const descartarRoto = () => { ls.set(K_SAVE + '.roto', ls.get(K_SAVE)); ls.del(K_SAVE); setSaveInfo({ save: null, problem: null }); };
 
   return (
-    <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}`}>
+    <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}${screen === 'juego' ? ' bc-full' : ''}`}>
       <div className="bc-stage">
         <Plasma still={set.motion === 'reducido'} mood={screen === 'juego' ? mood : 'normal'} />
         <div className="bc-crt" aria-hidden="true" />
