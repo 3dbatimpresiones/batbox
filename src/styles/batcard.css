@@ -271,7 +271,7 @@ kbd { font: 400 10px 'Outfit', sans-serif; opacity: .7; border: 1px solid curren
 @keyframes bc-fly { 0% { transform: translateY(240px) scale(.8) rotate(-10deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .bc-card.lit .bc-card-in { animation: bc-hit .3s cubic-bezier(.3,2,.5,1); }
 @keyframes bc-hit { 50% { transform: translateY(-14px) scale(1.14) rotate(3deg); } }
-.reduced .bc-card-in, .reduced 
+.reduced .bc-card-in, .reduced .bc-card-in.deal { animation: none !important; }
 /* ---------- La tele se rompe al perder (SOLO el fondo: el contenido queda arriba, intacto) ---------- */
 .bc-crack, .bc-static, .bc-glitch { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; opacity: 0; }
 .bc-static { background: repeating-radial-gradient(circle at 17% 32%, rgba(255,255,255,.2) 0 1px, transparent 1px 3px), repeating-linear-gradient(0deg, rgba(255,255,255,.1) 0 1px, transparent 1px 2px); mix-blend-mode: screen; }
