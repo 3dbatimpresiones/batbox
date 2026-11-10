@@ -5,6 +5,7 @@ export const SKINS = {
   clasico: { name: 'Clásico' },
   arcade: { name: 'Arcade', dir: 'arcade' },
   maker: { name: 'Maker', dir: 'maker' },
+  original: { name: 'Original', dir: 'original' },
 };
 
 const SUIT_FILE = { S: 'spades', H: 'hearts', C: 'clubs', D: 'diamonds' };

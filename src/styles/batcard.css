@@ -926,3 +926,8 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-end.lost h2 { color: #fff; text-shadow: 0 0 2px #ff2b4a, 3px 0 0 #ff2b4a, -3px 0 0 #24DCFF, 0 4px 0 #090B20, 0 0 24px rgba(255,43,74,.9); background: rgba(7,9,26,.75); padding: 8px 16px; border-radius: 10px; border: 2px solid #ff2b4a; }
 .bc-end.won h2 { background: rgba(7,9,26,.75); padding: 8px 16px; border-radius: 10px; border: 2px solid #E2B13C; }
 .bc-end .bc-rankres { background: rgba(7,9,26,.85); }
+/* Skin Original: papel crema y colores clásicos */
+.bc-card.has-face.skin-original .bc-card-in { background: #fff4df; }
+.bc-card.has-face.skin-original.suit-S .bc-corner, .bc-card.has-face.skin-original.suit-C .bc-corner { color: #1d1640; }
+.bc-card.has-face.skin-original.suit-H .bc-corner { color: #c2185b; }
+.bc-card.has-face.skin-original.suit-D .bc-corner { color: #6b3fc0; }
