@@ -39,6 +39,21 @@ function useSettings() {
   return [s, (patch) => setS((p) => ({ ...p, ...patch })), reduced];
 }
 
+// Pantalla completa real del navegador (oculta barras en Android, iPad y PC). Tiene que pedirse dentro del toque.
+const canFull = () => typeof document !== 'undefined' && !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function enterFull() {
+  if (!canFull() || isFull()) return;
+  const el = document.documentElement;
+  try { const r = (el.requestFullscreen || el.webkitRequestFullscreen).call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => {}); } catch { /* no soportado */ }
+  try { screen.orientation?.lock?.('portrait').catch(() => {}); } catch { /* opcional */ }
+}
+function exitFull() {
+  if (!isFull()) return;
+  try { const r = (document.exitFullscreen || document.webkitExitFullscreen).call(document); if (r && r.catch) r.catch(() => {}); } catch { /* nada */ }
+}
+const isTouch = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+
 function loadSave() {
   const raw = ls.get(K_SAVE);
   if (!raw) return { save: null, problem: null };
@@ -81,6 +96,7 @@ export default function Batcard() {
   const [starting, setStarting] = useState(false);
   // Con sesión: la semilla la da el servidor y la partida entra al ranking.
   const nueva = async () => {
+    if (isTouch()) enterFull(); // en celular/tablet, pantalla completa al empezar
     ls.del(K_SAVE);
     if (!canRank) { start(newGame(newSeed())); return; }
     setStarting(true);
@@ -89,8 +105,8 @@ export default function Batcard() {
     if (error || !data) { start({ ...newGame(newSeed()), rankNote: error?.message || 'Sin conexión con el ranking.' }); return; }
     start({ ...newGame(data), ranked: true });
   };
-  const continuar = () => save && start(save);
-  const aparcar = () => { setSaveInfo(loadSave()); setScreen('menu'); };
+  const continuar = () => { if (!save) return; if (isTouch()) enterFull(); start(save); };
+  const aparcar = () => { exitFull(); setSaveInfo(loadSave()); setScreen('menu'); };
   const descartarRoto = () => { ls.set(K_SAVE + '.roto', ls.get(K_SAVE)); ls.del(K_SAVE); setSaveInfo({ save: null, problem: null }); };
 
   return (
@@ -404,6 +420,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
           {r && <span className="bc-stat"><small>Descartes</small><b>{r.discards}</b></span>}
           <span className="bc-stat brass"><small>Créditos</small><b>{view.credits}</b></span>
           <span className="bc-quick">
+            {canFull() && <button className="bc-icon" onClick={() => (isFull() ? exitFull() : enterFull())} title="Pantalla completa" aria-label="Pantalla completa">⛶</button>}
             <button className={`bc-icon${set.motion === 'reducido' ? ' off' : ''}`} onClick={() => patch({ motion: set.motion === 'reducido' ? 'normal' : 'reducido' })}
               aria-pressed={set.motion !== 'reducido'} title={set.motion === 'reducido' ? 'Activar fondo animado' : 'Quitar movimiento del fondo'} aria-label="Fondo animado">🌀</button>
             <button className={`bc-icon${set.mute || !set.music ? ' off' : ''}`} onClick={() => patch(set.mute || !set.music ? { mute: false, music: set.music || 0.35 } : { music: 0 })}
