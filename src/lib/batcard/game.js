@@ -17,6 +17,7 @@ export function newGame(seed) {
     deck: standardDeck(), mods: [], cals: [], levels: {}, bosses,
     round: null, shop: null, last: null,
     stats: { bestHand: 0, prints: 0, total: 0 },
+    log: [], // acciones válidas en orden: el servidor rejuega la partida con esto para el ranking
   };
 }
 
@@ -26,12 +27,20 @@ export const blindInfo = (st) => ({
 });
 
 const fail = (error) => ({ error });
+// Solo los campos que usan las reglas (así el log es chico y no lleva basura).
+const compact = (a) => {
+  const o = { t: a.type };
+  for (const k of ['ids', 'overextrude', 'idx', 'cardId', 'suit', 'from', 'to', 'slot']) if (a[k] !== undefined && a[k] !== false) o[k] = a[k];
+  return o;
+};
+export const expand = (o) => { const { t, ...rest } = o; return { type: t, ...rest }; };
 
 export function step(prev, action) {
   const st = structuredClone(prev);
   const events = [];
   const res = apply(st, action, events);
   if (res) return fail(res);
+  if (Array.isArray(st.log) && action.type !== 'MOVE_MOD_PREVIEW') st.log.push(compact(action));
   return { state: st, events };
 }
 

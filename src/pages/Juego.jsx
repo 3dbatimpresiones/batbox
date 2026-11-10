@@ -167,8 +167,32 @@ function ComoBatcard() {
     </section>
   );
 }
+const BC_RANKS = [['global', 'Histórico'], ['semanal', 'Semanal']];
 function RankingBatcard() {
-  return <div className="card mt-soon"><Icon name="trophy" size={22} /><p><b>El ranking de BATCARD llega pronto, exclusivo para el Makers Club.</b> Va a usar partidas verificadas por el servidor para que nadie pueda hacer trampa. Mientras tanto, tu récord queda guardado en el juego.</p></div>;
+  const [kind, setKind] = useState('global');
+  const r = useMt('bb_bc_ranking', { p_kind: kind, p_limit: 100 }, [kind]);
+  if (r.missing) return <div className="card mt-soon"><Icon name="clock" size={22} /><p><b>El ranking de BATCARD se activa en unos minutos.</b> Ya podés jugar.</p></div>;
+  return (
+    <section className="card mt-panel">
+      <Options value={kind} onChange={setKind} options={BC_RANKS.map(([value, label]) => ({ value, label }))} />
+      <p className="mt-help">{kind === 'semanal' ? 'La mejor partida de cada maker en esta semana. Se reinicia cada lunes.' : 'La mejor partida de cada maker desde siempre.'} Puntos = Calidad total de la partida. Exclusivo del Makers Club: cada partida la rejuega el servidor para que nadie haga trampa.</p>
+      {r.loading && <div className="empty"><div className="spinner" /></div>}
+      {r.error && <p className="mt-err">{r.error}</p>}
+      {!r.loading && r.data && (r.data.rows.length === 0 ? <p className="mt-empty">Todavía nadie entró a este ranking. ¡Podés ser el primero!</p> : (
+        <div className="mt-rank">
+          {r.data.rows.map((x) => (
+            <div key={x.rank + x.name} className={'mt-rank-row' + (x.me ? ' me' : '')}>
+              <span className="rk">{x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</span>
+              <span className="rn">{x.name}<small>{x.won ? '✔ Orden completa' : `Llegó al Lote ${x.lot}`} · mejor mano {num(x.best_hand)}</small></span>
+              <b>{num(x.points)}</b>
+            </div>
+          ))}
+          {r.data.me && !r.data.rows.some((x) => x.me) && <div className="mt-rank-row me pinned"><span className="rk">#{r.data.me.rank}</span><span className="rn">Vos</span><b>{num(r.data.me.points)}</b></div>}
+        </div>
+      ))}
+      <a className="btn primary" href="#/batcard" style={{ alignSelf: 'flex-start' }}><Icon name="gamepad" size={18} /> Jugar BATCARD</a>
+    </section>
+  );
 }
 
 function Como() {

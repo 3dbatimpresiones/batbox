@@ -11,6 +11,8 @@ import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARG
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
+import { useAuth } from '../auth/AuthContext.jsx';
+import { sb } from '../lib/supabase.js';
 
 // =====================================================================
 // #/batcard — BATCARD · Un juego de 3DBAT IMPRESIONES.
@@ -61,7 +63,19 @@ export default function Batcard() {
   const fxOn = !reduced && set.flashes;
 
   const start = (s) => { setSt(s); setScreen('juego'); };
-  const nueva = () => { ls.del(K_SAVE); start(newGame(newSeed())); };
+  const { isMember, simulated, signIn, user } = useAuth();
+  const canRank = isMember && !simulated;
+  const [starting, setStarting] = useState(false);
+  // Miembros del Makers Club: la semilla la da el servidor y la partida entra al ranking.
+  const nueva = async () => {
+    ls.del(K_SAVE);
+    if (!canRank) { start(newGame(newSeed())); return; }
+    setStarting(true);
+    const { data, error } = await sb.rpc('bb_bc_start');
+    setStarting(false);
+    if (error || !data) { start({ ...newGame(newSeed()), rankNote: error?.message || 'Sin conexión con el ranking.' }); return; }
+    start({ ...newGame(data), ranked: true });
+  };
   const continuar = () => save && start(save);
   const aparcar = () => { setSaveInfo(loadSave()); setScreen('menu'); };
   const descartarRoto = () => { ls.set(K_SAVE + '.roto', ls.get(K_SAVE)); ls.del(K_SAVE); setSaveInfo({ save: null, problem: null }); };
@@ -73,7 +87,7 @@ export default function Batcard() {
         <div className="bc-crt" aria-hidden="true" />
         <div className="bc-content">
           {screen === 'menu' && (
-            <Menu save={save} problem={problem} onNew={nueva} onCont={continuar} onDropBad={descartarRoto} go={setScreen} />
+            <Menu save={save} problem={problem} canRank={canRank} logged={!!user} signIn={signIn} starting={starting} onNew={nueva} onCont={continuar} onDropBad={descartarRoto} go={setScreen} />
           )}
           {screen === 'coleccion' && <Coleccion back={() => setScreen('menu')} />}
           {screen === 'ajustes' && <Ajustes set={set} patch={patch} back={() => setScreen(st ? 'juego' : 'menu')} />}
@@ -88,7 +102,7 @@ export default function Batcard() {
 }
 
 // ---------------------------------------------------------------- Menú
-function Menu({ save, problem, onNew, onCont, onDropBad, go }) {
+function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont, onDropBad, go }) {
   const rec = ls.get(K_REC);
   return (
     <div className="bc-menu">
@@ -103,12 +117,16 @@ function Menu({ save, problem, onNew, onCont, onDropBad, go }) {
       )}
       <div className="bc-menu-btns">
         {save && <button className="bc-btn primary" onClick={onCont}>Continuar <small>Lote {save.lot + 1} · {BLIND_NAMES[save.blind]}</small></button>}
-        <button className={`bc-btn${save ? '' : ' primary'}`} onClick={() => { if (!save || confirm('Empezar otra partida reemplaza la guardada. ¿Seguimos?')) onNew(); }}>Nueva partida</button>
+        <button className={`bc-btn${save ? '' : ' primary'}`} disabled={starting} onClick={() => { if (!save || confirm('Empezar otra partida reemplaza la guardada. ¿Seguimos?')) onNew(); }}>{starting ? 'Preparando…' : 'Nueva partida'}</button>
         <button className="bc-btn" onClick={() => go('coleccion')}>Colección</button>
         <button className="bc-btn" onClick={() => go('ajustes')}>Ajustes</button>
       </div>
       {rec && <p className="bc-rec">Récord: {rec.won ? 'orden completa' : `Lote ${rec.lot}`} · mejor mano {rec.best.toLocaleString('es-AR')} Calidad</p>}
-      <p className="bc-foot">Gratis y sin cuenta: la partida se guarda en este navegador. El ranking del Makers Club llega en una próxima versión.</p>
+      <p className="bc-foot">{canRank
+        ? <>🏆 Estás en el <b>ranking del Makers Club</b>: cada partida nueva cuenta. <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>
+        : logged
+          ? <>Gratis para todos; la partida se guarda en este navegador. El <a href="#/juego?juego=batcard&ver=ranking">ranking</a> es para el <a href="#/club">Makers Club</a>.</>
+          : <>Gratis y sin cuenta. <button className="bc-mini" onClick={() => signIn()}>Ingresá</button> con tu cuenta del Makers Club para entrar al <a href="#/juego?juego=batcard&ver=ranking">ranking</a>.</>}</p>
     </div>
   );
 }
@@ -485,8 +503,26 @@ function Shop({ st, act }) {
   );
 }
 
+// Envía la partida terminada al servidor (una sola vez por semilla).
+const sent = new Map();
+function useSubmit(st) {
+  const [res, setRes] = useState(() => sent.get(st.seed) || null);
+  const send = async () => {
+    setRes({ sending: true });
+    const { data, error } = await sb.functions.invoke('batcard-submit', { body: { seed: st.seed, log: st.log } });
+    let msg = error?.message;
+    if (error?.context?.json) { try { msg = (await error.context.json()).error || msg; } catch { /* nada */ } }
+    const r = error ? { error: msg || 'No se pudo enviar.' } : { ok: true, ...data };
+    if (r.ok || /ya se cargó/.test(r.error || '')) sent.set(st.seed, r);
+    setRes(r);
+  };
+  useEffect(() => { if (st.ranked && !sent.has(st.seed)) send(); }, [st.seed]); // eslint-disable-line react-hooks/exhaustive-deps
+  return [res, send];
+}
+
 function End({ st, onNew, onMenu }) {
   const won = st.phase === 'victory';
+  const [sub, retry] = useSubmit(st);
   return (
     <section className={`bc-panel bc-end ${won ? 'won' : 'lost'}`}>
       <h2>{won ? '¡Orden de producción completa!' : 'La impresión falló'}</h2>
@@ -497,6 +533,13 @@ function End({ st, onNew, onMenu }) {
         <li>Calidad total: <b>{st.stats.total.toLocaleString('es-AR')}</b></li>
         <li>Semilla: <b>{st.seed}</b></li>
       </ul>
+      {st.ranked ? (
+        <div className="bc-rankres" role="status">
+          {sub?.sending && 'Verificando tu partida en el servidor…'}
+          {sub?.ok && <>🏆 Partida verificada. Tu mejor marca: <b>{Number(sub.best).toLocaleString('es-AR')}</b> · puesto <b>#{sub.rank}</b> del Makers Club. <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>}
+          {sub?.error && <>No se pudo cargar al ranking: {sub.error} <button className="bc-mini" onClick={retry}>Reintentar</button></>}
+        </div>
+      ) : <p className="muted">{st.rankNote ? `Esta partida no cuenta para el ranking (${st.rankNote}).` : 'Esta partida no cuenta para el ranking: es para el Makers Club con la sesión iniciada.'}</p>}
       <div className="bc-actions">
         <button className="bc-btn primary big" onClick={onNew}>Nueva partida</button>
         <button className="bc-btn" onClick={onMenu}>Menú</button>

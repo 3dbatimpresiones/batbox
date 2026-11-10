@@ -103,5 +103,16 @@ const bought = step(sh, { type: 'BUY', slot: modSlot });
 t('compra mod', bought.error ? sh.credits < sh.shop.items[modSlot].price : bought.state.mods.length === 1);
 t('compra repetida falla', !bought.state || !!step(bought.state, { type: 'BUY', slot: modSlot }).error);
 
+// Rejugada para el ranking
+const { replayRun } = await import('../src/lib/batcard/verify.js');
+const rep = replayRun('SIM', sim.log);
+t('replay ok', rep.ok, rep.error);
+t('replay mismo total', rep.ok && rep.result.total === sim.stats.total && rep.result.won === (sim.phase === 'victory'));
+const trucho = JSON.parse(JSON.stringify(sim.log)); const pi = trucho.findIndex((a) => a.t === 'PLAY'); trucho[pi].ids = ['XX'];
+t('replay rechaza jugada falsa', !replayRun('SIM', trucho).ok);
+t('replay rechaza otra semilla', !replayRun('OTRA', sim.log).ok || replayRun('OTRA', sim.log).result.total !== sim.stats.total);
+t('replay rechaza incompleta', !replayRun('SIM', sim.log.slice(0, -1)).ok);
+t('log no guarda errores', !sim.log.some((a) => a.t === 'PLAY' && a.ids?.includes('ZZ')));
+
 console.log(`${ok} OK, ${bad} fallas`);
 process.exit(bad ? 1 : 0);

@@ -202,7 +202,7 @@
 .gm-grid { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 20px; }
 .gm-card { display: flex; flex-direction: column; border-radius: 26px; overflow: hidden; background: linear-gradient(160deg, rgba(49,103,255,.18), rgba(135,61,255,.12)); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 18px 40px rgba(0,0,0,.35); transition: transform .2s, border-color .2s; }
 .gm-card:hover { transform: translateY(-3px); border-color: rgba(93,218,219,.5); }
-.gm-card.on { border-color: var(--cyan); }
+.gm-card:focus-within { border-color: rgba(93,218,219,.5); }
 .gm-media { position: relative; display: block; aspect-ratio: 16 / 10; background: #0b1030; }
 .gm-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .gm-new { position: absolute; top: 12px; right: 12px; background: #FF39B8; color: #fff; font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 999px; box-shadow: 0 0 18px #FF39B8; }

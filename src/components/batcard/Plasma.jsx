@@ -10,10 +10,10 @@ void main(){
   float aspect = res.x / res.y;
   vec2 p = (uv - 0.5) * vec2(aspect, 1.0);
   float r = length(p);
-  float a = 3.2 * r - 0.20 * time;
+  float a = 6.0 * r - 0.45 * time + 0.8 * sin(time * 0.15);
   float c = cos(a), s = sin(a);
   vec2 q = mat2(c, s, -s, c) * p;
-  float field = 0.5 + 0.25 * sin(q.x * 10.0 + time * 0.35) + 0.25 * sin(q.y * 13.0 - time * 0.27);
+  float field = 0.5 + 0.25 * sin(q.x * 9.0 + time * 0.6) + 0.25 * sin(q.y * 11.0 - time * 0.45);
   float band = floor(clamp(field, 0.0, 0.999) * 8.0) / 7.0;
   vec3 navy = vec3(0.035, 0.043, 0.125);
   vec3 violet = vec3(0.53, 0.24, 1.0);
@@ -21,7 +21,8 @@ void main(){
   vec3 pink = vec3(1.0, 0.22, 0.72);
   vec3 tint = mix(violet, cyan, band);
   tint = mix(tint, pink, smoothstep(0.82, 1.0, band) * 0.5);
-  vec3 col = mix(navy, tint, 0.30 * (1.0 - 0.55 * smoothstep(0.15, 0.6, 0.6 - r)));
+  // remolinos visibles en los bordes, más calmos en el centro (donde está la mesa)
+  vec3 col = mix(navy, tint, 0.62 * (0.45 + 0.55 * smoothstep(0.12, 0.75, r)));
   gl_FragColor = vec4(col, 1.0);
 }`;
 const VERT = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
