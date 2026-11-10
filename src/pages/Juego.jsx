@@ -55,7 +55,15 @@ export default function Juego({ query }) {
       </section>
 
       <div id="gm-detalle" className="gm-switch">
-        <h2>{GAMES.find((g) => g.id === game).name}</h2>
+        <div className="section-label">RANKING, RETOS Y CÓMO SE JUEGA</div>
+        <div className="gm-pick" role="tablist" aria-label="Elegí el juego">
+          {GAMES.map((g) => (
+            <button key={g.id} role="tab" aria-selected={game === g.id} className={game === g.id ? 'on' : ''} onClick={() => go(g.id, GAME_TABS[g.id][0][0])}>
+              <img src={g.img} alt="" /> <span>{g.name}</span>
+            </button>
+          ))}
+        </div>
+        {game === 'batcard' && <p className="mt-note">Gratis para todos. Con tu cuenta de Google cada partida terminada entra al ranking (histórico y semanal).</p>}
         {game === 'tycoon' && <p className="mt-note">Con tu cuenta de Google (la misma de BATBOX) guardás la partida en la nube y entrás al ranking. {ov.data?.season && <>Temporada actual: <b>{ov.data.season.name}</b>.</>}</p>}
       </div>
       <div className="view-toggle mt-tabs" role="tablist">

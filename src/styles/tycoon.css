@@ -245,3 +245,11 @@
 .gm-slide.gm-fade { animation: none !important; opacity: 1; transition: opacity .45s ease !important; }
 .gm-slide.gm-fade.out { opacity: 0; }
 @keyframes gm-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Selector de juego de la sección de detalle */
+.gm-pick { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0 10px; }
+.gm-pick button { display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 6px; border-radius: 16px; cursor: pointer; font: 800 16px 'Outfit', sans-serif;
+  color: #cbd5e1; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); transition: background .15s, border-color .15s, color .15s; }
+.gm-pick button img { width: 64px; height: 40px; object-fit: cover; border-radius: 10px; }
+.gm-pick button:hover { border-color: rgba(93,218,219,.5); color: #fff; }
+.gm-pick button.on { background: var(--cyan); color: #0b1030; border-color: var(--cyan); }
