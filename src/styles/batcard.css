@@ -1109,3 +1109,6 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-root.bc-full:not(.bc-scoring) .bc-actions { margin-bottom: auto; }
 .bc-root.bc-full.bc-scoring .bc-bed { animation: bed-open .35s cubic-bezier(.2,1.2,.4,1); }
 @keyframes bed-open { 0% { transform: scaleY(.55); opacity: .6; } 100% { transform: none; opacity: 1; } }
+/* Mesa en reposo con altura fija: el cartel de jugada entra sin mover las cartas */
+.bc-root.bc-full:not(.bc-scoring) .bc-bed { height: calc(clamp(22px, 4.6vw, 52px) * 1.5 + 74px); box-sizing: border-box; overflow: hidden; align-content: center; }
+.bc-patlabel { height: calc(clamp(22px, 4.6vw, 52px) * 1.5); align-items: center; }
