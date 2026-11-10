@@ -239,13 +239,17 @@ export function TycoonHomeBlock() {
     const h = setTimeout(() => go(1), AUTO_MS);
     return () => clearTimeout(h);
   }, [i, paused]);
-  const Slide = SLIDES[i][1];
   return (
     <section className="mt-home gm-car" aria-roledescription="carrusel" aria-label="Juegos de 3DBAT"
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <button className="gm-arrow l" onClick={() => go(-1)} aria-label="Juego anterior"><Icon name="arrowRight" size={20} /></button>
       <button className="gm-arrow r" onClick={() => go(1)} aria-label="Juego siguiente"><Icon name="arrowRight" size={20} /></button>
-      <div className="gm-slide" key={i} aria-live="polite" aria-label={`${i + 1} de ${SLIDES.length}: ${SLIDES[i][0]}`}><Slide /></div>
+      {/* Todas las diapositivas apiladas en la misma celda: fundido cruzado real y alto estable */}
+      <div className="gm-stack" aria-live="polite">
+        {SLIDES.map(([n, S], k) => (
+          <div key={n} className={`gm-slide${k === i ? ' on' : ''}`} aria-hidden={k !== i} aria-label={`${k + 1} de ${SLIDES.length}: ${n}`} inert={k !== i ? '' : undefined}><S /></div>
+        ))}
+      </div>
       <div className="gm-dots" role="tablist">
         {SLIDES.map(([n], k) => (
           <button key={n} role="tab" aria-selected={k === i} aria-label={n} className={k === i ? 'on' : ''} onClick={() => setI(k)}>

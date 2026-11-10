@@ -112,9 +112,8 @@ kbd { font: 400 10px 'Outfit', sans-serif; opacity: .7; border: 1px solid curren
 .bc-card-in { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bc-paper); color: var(--bc-ink); border: 2px solid var(--bc-ink); border-radius: 6px; box-shadow: 0 0 0 2px #fff3, 0 4px 0 rgba(0,0,0,.5);
   background-image: radial-gradient(rgba(24,24,51,.08) 1px, transparent 1px); background-size: 4px 4px;
   transition: transform .28s cubic-bezier(.34,1.7,.5,1), box-shadow .2s; }
-.bc-hand.float .bc-card:not(.sel) .bc-card-in { animation: bc-float 3.2s ease-in-out infinite; animation-delay: calc(var(--ph) * -1s); }
 @keyframes bc-float { 50% { transform: translateY(-2px); } }
-.bc-card.sel .bc-card-in { transform: translateY(-16px) rotate(-1.5deg); box-shadow: 0 0 0 3px var(--bc-cyan), 0 10px 16px rgba(0,0,0,.5); }
+.bc-card.sel .bc-card-in { box-shadow: 0 0 0 3px var(--bc-cyan), 0 10px 16px rgba(0,0,0,.5); }
 .bc-card.sel.scoring .bc-card-in { box-shadow: 0 0 0 3px var(--bc-pink), 0 10px 16px rgba(0,0,0,.5); }
 .bc-card.scoring:not(.sel) .bc-card-in { box-shadow: 0 0 0 2px var(--bc-violet); }
 .bc-card.lit .bc-card-in { transform: translateY(-8px) scale(1.06); box-shadow: 0 0 0 3px var(--bc-cyan), 0 0 16px var(--bc-cyan); }
@@ -260,11 +259,8 @@ kbd { font: 400 10px 'Outfit', sans-serif; opacity: .7; border: 1px solid curren
 
 /* ---------- Animaciones de cartas ---------- */
 /* Reparto: vuela desde el mazo (abajo a la derecha), gira y cae con rebote */
-.bc-card-in.deal { animation: bc-deal .55s cubic-bezier(.2,1.5,.4,1) both; animation-delay: var(--deal); }
 @keyframes bc-deal { 0% { transform: translate(260px, 120px) rotate(25deg) scale(.6); opacity: 0; } 60% { opacity: 1; } 100% { transform: none; opacity: 1; } }
 /* Elegir: salto con resorte, leve giro y brillo; hover inclina la carta */
-.bc-hand .bc-card:not(:disabled):hover .bc-card-in { transform: translateY(-6px) rotate(1deg); }
-.bc-card.sel .bc-card-in { animation: bc-pick .38s cubic-bezier(.3,1.8,.5,1); }
 @keyframes bc-pick { 0% { transform: none; } 55% { transform: translateY(-24px) rotate(-4deg) scale(1.08); } 100% { transform: translateY(-16px) rotate(-1.5deg); } }
 .bc-card.sel .bc-card-in::after { content: ''; position: absolute; inset: -3px; border-radius: 8px; pointer-events: none; box-shadow: 0 0 14px 2px rgba(36,220,255,.6); animation: bc-glow 1.4s ease-in-out infinite; }
 @keyframes bc-glow { 50% { box-shadow: 0 0 22px 5px rgba(255,57,184,.55); } }
@@ -275,8 +271,7 @@ kbd { font: 400 10px 'Outfit', sans-serif; opacity: .7; border: 1px solid curren
 @keyframes bc-fly { 0% { transform: translateY(240px) scale(.8) rotate(-10deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .bc-card.lit .bc-card-in { animation: bc-hit .3s cubic-bezier(.3,2,.5,1); }
 @keyframes bc-hit { 50% { transform: translateY(-14px) scale(1.14) rotate(3deg); } }
-.reduced .bc-card-in, .reduced .bc-card-in.deal { animation: none !important; }
-
+.reduced .bc-card-in, .reduced 
 /* ---------- La tele se rompe al perder (SOLO el fondo: el contenido queda arriba, intacto) ---------- */
 .bc-crack, .bc-static, .bc-glitch { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; opacity: 0; }
 .bc-static { background: repeating-radial-gradient(circle at 17% 32%, rgba(255,255,255,.2) 0 1px, transparent 1px 3px), repeating-linear-gradient(0deg, rgba(255,255,255,.1) 0 1px, transparent 1px 2px); mix-blend-mode: screen; }
@@ -333,3 +328,49 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-icon { position: relative; }
 .bc-icon.off { opacity: .55; border-color: #4a4290; }
 .bc-icon.off::after { content: ''; position: absolute; left: 7px; right: 7px; top: 50%; height: 2px; background: var(--bc-pink); transform: rotate(-35deg); }
+
+/* =================== Pulido de animaciones (estilo roguelike de cartas) =================== */
+@property --lift { syntax: '<length>'; inherits: true; initial-value: 0px; }
+/* Mano en abanico, encimada */
+.bc-hand { gap: 0; padding: 34px 10px 8px; }
+.bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.16); transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(var(--fr, 0deg));
+  transition: transform .42s cubic-bezier(.25,1.65,.45,1), --lift .42s cubic-bezier(.25,1.65,.45,1); }
+.bc-hand .bc-card:first-child { margin-left: 0; }
+.bc-hand .bc-card:not(:disabled):hover { --lift: 16px; z-index: 30 !important; transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(0deg) scale(1.1); }
+.bc-hand .bc-card.sel { --lift: 34px; z-index: 20 !important; transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(calc(var(--fr, 0deg) * .3)); }
+.bc-hand .bc-card.sel:hover { transform: translateY(calc(var(--fy, 0px) - var(--lift))) rotate(0deg) scale(1.1); }
+/* Inclinación 3D + brillo que sigue al puntero */
+.bc-card-tilt { position: absolute; inset: 0; display: block; transform: perspective(520px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .2s ease-out; }
+.bc-card-tilt::after { content: ''; position: absolute; inset: 0; border-radius: 6px; pointer-events: none; opacity: 0; transition: opacity .2s;
+  background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%), rgba(255,255,255,.55), rgba(255,255,255,0) 55%); mix-blend-mode: overlay; }
+.bc-card:hover .bc-card-tilt::after { opacity: 1; }
+.noflash .bc-card-tilt::after { display: none; }
+/* Vaivén continuo (cada carta con su fase) + reparto */
+.bc-hand.float .bc-card:not(.sel) .bc-card-in { animation: bc-sway 3.6s ease-in-out infinite; animation-delay: calc(var(--ph) * -1s); }
+.bc-hand.float .bc-card:not(.sel) .bc-card-in.deal { animation: bc-deal .6s cubic-bezier(.2,1.5,.4,1) var(--deal) both, bc-sway 3.6s ease-in-out calc(var(--ph) * -1s) infinite; }
+.bc-card-in.deal { animation: bc-deal .6s cubic-bezier(.2,1.5,.4,1) var(--deal) both; }
+@keyframes bc-sway { 0%, 100% { transform: rotate(-1.4deg) translateY(0); } 50% { transform: rotate(1.4deg) translateY(-3px); } }
+@keyframes bc-deal { 0% { transform: translate(320px, 140px) rotate(35deg) scale(.5); opacity: 0; } 55% { opacity: 1; transform: translate(-6px, -10px) rotate(-4deg) scale(1.05); } 100% { transform: none; opacity: 1; } }
+/* Elegir: "pop" con estiramiento */
+.bc-hand .bc-card.sel .bc-card-in { animation: bc-pop .42s cubic-bezier(.3,1.9,.5,1); }
+@keyframes bc-pop { 0% { transform: scale(1); } 30% { transform: scale(1.16, .9) rotate(-3deg); } 60% { transform: scale(.95, 1.06) rotate(2deg); } 100% { transform: scale(1); } }
+/* Puntaje: la carta que suma se sacude */
+.bc-card.lit .bc-card-in { animation: bc-jiggle .45s cubic-bezier(.3,1.8,.5,1); box-shadow: 0 0 0 3px var(--bc-cyan), 0 0 22px var(--bc-cyan); }
+@keyframes bc-jiggle { 0% { transform: none; } 20% { transform: translateY(-16px) scale(1.2) rotate(-7deg); } 40% { transform: translateY(-12px) scale(1.15) rotate(6deg); } 60% { transform: translateY(-8px) scale(1.1) rotate(-3deg); } 100% { transform: translateY(-6px) scale(1.06); } }
+.bc-played { gap: 10px; }
+.bc-played .bc-card:nth-child(odd) { transform: rotate(-2deg); } .bc-played .bc-card:nth-child(even) { transform: rotate(2deg) translateY(4px); }
+/* Cajas de Capas × Mult: laten con cada cambio */
+.bc-cm .chips, .bc-cm .mult { display: inline-block; animation: bc-box .35s cubic-bezier(.3,2,.5,1); box-shadow: 0 4px 0 rgba(0,0,0,.45); }
+@keyframes bc-box { 0% { transform: scale(1); filter: brightness(1); } 35% { transform: scale(1.35) rotate(-4deg); filter: brightness(1.8); } 100% { transform: scale(1); filter: brightness(1); } }
+/* Fuego cuando la mano alcanza la meta */
+.bc-cm { position: relative; }
+.bc-cm.fire::before { content: ''; position: absolute; left: -14px; right: -14px; bottom: 60%; height: 70px; z-index: -1; filter: blur(2px);
+  background: radial-gradient(ellipse at 30% 100%, #ff9a3c 0 25%, transparent 55%), radial-gradient(ellipse at 60% 100%, #FF39B8 0 25%, transparent 55%), radial-gradient(ellipse at 85% 100%, #ffd23c 0 20%, transparent 50%);
+  animation: bc-fire .22s steps(2) infinite alternate; transform-origin: bottom; }
+@keyframes bc-fire { from { transform: scaleY(.85) skewX(-6deg); opacity: .85; } to { transform: scaleY(1.15) skewX(6deg); opacity: 1; } }
+.noflash .bc-cm.fire::before { display: none; }
+/* Botones con rebote */
+.bc-btn { transition: transform .25s cubic-bezier(.3,1.8,.5,1), background .12s; }
+.bc-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.04) rotate(-.6deg); }
+.reduced .bc-hand .bc-card-in, .reduced .bc-card-tilt { animation: none !important; transform: none !important; }
+@media (max-width: 640px) { .bc-hand { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding: 34px 14px 10px; } .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.28); } }

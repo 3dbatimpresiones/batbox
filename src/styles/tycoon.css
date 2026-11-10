@@ -232,3 +232,9 @@
 .gm-dot-bar { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--cyan); transform-origin: left; animation: gm-bar linear forwards; }
 @keyframes gm-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 @media (max-width: 900px) { .gm-slide { grid-template-columns: 1fr; } .gm-arrow { top: 120px; } }
+
+/* Carrusel: fundido cruzado (las dos diapositivas en la misma celda de la grilla) */
+.gm-stack { grid-column: 1 / -1; display: grid; }
+.gm-stack > .gm-slide { grid-area: 1 / 1; animation: none; opacity: 0; visibility: hidden; transition: opacity .9s ease, visibility 0s linear .9s; }
+.gm-stack > .gm-slide.on { opacity: 1; visibility: visible; transition: opacity .9s ease, visibility 0s; }
+@media (prefers-reduced-motion: reduce) { .gm-stack > .gm-slide { transition: none; } }

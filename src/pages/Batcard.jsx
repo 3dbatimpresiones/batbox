@@ -403,7 +403,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
                   {anim.last.played.map((id) => <Card key={id} card={anim.prev.deck.find((c) => c.id === id)} scoring={anim.last.scoring.includes(id)} lit={litCards.has(id)} />)}
                 </div>
                 <div className="bc-trace" aria-live="polite">
-                  <div className="bc-cm"><span className="chips">{tShown ? tShown.chips : 0}</span><span className="x">×</span><span className="mult">{tShown ? fmtMult(tShown.mult) : 0}</span></div>
+                  <div className={`bc-cm${tShown?.phase === 'total' && anim.prev.round.score + tShown.total >= anim.prev.round.target ? ' fire' : ''}`}><span className="chips" key={'c' + (tShown ? tShown.chips : 0)}>{tShown ? tShown.chips : 0}</span><span className="x">×</span><span className="mult" key={'m' + (tShown ? tShown.mult : 0)}>{tShown ? fmtMult(tShown.mult) : 0}</span></div>
                   <ol>{anim.last.trace.slice(0, anim.i).map((t, i) => <li key={i} className={'ph-' + t.phase}>{t.text}</li>)}</ol>
                   {anim.i < anim.last.trace.length && <button className="bc-btn small" onClick={() => setAnim((a) => ({ ...a, i: a.last.trace.length }))}>Acelerar</button>}
                 </div>
@@ -427,7 +427,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
 
           <section className={`bc-hand${reduced ? '' : ' float'}`} aria-label="Tu mano">
             {hand.map((id, i) => (
-              <Card key={id} card={byId[id]} idx={i} deal={dealDelay(id)} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
+              <Card key={id} card={byId[id]} idx={i} fan={{ i, n: hand.length }} deal={dealDelay(id)} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
                 scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim} />
             ))}
           </section>
