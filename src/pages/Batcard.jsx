@@ -4,6 +4,7 @@ import '../styles/batcard.css';
 import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
 import Card, { CardBack } from '../components/batcard/Card.jsx';
+import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
@@ -32,6 +33,7 @@ const SPEED = { normal: 320, rapida: 120 };
 
 function useSettings() {
   const [s, setS] = useState(() => ({ ...DEF_SET, ...(ls.get(K_SET) || {}) }));
+  useEffect(() => { setSkin(s.skin || 'clasico'); if (s.skin) preloadSkin(s.skin); }, [s.skin]);
   useEffect(() => { ls.set(K_SET, s); setAudio(s.vol, s.mute); music.setTrack(s.track); music.setVolume(s.mute ? 0 : s.music); }, [s]);
   const sysReduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   // Solo se reduce si el jugador lo elige en el juego: con 'reducir animaciones' de Windows el juego quedaba casi sin vida.
@@ -539,6 +541,16 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
             <button className={`bc-icon${set.mute || !set.music ? ' off' : ''}`} onClick={() => patch(set.mute || !set.music ? { mute: false, music: set.music || 0.35 } : { music: 0 })}
               aria-pressed={!set.mute && !!set.music} title={set.mute || !set.music ? 'Activar música' : 'Apagar música'} aria-label="Música">♪</button>
             <button className="bc-icon" onClick={() => { const ids = Object.keys(TRACKS); const nx = ids[(ids.indexOf(set.track) + 1) % ids.length]; patch({ track: nx, mute: false, music: set.music || 0.35 }); setMsg(`🎵 ${TRACKS[nx].name}`); }} title="Cambiar de música" aria-label="Cambiar de música">⏭</button>
+            <button className="bc-icon" onClick={() => {
+              const ids = Object.keys(SKINS); const nx = ids[(ids.indexOf(set.skin || 'clasico') + 1) % ids.length];
+              preloadSkin(nx);
+              const root = document.querySelector('.bc-root');
+              root?.classList.remove('bc-skinflip'); void root?.offsetWidth; root?.classList.add('bc-skinflip');
+              [0, 90, 180, 270].forEach((d, i) => setTimeout(() => sfx.flip(i), d));
+              setTimeout(() => patch({ skin: nx }), 280); // a mitad del giro: se ve el cambio de cara
+              setTimeout(() => root?.classList.remove('bc-skinflip'), 800);
+              setMsg(`🎴 Mazo ${SKINS[nx].name}`);
+            }} title="Cambiar el mazo (skin)" aria-label="Cambiar el mazo">🎴</button>
             <button className="bc-icon" onClick={() => setFb(true)} title="Enviar una sugerencia" aria-label="Sugerencias">💡</button>
           </span>
           <button className="bc-icon" onClick={() => setHelp(true)} aria-label="¿Cómo se puntúa?">?</button>
@@ -1021,6 +1033,7 @@ function Ajustes({ set, patch, back }) {
         <select value={set.speed} onChange={(e) => patch({ speed: e.target.value })}><option value="normal">Normal</option><option value="rapida">Rápida</option></select>
       </label>
       <label>Volumen <input type="range" min="0" max="1" step="0.05" value={set.vol} onChange={(e) => patch({ vol: +e.target.value })} /></label>
+      <label>Mazo <select value={set.skin || 'clasico'} onChange={(e) => { preloadSkin(e.target.value); patch({ skin: e.target.value }); }}>{Object.entries(SKINS).map(([id, k]) => <option key={id} value={id}>{k.name}</option>)}</select></label>
       <label>Pista <select value={set.track} onChange={(e) => patch({ track: e.target.value })}>{Object.entries(TRACKS).map(([id, t]) => <option key={id} value={id}>{t.name}</option>)}</select></label>
       <label>Música <input type="range" min="0" max="1" step="0.05" value={set.music} onChange={(e) => patch({ music: +e.target.value })} /></label>
       <label><input type="checkbox" checked={set.mute} onChange={(e) => patch({ mute: e.target.checked })} /> Silenciar</label>

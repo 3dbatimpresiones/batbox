@@ -726,3 +726,19 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-seal { animation: bc-sealglint 2.6s ease-in-out infinite; }
 @keyframes bc-sealglint { 0%, 80%, 100% { filter: brightness(1); } 88% { filter: brightness(1.8) drop-shadow(0 0 4px #fff); } }
 .reduced .bc-flashfx, .reduced .bc-seal, .reduced .bc-mod.fin-legendario { animation: none !important; }
+
+/* =================== Skins del mazo =================== */
+.bc-face { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; border-radius: inherit; z-index: 1; pointer-events: none; }
+.bc-card.has-face .bc-card-in { background: #0c0f2a; border-color: transparent; }
+.bc-card.has-face .bc-corner, .bc-card.has-face .bc-motif { visibility: hidden; }
+.bc-card.has-face .bc-bonus, .bc-card.has-face .bc-mat, .bc-card.has-face .bc-seal, .bc-card.has-face .bc-order { z-index: 3; }
+.bc-back-img { background: #0c0f2a !important; box-shadow: none !important; border: 0 !important; }
+.bc-back-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.bc-back-img::after { display: none; }
+/* Cambio de skin: toda la mano gira como moneda */
+.bc-skinflip .bc-card .bc-card-tilt { animation: bc-skinflip .6s ease-in-out both; }
+.bc-skinflip .bc-card:nth-child(2) .bc-card-tilt { animation-delay: .03s; } .bc-skinflip .bc-card:nth-child(3) .bc-card-tilt { animation-delay: .06s; }
+.bc-skinflip .bc-card:nth-child(4) .bc-card-tilt { animation-delay: .09s; } .bc-skinflip .bc-card:nth-child(5) .bc-card-tilt { animation-delay: .12s; }
+.bc-skinflip .bc-card:nth-child(n+6) .bc-card-tilt { animation-delay: .15s; }
+@keyframes bc-skinflip { 0% { transform: rotateY(0); } 50% { transform: rotateY(90deg) scale(1.08); filter: brightness(1.8); } 100% { transform: rotateY(0); } }
+.bc-skinflip .bc-deckpile { animation: bc-credpop .6s ease; }

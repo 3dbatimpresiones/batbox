@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import logo3dbat from '../../assets/logo-3dbat.webp';
+import { useSkin, faceUrl, backUrl } from './skins.js';
 import { SUITS, rankLabel, cardText } from '../../lib/batcard/hands.js';
 import { MATERIALS, SEALS } from '../../lib/batcard/catalog.js';
 
@@ -20,6 +21,9 @@ export function Logo3DBAT({ className = '' }) {
 
 // Dorso BATCARD: marco pixel violeta con el logo de 3DBAT al centro.
 export function CardBack({ className = '' }) {
+  const skin = useSkin();
+  const img = backUrl(skin);
+  if (img) return <span className={`bc-back bc-back-img ${className}`} aria-hidden="true"><img src={img} alt="" draggable="false" /></span>;
   return (
     <span className={`bc-back ${className}`} aria-hidden="true">
       <span className="bc-back-logo"><Logo3DBAT /></span>
@@ -65,14 +69,17 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
     inRef.current.style.setProperty('--dx', `${Math.round(a.left + a.width / 2 - (b.left + b.width / 2))}px`);
     inRef.current.style.setProperty('--dy', `${Math.round(a.top + a.height / 2 - (b.top + b.height / 2))}px`);
   }, [deal]);
+  const skin = useSkin();
+  const face = faceUrl(card, skin);
   const suit = SUITS[card.s];
   const mat = card.m && MATERIALS[card.m];
-  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : ''].join(' ');
+  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : '', face ? 'has-face' : ''].join(' ');
   const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${card.sl ? `, ${SEALS[card.sl].name}` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
     <span className="bc-card-tilt">
     <span ref={inRef} className={`bc-card-in${deal != null ? ' deal' : ''}`} style={{ '--ph': idx * 0.7, '--deal': `${deal || 0}ms` }}>
       {deal != null && <CardBack className="bc-back-ov" />}
+      {face && <img className="bc-face" src={face} alt="" draggable="false" />}
       <span className="bc-corner tl"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>
       <Motif suit={card.s} />
       <span className="bc-corner br"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>
