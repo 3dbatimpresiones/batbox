@@ -9,14 +9,19 @@ function ac() {
   if (!ctx) {
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -18; comp.knee.value = 12; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.15;
-    bus = ctx.createGain(); bus.gain.value = 1.4;
-    bus.connect(comp).connect(ctx.destination);
+    // Limitador final (no aplasta el golpe) + saturación suave tipo consola = más pegada y volumen
+    comp.threshold.value = -4; comp.knee.value = 2; comp.ratio.value = 14; comp.attack.value = 0.012; comp.release.value = 0.12;
+    const sat = ctx.createWaveShaper();
+    const curve = new Float32Array(1024); for (let i = 0; i < 1024; i++) { const x = (i / 511.5) - 1; curve[i] = Math.tanh(2.2 * x) / Math.tanh(2.2); }
+    sat.curve = curve; sat.oversample = '2x';
+    const post = ctx.createGain(); post.gain.value = 0.95;
+    bus = ctx.createGain(); bus.gain.value = 2.3;
+    bus.connect(sat).connect(post).connect(comp).connect(ctx.destination);
     // Reverb: respuesta de impulso generada (ruido estéreo con caída exponencial de ~1,6 s)
     const len = Math.floor(ctx.sampleRate * 1.6), ir = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); }
     const conv = ctx.createConvolver(); conv.buffer = ir;
-    rev = ctx.createGain(); rev.gain.value = 0.35;
+    rev = ctx.createGain(); rev.gain.value = 0.2;
     rev.connect(conv).connect(comp);
   }
   if (ctx.state === 'suspended') ctx.resume();
@@ -186,4 +191,21 @@ sfx.ding = () => {
   [1568, 2093, 3136, 4186].forEach((f, j) => tone({ f, dur: 1.1 - j * 0.15, type: 'sine', gain: 0.12 - j * 0.02, at: j * 0.01, wet: 0.7, pan: (j - 1.5) * 0.3 }));
   tone({ f: 784, dur: 0.5, type: 'triangle', gain: 0.1, wet: 0.5 });
   crash(0.25);
+};
+
+// ===== Anuncio de Patrón: un sonido propio para cada jugada =====
+sfx.pattern = (id) => {
+  const arp = (notes, step, type, g, base = 523, len = 0.18) => notes.forEach((s, j) => tone({ f: base * semi(s), dur: len, type, gain: g, at: j * step, wet: 0.35, pan: (j % 2 ? 0.4 : -0.4) }));
+  switch (id) {
+    case 'alta': tone({ f: 330, f2: 300, dur: 0.15, type: 'triangle', gain: 0.14, wet: 0.3 }); kick(0.25); break;
+    case 'par': kick(0.4); arp([0, 0], 0.09, 'square', 0.12, 659); break;
+    case 'doble': kick(0.45); kick(0.35, 0.18); arp([0, 0, 5, 5], 0.09, 'square', 0.11, 587); break;
+    case 'trio': [0, 0.11, 0.22].forEach((t) => kick(0.5, t)); arp([0, 4, 7], 0.11, 'sawtooth', 0.11, 392, 0.3); break;
+    case 'escalera': kick(0.4); arp([0, 2, 4, 5, 7, 9, 11, 12], 0.045, 'square', 0.1, 523, 0.12); sweep({ dur: 0.45, gain: 0.3, f1: 400, f2: 9000, q: 1.2 }); break;
+    case 'color': kick(0.5); sweep({ dur: 0.6, gain: 0.4, f1: 200, f2: 6000, q: 0.8 }); [0, 4, 7, 11].forEach((s, j) => tone({ f: 392 * semi(s), dur: 0.7, type: 'sawtooth', gain: 0.06, at: 0.08, wet: 0.6, pan: (j - 1.5) * 0.4, vib: 0.006 })); break;
+    case 'full': [0, 0.12, 0.24].forEach((t) => kick(0.55, t)); [0, 4, 7, 12].forEach((s, j) => tone({ f: 262 * semi(s), dur: 0.6, type: 'square', gain: 0.08, at: 0.06 * j, wet: 0.5 })); crash(0.35, 0.3); break;
+    case 'poker': [0, 0.13, 0.26, 0.39].forEach((t, j) => { kick(0.7, t); tone({ f: 110 * semi(j * 3), dur: 0.12, type: 'sawtooth', gain: 0.15, at: t, wet: 0.2 }); }); crash(0.4, 0.45); break;
+    case 'ecolor': [0, 0.1, 0.2, 0.3, 0.4].forEach((t) => kick(0.6, t)); arp([0, 4, 7, 12, 16, 19, 24, 28], 0.05, 'square', 0.1, 523, 0.25); sweep({ dur: 0.9, gain: 0.4, f1: 300, f2: 12000, q: 1 }); crash(0.5, 0.45); break;
+    default: kick(0.3);
+  }
 };

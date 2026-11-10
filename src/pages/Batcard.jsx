@@ -28,7 +28,7 @@ const ls = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
   del(k) { try { localStorage.removeItem(k); } catch { /* nada */ } },
 };
-const DEF_SET = { crt: 'completo', motion: 'auto', flashes: true, vol: 0.6, music: 0.35, track: 'synthwave', mute: false, speed: 'normal' };
+const DEF_SET = { crt: 'completo', motion: 'auto', flashes: true, vol: 0.85, music: 0.35, track: 'synthwave', mute: false, speed: 'normal' };
 const SPEED = { normal: 320, rapida: 120 };
 
 function useSettings() {
@@ -432,16 +432,36 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
       const t = anim.last.trace[anim.i];
       const prevT = anim.last.trace[anim.i - 1];
       if (fxOn) fxPulse(anim.i / Math.max(1, anim.last.trace.length - 1));
+      if (t.phase === 'base') {
+        // Anuncio de la jugada: cartel, efecto gráfico y sonido propios de cada Patrón
+        const pid = anim.last.pattern;
+        sfx.pattern(pid);
+        const bed = document.querySelector('.bc-bed');
+        if (bed) {
+          const d = document.createElement('div');
+          d.className = `bc-patfx p-${pid}${fxOn ? '' : ' calm'}`;
+          d.innerHTML = `<span>${PATTERN[pid].name}</span>`;
+          bed.appendChild(d);
+          setTimeout(() => d.remove(), 1500);
+        }
+        if (fxOn) {
+          if (['full', 'poker', 'ecolor', 'color', 'escalera'].includes(pid)) { flashScreen(pid === 'poker' ? '#ff2b4a' : pid === 'ecolor' ? '#ffffff' : '#24DCFF', 420); fxChroma(); }
+          if (['full', 'poker', 'ecolor'].includes(pid)) confetti({ n: pid === 'ecolor' ? 200 : 110 });
+          if (pid === 'ecolor') fxZoomBlur();
+          if (['trio', 'poker', 'full'].includes(pid)) shake(bed, true);
+        }
+      }
       if (t.phase === 'total') {
         const best = anim.prev.stats.bestHand;
         const big = t.total >= anim.prev.round.target * 0.4 || (best > 0 && t.total > best);
-        sfx.tick(10); if (big) sfx.big();
+        sfx.tick(10);
         const scoreEl = document.querySelector('.bc-score-num');
         const bedR = document.querySelector('.bc-bed')?.getBoundingClientRect();
         const playR = document.querySelector('.bc-played')?.getBoundingClientRect();
         const spot = bedR && playR ? { getBoundingClientRect: () => { const x0 = Math.max(playR.right, bedR.left), free = bedR.right - x0; const x = free > 160 ? x0 + free / 2 : bedR.left + bedR.width / 2; const y = free > 160 ? bedR.top + bedR.height / 2 - 30 : bedR.top + 30; return { left: x, top: y, width: 0, height: 0 }; } } : null;
         popText(spot || document.querySelector('.bc-pop-anchor') || scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true); // en el lugar libre de la mesa
-        if (fxOn) { shake(document.querySelector('.bc-game'), big); if (big) { burstAt(scoreEl, { n: 60 }); fxZoomBlur(); fxChroma(); } }
+        if (fxOn) { shake(document.querySelector('.bc-game'), big); shake(document.querySelector('.bc-bed'), true); flashScreen('#ffd27a', big ? 520 : 320); burstAt(document.querySelector('.bc-pop.k-total') || scoreEl, { n: big ? 90 : 45 }); if (big) { burstAt(scoreEl, { n: 60 }); fxZoomBlur(); fxChroma(); } }
+        sfx.big();
         if (big) { setBanner(best > 0 && t.total > best ? '¡RÉCORD DE MANO!' : '¡GRAN MANO!'); setTimeout(() => setBanner(null), 1300); }
         const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 950;
         let lastBip = 0; const roll = (now) => { const k = Math.min(1, (now - t0) / dur); setRolled(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (now - lastBip > 45 && k < 1) { lastBip = now; sfx.roll(k); } if (k < 1) requestAnimationFrame(roll); else { setRolled(null); sfx.ding(); } };
