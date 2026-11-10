@@ -54,6 +54,67 @@ function exitFull() {
 }
 const isTouch = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
 
+// ---------- App instalable (webapp) ----------
+// Mientras BATCARD está abierto se declara su propio manifiesto (pantalla completa, ícono propio),
+// así "Instalar" instala BATCARD y no todo BATBOX. Al salir se restaura lo anterior.
+let installEvt = null;
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; window.dispatchEvent(new Event('bc-install-ready')); });
+}
+const isStandalone = () => typeof matchMedia !== 'undefined' && (matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
+const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function usePwaHead() {
+  useEffect(() => {
+    const base = import.meta.env.BASE_URL || '/batbox/';
+    const added = [];
+    const add = (tag, attrs) => { const el = document.createElement(tag); Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); el.dataset.batcard = '1'; document.head.appendChild(el); added.push(el); };
+    const prevManifest = document.querySelector('link[rel="manifest"]:not([data-batcard])');
+    if (prevManifest) prevManifest.setAttribute('rel', 'x-manifest-off');
+    add('link', { rel: 'manifest', href: base + 'batcard.webmanifest' });
+    add('link', { rel: 'apple-touch-icon', href: base + 'batcard-180.png' });
+    add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+    add('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+    add('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' });
+    add('meta', { name: 'apple-mobile-web-app-title', content: 'BATCARD' });
+    add('meta', { name: 'theme-color', content: '#090B20' });
+    return () => { added.forEach((el) => el.remove()); if (prevManifest) prevManifest.setAttribute('rel', 'manifest'); };
+  }, []);
+}
+function InstallButton() {
+  const [ready, setReady] = useState(!!installEvt);
+  const [help, setHelp] = useState(false);
+  const [done, setDone] = useState(false);
+  useEffect(() => { const f = () => setReady(true); window.addEventListener('bc-install-ready', f); window.addEventListener('appinstalled', () => setDone(true)); return () => window.removeEventListener('bc-install-ready', f); }, []);
+  if (isStandalone() || done) return null;
+  const ios = isIOS();
+  if (!ready && !ios) return null;
+  const install = async () => {
+    if (ios) { setHelp(true); return; }
+    installEvt.prompt();
+    const r = await installEvt.userChoice.catch(() => null);
+    if (r?.outcome === 'accepted') setDone(true);
+    installEvt = null; setReady(false);
+  };
+  return (
+    <>
+      <button className="bc-btn bc-install" onClick={install}>📲 Instalar BATCARD <small>como app, a pantalla completa</small></button>
+      {help && createPortal(
+        <div className="bc-root bc-modal" role="dialog" aria-modal="true" aria-label="Instalar en iPhone o iPad" onClick={() => setHelp(false)}>
+          <div className="bc-panel bc-help" onClick={(e) => e.stopPropagation()}>
+            <div className="bc-row"><h2>Instalar BATCARD</h2><button className="bc-btn small" onClick={() => setHelp(false)}>Listo</button></div>
+            <p>En iPhone y iPad se instala desde Safari:</p>
+            <ol className="bc-list">
+              <li>Tocá el botón <b>Compartir</b> (el cuadrado con la flecha hacia arriba).</li>
+              <li>Elegí <b>Agregar a pantalla de inicio</b>.</li>
+              <li>Tocá <b>Agregar</b>. Te queda el ícono de BATCARD y se abre a pantalla completa.</li>
+            </ol>
+            <p className="muted">Tu cuenta de Google funciona igual dentro de la app: ingresás una vez y queda guardada.</p>
+          </div>
+        </div>, document.body)}
+    </>
+  );
+}
+
 function loadSave() {
   const raw = ls.get(K_SAVE);
   if (!raw) return { save: null, problem: null };
@@ -81,6 +142,7 @@ export default function Batcard() {
     music.setLevel(lv);
   }, [screen, st]);
   const fxOn = !reduced && set.flashes;
+  usePwaHead();
   // En partida el juego ocupa toda la pantalla (sin scroll de la página).
   useEffect(() => {
     if (screen !== 'juego') return undefined;
@@ -232,6 +294,7 @@ function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont,
         <button className="bc-btn" onClick={() => go('coleccion')}>Colección</button>
         <button className="bc-btn" onClick={() => go('ajustes')}>Ajustes</button>
       </div>
+      <InstallButton />
       {rec && <p className="bc-rec">Récord: {rec.won ? 'orden completa' : `Lote ${rec.lot}`} · mejor mano {rec.best.toLocaleString('es-AR')} Calidad</p>}
       <p className="bc-foot">{canRank
         ? <>🏆 Estás en el <b>ranking</b>: cada partida entra al ranking <b>cuando termina</b> (ganes o pierdas). <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>
@@ -515,7 +578,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
 
       {help && <Ayuda onClose={() => setHelp(false)} />}
       {fb && <Sugerencias st={st} onClose={() => setFb(false)} />}
-      {banner && <div className="bc-banner" role="status">{banner}</div>}
+      {banner && <div className="bc-banner" role="status" style={(() => { const b = document.querySelector('.bc-bed'); return b ? { top: `${Math.min(innerHeight - 60, b.getBoundingClientRect().bottom + 34)}px` } : undefined; })()}>{banner}</div>} {/* justo debajo de la mesa: no lo tapa el número dorado */}
       {view.phase === 'shop' && <Shop st={view} act={act} />}
       {(view.phase === 'victory' || view.phase === 'defeat') && <End st={view} onNew={onNew} onMenu={onMenu} />}
       <p className="bc-seed">Semilla {st.seed} · {st.deck.length} cartas en el mazo</p>

@@ -571,3 +571,11 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
   .bc-full .bc-game { gap: 4px; }
   .bc-root.bc-full { --bc-card-w: clamp(38px, min(calc((100vw - 24px) / 5.3), calc((100dvh - 430px) / 2.3)), 92px); }
 }
+
+/* Botón de instalar la app */
+.bc-install { border-color: #2bd67b; background: linear-gradient(180deg, #13402b, #0b2a1c); color: #c9ffe0; }
+.bc-install:hover:not(:disabled) { background: linear-gradient(180deg, #1a5a3c, #103a26); }
+/* Instalada como app (pantalla completa): respeta la muesca y la barra de gestos */
+@media (display-mode: fullscreen), (display-mode: standalone) {
+  .bc-root { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+}
