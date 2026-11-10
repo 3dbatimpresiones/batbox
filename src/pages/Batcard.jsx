@@ -17,7 +17,7 @@ import { sb } from '../lib/supabase.js';
 // =====================================================================
 // #/batcard — BATCARD · Un juego de 3DBAT IMPRESIONES.
 // Roguelike de cartas. Motor puro en src/lib/batcard/; acá solo presentación.
-// Guardado local (sin cuenta). Ranking del Makers Club: fase posterior (requiere validación en servidor).
+// Gratis para todos. Con sesión de Google la semilla la da el servidor y la partida entra al ranking (verificada).
 // =====================================================================
 
 const K_SAVE = 'batcard.save', K_SET = 'batcard.ajustes', K_REC = 'batcard.record', K_TUTO = 'batcard.tutorial';
@@ -26,7 +26,7 @@ const ls = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
   del(k) { try { localStorage.removeItem(k); } catch { /* nada */ } },
 };
-const DEF_SET = { crt: 'suave', motion: 'auto', flashes: true, vol: 0.6, music: 0.35, mute: false, speed: 'normal' };
+const DEF_SET = { crt: 'completo', motion: 'auto', flashes: true, vol: 0.6, music: 0.35, mute: false, speed: 'normal' };
 const SPEED = { normal: 320, rapida: 120 };
 
 function useSettings() {
@@ -63,10 +63,10 @@ export default function Batcard() {
   const fxOn = !reduced && set.flashes;
 
   const start = (s) => { setSt(s); setScreen('juego'); };
-  const { isMember, simulated, signIn, user } = useAuth();
-  const canRank = isMember && !simulated;
+  const { simulated, signIn, user } = useAuth();
+  const canRank = !!user && !simulated;
   const [starting, setStarting] = useState(false);
-  // Miembros del Makers Club: la semilla la da el servidor y la partida entra al ranking.
+  // Con sesión: la semilla la da el servidor y la partida entra al ranking.
   const nueva = async () => {
     ls.del(K_SAVE);
     if (!canRank) { start(newGame(newSeed())); return; }
@@ -83,8 +83,11 @@ export default function Batcard() {
   return (
     <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}`}>
       <div className="bc-stage">
-        <Plasma still={reduced} />
+        <Plasma still={set.motion === 'reducido'} />
         <div className="bc-crt" aria-hidden="true" />
+        <Crack />
+        <div className="bc-glitch" aria-hidden="true"><i /><i /><i /><i /></div>
+        <div className="bc-static" aria-hidden="true" />
         <div className="bc-content">
           {screen === 'menu' && (
             <Menu save={save} problem={problem} canRank={canRank} logged={!!user} signIn={signIn} starting={starting} onNew={nueva} onCont={continuar} onDropBad={descartarRoto} go={setScreen} />
@@ -98,6 +101,63 @@ export default function Batcard() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------- Grieta de vidrio (procedural, solo en el fondo)
+function buildCrack() {
+  // Semilla fija: la grieta es siempre igual (no hace falta azar real).
+  let z = 7;
+  const rnd = () => { z = (z * 16807) % 2147483647; return (z - 1) / 2147483646; };
+  const cx = 64, cy = 40;
+  const rays = [], rings = [], shards = [];
+  const N = 15;
+  const ends = [];
+  for (let k = 0; k < N; k++) {
+    const ang = (k / N) * Math.PI * 2 + (rnd() - 0.5) * 0.35;
+    let x = cx, y = cy, d = `M${cx} ${cy}`;
+    const len = 45 + rnd() * 70, steps = 7 + Math.floor(rnd() * 5);
+    const pts = [];
+    for (let j = 1; j <= steps; j++) {
+      const r = (len * j) / steps, jit = (rnd() - 0.5) * 0.28;
+      x = cx + Math.cos(ang + jit) * r * 1.25; y = cy + Math.sin(ang + jit) * r * 0.8;
+      d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; pts.push([x, y]);
+      if (j > 2 && rnd() < 0.3) { // rama
+        const ba = ang + (rnd() < 0.5 ? 1 : -1) * (0.4 + rnd() * 0.5), bl = 6 + rnd() * 14;
+        d += ` M${x.toFixed(1)} ${y.toFixed(1)} l${(Math.cos(ba) * bl).toFixed(1)} ${(Math.sin(ba) * bl * 0.7).toFixed(1)} M${x.toFixed(1)} ${y.toFixed(1)}`;
+      }
+    }
+    rays.push({ d, w: 0.18 + rnd() * 0.35 });
+    ends.push(pts);
+  }
+  // Anillos concéntricos cortados alrededor del impacto
+  for (const ri of [2, 4, 7]) {
+    let d = '';
+    for (let k = 0; k < N; k++) {
+      if (rnd() < 0.25) continue;
+      const p1 = ends[k][Math.min(ri, ends[k].length - 1)], p2 = ends[(k + 1) % N][Math.min(ri, ends[(k + 1) % N].length - 1)];
+      d += `M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)} `;
+      if (ri === 2 && rnd() < 0.6) shards.push(`M${cx} ${cy} L${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)} Z`);
+    }
+    rings.push(d);
+  }
+  return { rays, rings, shards, cx, cy };
+}
+const CRACK = buildCrack();
+function Crack() {
+  const { rays, rings, shards, cx, cy } = CRACK;
+  return (
+    <svg className="bc-crack" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      {shards.map((d, i) => <path key={'s' + i} d={d} fill={i % 2 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.25)'} />)}
+      <g fill="none" strokeLinejoin="bevel" strokeLinecap="round">
+        {rays.map((r, i) => <path key={'d' + i} d={r.d} stroke="rgba(0,0,0,.7)" strokeWidth={r.w + 0.5} />)}
+        {rings.map((d, i) => <path key={'e' + i} d={d} stroke="rgba(0,0,0,.6)" strokeWidth=".55" />)}
+        {rays.map((r, i) => <path key={'l' + i} d={r.d} stroke="rgba(225,240,255,.8)" strokeWidth={r.w} />)}
+        {rings.map((d, i) => <path key={'r' + i} d={d} stroke="rgba(225,240,255,.55)" strokeWidth=".22" />)}
+      </g>
+      <circle cx={cx} cy={cy} r="3.2" fill="rgba(255,255,255,.18)" />
+      <circle cx={cx} cy={cy} r="1.4" fill="rgba(255,255,255,.4)" />
+    </svg>
   );
 }
 
@@ -123,10 +183,8 @@ function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont,
       </div>
       {rec && <p className="bc-rec">Récord: {rec.won ? 'orden completa' : `Lote ${rec.lot}`} · mejor mano {rec.best.toLocaleString('es-AR')} Calidad</p>}
       <p className="bc-foot">{canRank
-        ? <>🏆 Estás en el <b>ranking del Makers Club</b>: cada partida nueva cuenta. <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>
-        : logged
-          ? <>Gratis para todos; la partida se guarda en este navegador. El <a href="#/juego?juego=batcard&ver=ranking">ranking</a> es para el <a href="#/club">Makers Club</a>.</>
-          : <>Gratis y sin cuenta. <button className="bc-mini" onClick={() => signIn()}>Ingresá</button> con tu cuenta del Makers Club para entrar al <a href="#/juego?juego=batcard&ver=ranking">ranking</a>.</>}</p>
+        ? <>🏆 Estás en el <b>ranking</b>: cada partida nueva cuenta. <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>
+        : <>Gratis y sin límites, con o sin cuenta. <button className="bc-mini" onClick={() => signIn()}>Ingresá con Google</button> (la misma cuenta de BATBOX) para entrar al <a href="#/juego?juego=batcard&ver=ranking">ranking</a>.</>}</p>
     </div>
   );
 }
@@ -143,6 +201,15 @@ function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
   const [tuto, setTuto] = useState(() => ls.get(K_TUTO) ?? 0);
   const [help, setHelp] = useState(() => (ls.get(K_TUTO) ?? 0) === 0);
   const fx = useRef(null);
+  // Reparto: cada carta que entra a la mano vuela desde el mazo, una detrás de otra.
+  const seen = useRef(new Set());
+  const dealQ = useRef(0);
+  const dealDelay = (id) => {
+    if (seen.current.has(id)) return null;
+    seen.current.add(id);
+    return dealQ.current++ * 70;
+  };
+  useEffect(() => { const h = setTimeout(() => { dealQ.current = 0; }, 50); return () => clearTimeout(h); });
 
   // Guardado tras cada transición confirmada (incluye compra y refresco).
   useEffect(() => {
@@ -153,6 +220,11 @@ function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
     } else ls.set(K_SAVE, st);
   }, [st]);
   useEffect(() => { ls.set(K_TUTO, tuto); }, [tuto]);
+  useEffect(() => {
+    const root = document.querySelector('.bc-root');
+    if (root && st.phase !== 'defeat') root.classList.remove('tv-break', 'tv-broken');
+    return () => root?.classList.remove('tv-break', 'tv-broken');
+  }, [st.phase]);
 
   const view = anim ? anim.prev : st;
   const r = view.round;
@@ -183,7 +255,11 @@ function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
           setBanner(st.phase === 'victory' ? '¡ORDEN COMPLETA!' : `¡APROBADO! +${pay}`);
           setTimeout(() => setBanner(null), 1800);
         }
-        if (st.phase === 'defeat') sfx.lose();
+        if (st.phase === 'defeat') {
+          sfx.shatter(); setTimeout(() => sfx.lose(), 700);
+          const root = document.querySelector('.bc-root');
+          if (root) { root.classList.remove('tv-break'); void root.offsetWidth; root.classList.add('tv-break', 'tv-broken'); }
+        }
       }, reduced ? 250 : 900);
       return () => clearTimeout(h);
     }
@@ -330,7 +406,7 @@ function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
 
           <section className={`bc-hand${reduced ? '' : ' float'}`} aria-label="Tu mano">
             {hand.map((id, i) => (
-              <Card key={id} card={byId[id]} idx={i} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
+              <Card key={id} card={byId[id]} idx={i} deal={dealDelay(id)} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
                 scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim} />
             ))}
           </section>
@@ -410,7 +486,7 @@ function Heat({ heat, forecast, boss }) {
     <div className="bc-heat" role="meter" aria-valuemin={0} aria-valuemax={6} aria-valuenow={heat} aria-label={`Calor ${heat} de 6`}>
       <span className="lbl">Calor</span>
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-        <span key={i} className={`seg${i <= heat && heat > 0 && i > 0 ? ' on' : ''}${forecast != null && i > heat && i <= forecast ? ' fc' : ''}${i === 6 ? ' max' : ''}`}>{i}</span>
+        <span key={i} className={`bc-seg${i <= heat && heat > 0 && i > 0 ? ' on' : ''}${forecast != null && i > heat && i <= forecast ? ' fc' : ''}${i === 6 ? ' max' : ''}`}>{i}</span>
       ))}
       <span className="txt">{forecast != null && forecast !== heat ? `→ ${forecast} si imprimís` : `${heat}/6`}{boss === 'hotend_saturado' && ' · ¡Hotend Saturado castiga el 6!'}</span>
     </div>
@@ -536,10 +612,10 @@ function End({ st, onNew, onMenu }) {
       {st.ranked ? (
         <div className="bc-rankres" role="status">
           {sub?.sending && 'Verificando tu partida en el servidor…'}
-          {sub?.ok && <>🏆 Partida verificada. Tu mejor marca: <b>{Number(sub.best).toLocaleString('es-AR')}</b> · puesto <b>#{sub.rank}</b> del Makers Club. <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>}
+          {sub?.ok && <>🏆 Partida verificada. Tu mejor marca: <b>{Number(sub.best).toLocaleString('es-AR')}</b> · puesto <b>#{sub.rank}</b> en el ranking. <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>}
           {sub?.error && <>No se pudo cargar al ranking: {sub.error} <button className="bc-mini" onClick={retry}>Reintentar</button></>}
         </div>
-      ) : <p className="muted">{st.rankNote ? `Esta partida no cuenta para el ranking (${st.rankNote}).` : 'Esta partida no cuenta para el ranking: es para el Makers Club con la sesión iniciada.'}</p>}
+      ) : <p className="muted">{st.rankNote ? `Esta partida no cuenta para el ranking (${st.rankNote}).` : 'Esta partida no cuenta para el ranking: ingresá con tu cuenta de Google y empezá una partida nueva. Era sin la sesión iniciada.'}</p>}
       <div className="bc-actions">
         <button className="bc-btn primary big" onClick={onNew}>Nueva partida</button>
         <button className="bc-btn" onClick={onMenu}>Menú</button>

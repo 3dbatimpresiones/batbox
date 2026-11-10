@@ -19,12 +19,12 @@ export function Motif({ suit, size = 12 }) {
   return <svg className="bc-motif" viewBox="0 0 12 12" width={size} height={size} shapeRendering="crispEdges" aria-hidden="true">{rects}</svg>;
 }
 
-export default function Card({ card, selected, scoring, lit, onClick, order, disabled, idx = 0 }) {
+export default function Card({ card, selected, scoring, lit, onClick, order, disabled, idx = 0, deal = null }) {
   const suit = SUITS[card.s];
   const cls = ['bc-card', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : ''].join(' ');
   const label = `${cardText(card)}${card.b ? `, +${card.b} Capas` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
-    <span className="bc-card-in" style={{ '--ph': idx * 0.7 }}>
+    <span className={`bc-card-in${deal != null ? ' deal' : ''}`} style={{ '--ph': idx * 0.7, '--deal': `${deal || 0}ms` }}>
       <span className="bc-corner tl"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>
       <Motif suit={card.s} />
       <span className="bc-corner br"><b>{rankLabel(card.r)}</b><i>{suit.sym}</i></span>

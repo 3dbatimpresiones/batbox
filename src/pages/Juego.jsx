@@ -158,7 +158,7 @@ const BC_COMO = [
   ['🔥', 'Temperatura de Taller', 'Sobreextruir da +12 Capas pero sube el Calor. Descartar enfría. Algunos Mods premian el calor justo.'],
   ['🛠️', 'Mods de Taller', 'Con los Créditos que ganás comprás Mods en Suministros: se aplican de izquierda a derecha y el orden importa.'],
   ['👹', 'Jefes', 'Cada Control de Calidad trae un jefe: Warping, Cama Desnivelada, Bobina Enredada o Hotend Saturado.'],
-  ['💾', 'Sin cuenta', 'Gratis, sin cuenta y sin pagar para ganar. La partida se guarda sola en tu navegador.'],
+  ['🏆', 'Gratis y con ranking', 'Gratis y sin límites, con o sin cuenta. Con tu cuenta de Google (la misma de BATBOX) entrás al ranking histórico y semanal.'],
 ];
 function ComoBatcard() {
   return (
@@ -175,7 +175,7 @@ function RankingBatcard() {
   return (
     <section className="card mt-panel">
       <Options value={kind} onChange={setKind} options={BC_RANKS.map(([value, label]) => ({ value, label }))} />
-      <p className="mt-help">{kind === 'semanal' ? 'La mejor partida de cada maker en esta semana. Se reinicia cada lunes.' : 'La mejor partida de cada maker desde siempre.'} Puntos = Calidad total de la partida. Exclusivo del Makers Club: cada partida la rejuega el servidor para que nadie haga trampa.</p>
+      <p className="mt-help">{kind === 'semanal' ? 'La mejor partida de cada maker en esta semana. Se reinicia cada lunes.' : 'La mejor partida de cada maker desde siempre.'} Puntos = Calidad total de la partida. Entra cualquiera que juegue con su cuenta de Google: cada partida la rejuega el servidor para que nadie haga trampa.</p>
       {r.loading && <div className="empty"><div className="spinner" /></div>}
       {r.error && <p className="mt-err">{r.error}</p>}
       {!r.loading && r.data && (r.data.rows.length === 0 ? <p className="mt-empty">Todavía nadie entró a este ranking. ¡Podés ser el primero!</p> : (

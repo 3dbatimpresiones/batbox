@@ -23,9 +23,7 @@ export async function handler(req, env) {
   if (!ures.ok) return json(401, { error: 'Sesión vencida: volvé a ingresar.' });
   const user = await ures.json();
 
-  // 2. ¿Es del Makers Club? (misma regla que el resto de BATBOX)
-  const mres = await fetch(`${url}/rest/v1/rpc/bb_is_member`, { method: 'POST', headers: { Authorization: auth, apikey: anon, 'Content-Type': 'application/json' }, body: '{}' });
-  if (!mres.ok || (await mres.json()) !== true) return json(403, { error: 'El ranking de BATCARD es para el Makers Club.' });
+  // 2. Ranking abierto a cualquier cuenta (como Maker Tycoon): alcanza con la sesión válida.
 
   // 3. Rejugar
   let body;

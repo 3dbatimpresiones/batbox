@@ -18,13 +18,15 @@ function loop() {
   parts = parts.filter((p) => p.life > 0 && p.y < h + 40);
   for (const p of parts) {
     p.vx *= 0.985; p.vy = p.vy * 0.985 + p.g; p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life -= 1;
-    ctx2d.save(); ctx2d.translate(p.x, p.y); ctx2d.rotate(p.rot);
+    // Estilo pixel: posiciones en grilla de 4 px y sin rotación suave (se "voltea" por pasos).
+    const px = Math.round(p.x / 4) * 4, py = Math.round(p.y / 4) * 4, flip = Math.floor(p.rot * 2) % 2 === 0;
     ctx2d.globalAlpha = Math.min(1, p.life / 30);
     ctx2d.fillStyle = p.c;
-    if (p.kind === 'fil') ctx2d.fillRect(-p.s * 1.6, -1.5, p.s * 3.2, 3); // tira de filamento
-    else if (p.kind === 'coin') { ctx2d.fillStyle = '#E2B13C'; ctx2d.fillRect(-4, -4, 8, 8); ctx2d.fillStyle = '#fff4c2'; ctx2d.fillRect(-2, -2, 3, 3); }
-    else ctx2d.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6);
-    ctx2d.restore();
+    if (p.kind === 'fil') { for (let k = 0; k < 4; k++) ctx2d.fillRect(px + k * 4, py + (flip ? k % 2 : (k + 1) % 2) * 4, 4, 4); } // tira de filamento
+    else if (p.kind === 'coin') { ctx2d.fillStyle = '#E2B13C'; ctx2d.fillRect(px - 4, py - 4, flip ? 8 : 4, 8); ctx2d.fillStyle = '#fff4c2'; ctx2d.fillRect(px - 4, py - 4, 4, 4); }
+    else if (p.kind === 'card') { ctx2d.fillStyle = '#181833'; ctx2d.fillRect(px - 5, py - 7, 10, 14); ctx2d.fillStyle = '#F5E9DB'; ctx2d.fillRect(px - 4, py - 6, 8, 12); ctx2d.fillStyle = p.c; ctx2d.fillRect(px - 2, py - 2, 4, 4); }
+    else ctx2d.fillRect(px, py, flip ? 8 : 4, flip ? 4 : 8);
+    ctx2d.globalAlpha = 1;
   }
   if (parts.length) raf = requestAnimationFrame(loop);
   else { ctx2d.clearRect(0, 0, w, h); raf = 0; }
@@ -35,7 +37,7 @@ export function confetti({ x = innerWidth / 2, y = innerHeight / 3, n = 120, spr
     const a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * spread;
     const v = (6 + Math.random() * 9) * up;
     parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, g: 0.25, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4,
-      s: 5 + Math.random() * 6, c: PALETTE[i % PALETTE.length], kind: Math.random() < 0.35 ? 'fil' : 'sq', life: 140 + Math.random() * 60 });
+      s: 5 + Math.random() * 6, c: PALETTE[i % PALETTE.length], kind: Math.random() < 0.3 ? 'fil' : Math.random() < 0.12 ? 'card' : 'sq', life: 140 + Math.random() * 60 });
   }
   for (let i = 0; i < coins; i++) {
     parts.push({ x: Math.random() * innerWidth, y: -20 - Math.random() * 200, vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 3, g: 0.18,

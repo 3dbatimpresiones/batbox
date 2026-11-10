@@ -207,8 +207,8 @@ function BatcardSlide() {
           <a className="btn ghost" href="#/juego?juego=batcard&ver=ranking"><Icon name="trophy" size={16} /> Ver ranking</a>
         </div>
         <div className="mt-home-ch">
-          <div className="section-label">RANKING DEL MAKERS CLUB</div>
-          <p className="mt-help">Cada partida la rejuega el servidor: nadie puede inventar puntos. Gratis para todos; el ranking es para miembros.</p>
+          <div className="section-label">RANKING ABIERTO</div>
+          <p className="mt-help">Gratis para todos. Jugá con tu cuenta de Google y entrás al ranking; cada partida la rejuega el servidor para que nadie invente puntos.</p>
         </div>
       </div>
       {!r.missing && (

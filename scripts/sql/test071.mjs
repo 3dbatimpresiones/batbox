@@ -33,7 +33,7 @@ const as = async (uid, email, sql, params) => {
 const err = async (p) => { try { await p; return null; } catch (e) { return e.message; } };
 const s1 = (await as(U1, 'a@x.com', 'select public.bb_bc_start() as s')).rows[0].s;
 ok('miembro recibe semilla', /^[0-9A-F]{16}$/.test(s1), s1);
-ok('no miembro rechazado', /Makers Club/.test(await err(as(U3, 'c@x.com', 'select public.bb_bc_start()')) || ''));
+ok('cualquier cuenta recibe semilla', /^[0-9A-F]{16}$/.test((await as(U3, 'c@x.com', 'select public.bb_bc_start() as s')).rows[0].s));
 ok('anónimo rechazado', !!(await err(as(null, null, 'select public.bb_bc_start()'))));
 ok('cliente no lee runs', !!(await err(as(U1, 'a@x.com', 'select * from public.bb_bc_runs'))));
 ok('cliente no puede registrar', !!(await err(as(U1, 'a@x.com', `select public.bb_bc_record('${U1}', '${s1}', '{}', '[]')`))));

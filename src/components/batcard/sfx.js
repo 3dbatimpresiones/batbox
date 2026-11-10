@@ -46,5 +46,6 @@ export const sfx = {
   snap: () => { noise({ dur: 0.04, gain: 0.35, hp: 3000 }); tone({ f: 1400, f2: 700, dur: 0.05, type: 'square', gain: 0.06 }); },
   coin: () => { tone({ f: 988, dur: 0.06, gain: 0.08 }); tone({ f: 1319, dur: 0.12, gain: 0.08, at: 0.06 }); },
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone({ f, dur: 0.14, gain: 0.09, at: i * 0.1 })),
+  shatter: () => { noise({ dur: 0.6, gain: 0.5, hp: 1500 }); noise({ dur: 0.25, gain: 0.4, hp: 300, at: 0.05 }); [1800, 1300, 900, 600, 300].forEach((f, i) => tone({ f, f2: f / 3, dur: 0.25, type: 'sawtooth', gain: 0.05, at: 0.1 + i * 0.07 })); tone({ f: 60, f2: 30, dur: 0.9, type: 'sine', gain: 0.3, at: 0.05 }); },
   lose: () => [392, 330, 262, 196].forEach((f, i) => tone({ f, dur: 0.18, type: 'sawtooth', gain: 0.07, at: i * 0.14 })),
 };
