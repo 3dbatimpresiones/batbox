@@ -540,3 +540,34 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 /* "Mazo: X / Y" centrado debajo de las cartas, sin pisarse con nada */
 .bc-draw { align-self: center !important; text-align: center; margin: 2px auto 0 !important; position: relative; z-index: 2; }
 .bc-full .bc-draw { margin-top: 2px !important; }
+/* Sin aire muerto: la mesa crece y ocupa el espacio libre; la mano queda justo debajo */
+.bc-full .bc-bed { flex: 1 1 auto; align-content: center; justify-content: center; }
+.bc-full .bc-hand { margin-top: 0; }
+/* En pantallas altas (iPad parado) las cartas jugadas en la mesa también son más grandes */
+@media (orientation: portrait) and (min-width: 641px) {
+  .bc-full .bc-played .bc-card { width: calc(var(--bc-card-w) * 1.15); }
+  .bc-full .bc-bed { flex-direction: column; }
+}
+/* Celular/tablet: sin zoom por doble toque, sin resaltado gris al tocar y sin seleccionar texto en las cartas */
+.bc-root, .bc-root *, .bc-modal, .bc-modal * { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.bc-root .bc-card, .bc-root .bc-hand, .bc-root .bc-btn, .bc-root .bc-icon { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* Legibilidad sobre el papel de Mods y Suministros: tinta oscura, sin sombra de texto */
+.bc-mod, .bc-item, .bc-card { text-shadow: none !important; }
+.bc-mod-rar, .bc-item small { color: #4a4270 !important; opacity: 1 !important; font: 700 11px 'Outfit', sans-serif !important; letter-spacing: .05em; }
+.bc-mod-name, .bc-item b { color: #181833; }
+.bc-mod-desc, .bc-item span { color: #262245; font-size: 12.5px; }
+.bc-mod.empty { color: #d9d4ff; }
+/* Barra de la meta: números más grandes */
+.bc-goal-bar { height: 30px !important; }
+.bc-goal-bar span { font-size: 14px !important; line-height: 24px !important; }
+/* Celular: entra todo aun con la barra del navegador del teléfono */
+@media (max-width: 640px) {
+  .bc-full .bc-nomods { display: none; }
+  .bc-full .bc-bed { min-height: calc(var(--bc-card-w) * 1.1 + 10px); padding: 4px 6px; }
+  .bc-full .bc-heat { padding: 2px 6px; }
+  .bc-full .bc-goal { padding: 4px 10px; gap: 6px; }
+  .bc-full .bc-goal-bar { height: 24px !important; } .bc-full .bc-goal-bar span { font-size: 12px !important; line-height: 18px !important; }
+  .bc-full .bc-hud { gap: 4px; padding: 4px 6px; }
+  .bc-full .bc-game { gap: 4px; }
+  .bc-root.bc-full { --bc-card-w: clamp(38px, min(calc((100vw - 24px) / 5.3), calc((100dvh - 430px) / 2.3)), 92px); }
+}
