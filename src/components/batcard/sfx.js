@@ -125,3 +125,43 @@ export const sfx = {
   },
   lose: () => [392, 330, 262, 196].forEach((f, i) => tone({ f, f2: f * 0.97, dur: 0.3, type: 'sawtooth', gain: 0.06, at: i * 0.18, wet: 0.5, vib: 0.01 })),
 };
+
+// ===== Capa agresiva (pedido: puntos, sumas, ganar y perder con más golpe) =====
+const kick = (g = 0.4, at = 0) => { tone({ f: 160, f2: 42, dur: 0.14, type: 'sine', gain: g, at, wet: 0 }); sweep({ dur: 0.02, gain: g * 0.6, at, f1: 3000, f2: 1200, q: 1 }); };
+const crash = (g = 0.3, at = 0) => { sweep({ dur: 0.9, gain: g, at, f1: 9000, f2: 4000, q: 0.4, type: 'highpass', wet: 0.6 }); sweep({ dur: 0.5, gain: g * 0.7, at, f1: 6000, f2: 2500, q: 0.6, wet: 0.5 }); };
+{
+  const base = { tick: sfx.tick, mult: sfx.mult, big: sfx.big, win: sfx.win, lose: sfx.lose, cash: sfx.cash };
+  sfx.tick = (i = 0) => {
+    base.tick(i);
+    const n = Math.min(i, 12);
+    kick(0.22 + n * 0.025);
+    tone({ f: 660 * semi(n * 2), dur: 0.07, type: 'square', gain: 0.06 + n * 0.004, wet: 0.2 });       // bip que sube con cada golpe
+    sweep({ dur: 0.05, gain: 0.25, f1: 2000 + n * 300, f2: 7000, q: 2 });                               // chasquido
+  };
+  sfx.mult = () => {
+    base.mult(); kick(0.4);
+    tone({ f: 200, f2: 1800, dur: 0.22, type: 'sawtooth', gain: 0.1, wet: 0.25 });
+    tone({ f: 203, f2: 1830, dur: 0.22, type: 'square', gain: 0.06, wet: 0.25 });                        // desafinado = grosor
+    sweep({ dur: 0.25, gain: 0.3, f1: 600, f2: 8000, q: 1.2 });
+  };
+  sfx.big = () => {
+    base.big(); kick(0.7); kick(0.45, 0.12);
+    tone({ f: 70, f2: 28, dur: 1.0, type: 'sine', gain: 0.55, wet: 0.2 });                               // sub que cae
+    [0, 7, 12, 19].forEach((s, j) => tone({ f: 261 * semi(s), dur: 0.35, type: 'square', gain: 0.07, at: j * 0.03, wet: 0.4, pan: (j - 1.5) * 0.4 }));
+    crash(0.35, 0.02);
+  };
+  sfx.win = () => {
+    base.win();
+    [0, 4, 7, 12, 16, 19, 24].forEach((s, j) => { tone({ f: 523 * semi(s), dur: 0.16, type: 'square', gain: 0.08, at: j * 0.07, wet: 0.35, pan: (j % 2 ? 0.4 : -0.4) }); });
+    [0, 0.14, 0.28, 0.49].forEach((t) => kick(0.45, t));
+    [0, 4, 7, 12].forEach((s, j) => tone({ f: 523 * semi(s + 12), dur: 0.9, type: 'sawtooth', gain: 0.05, at: 0.5, wet: 0.6, vib: 0.008, pan: (j - 1.5) * 0.3 }));
+    crash(0.4, 0.5);
+  };
+  sfx.lose = () => {
+    base.lose();
+    kick(0.8); tone({ f: 55, f2: 25, dur: 1.4, type: 'sawtooth', gain: 0.18, wet: 0.5 });
+    [0, -1, -3, -5].forEach((s, j) => { tone({ f: 220 * semi(s), f2: 220 * semi(s - 12), dur: 0.5, type: 'sawtooth', gain: 0.08, at: 0.2 + j * 0.22, wet: 0.5 }); tone({ f: 224 * semi(s), f2: 224 * semi(s - 12), dur: 0.5, type: 'square', gain: 0.05, at: 0.2 + j * 0.22, wet: 0.5 }); });
+    sweep({ dur: 1.2, gain: 0.35, f1: 4000, f2: 120, q: 1, type: 'lowpass', wet: 0.6 });
+  };
+  sfx.cash = (n = 5) => { base.cash(n); kick(0.3); };
+}

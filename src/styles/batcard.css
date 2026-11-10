@@ -886,3 +886,31 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
   60% { filter: blur(2px) sepia(1) hue-rotate(-50deg) saturate(4) brightness(.55); transform: none; }
   100% { filter: brightness(.38) saturate(.4) blur(1px); }
 }
+.bc-pop { white-space: pre-line; text-align: center; }
+
+/* =================== Pantalla final y tienda con menos aire =================== */
+.bc-end { justify-content: center; gap: 14px; }
+.bc-end-ico { font-size: 64px; filter: drop-shadow(0 6px 0 rgba(0,0,0,.5)); animation: bc-bob 1.8s ease-in-out infinite; }
+.bc-end h2 { font-size: clamp(18px, 3vw, 30px); margin: 0; }
+.bc-end.lost h2 { color: #ff5d74; text-shadow: 3px 0 #24DCFF, -3px 0 #FF39B8; }
+.bc-end-sub { margin: 0; font-size: 16px; color: #d9d4ff; }
+.bc-endgrid { display: grid; grid-template-columns: repeat(4, minmax(110px, 160px)); gap: 10px; justify-content: center; }
+.bc-endgrid > div { display: flex; flex-direction: column; align-items: center; gap: 6px; background: rgba(7,9,26,.85); border: 2px solid #3a3470; border-radius: 12px; padding: 12px 8px; animation: bc-blindin .5s cubic-bezier(.3,1.5,.5,1) both; }
+.bc-endgrid > div:nth-child(2) { animation-delay: .06s; } .bc-endgrid > div:nth-child(3) { animation-delay: .12s; } .bc-endgrid > div:nth-child(4) { animation-delay: .18s; } .bc-endgrid > div:nth-child(5) { animation-delay: .24s; } .bc-endgrid > div:nth-child(6) { animation-delay: .3s; }
+.bc-endgrid .hl { grid-column: span 2; border-color: #E2B13C; box-shadow: 0 0 22px rgba(226,177,60,.3); }
+.bc-endgrid small { font-size: 11px; color: #b9b2ea; text-transform: uppercase; letter-spacing: 1px; }
+.bc-endgrid b { font: 400 16px 'Press Start 2P', monospace; color: #fff; }
+.bc-endgrid .hl b { font-size: clamp(20px, 3vw, 32px); color: #ffd27a; text-shadow: 0 3px 0 #7a4b00; }
+.bc-end-seed { margin: 0; font-size: 12px; color: #8f88c8; }
+.bc-end .bc-rankres { max-width: 560px; }
+.bc-end .bc-actions { justify-content: center; }
+@media (max-width: 640px) { .bc-endgrid { grid-template-columns: repeat(2, 1fr); width: 100%; } .bc-end-ico { font-size: 44px; } }
+/* Tienda: contenido centrado verticalmente y tarjetas más grandes */
+.bc-full .bc-shop { display: flex; flex-direction: column; justify-content: center; }
+.bc-shop .bc-items { grid-template-columns: repeat(auto-fit, minmax(200px, 250px)); justify-content: center; gap: 14px; }
+.bc-shop .bc-item { padding: 14px; gap: 8px; min-height: 170px; animation: bc-blindin .45s cubic-bezier(.3,1.5,.5,1) both; }
+.bc-shop .bc-item b { font-size: 16px; }
+.bc-shop .bc-item span { font-size: 14px; }
+.bc-shop .bc-packs { max-width: 1040px; margin: 0 auto 6px; width: 100%; }
+.bc-shop h2, .bc-shop .bc-cash, .bc-shop > p { text-align: center; align-self: center; }
+@media (max-width: 640px) { .bc-pop { font-size: min(26px, 4.6vw); } .bc-pop.k-total { font-size: min(52px, 10vw); } }

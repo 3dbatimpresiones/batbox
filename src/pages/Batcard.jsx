@@ -437,7 +437,10 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const big = t.total >= anim.prev.round.target * 0.4 || (best > 0 && t.total > best);
         sfx.tick(10); if (big) sfx.big();
         const scoreEl = document.querySelector('.bc-score-num');
-        popText(document.querySelector('.bc-pop-anchor') || scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true); // a la derecha de la cama, donde hay lugar
+        const bedR = document.querySelector('.bc-bed')?.getBoundingClientRect();
+        const playR = document.querySelector('.bc-played')?.getBoundingClientRect();
+        const spot = bedR && playR ? { getBoundingClientRect: () => { const x0 = Math.max(playR.right, bedR.left), free = bedR.right - x0; const x = free > 160 ? x0 + free / 2 : bedR.left + bedR.width / 2; const y = free > 160 ? bedR.top + bedR.height / 2 - 30 : bedR.top + 30; return { left: x, top: y, width: 0, height: 0 }; } } : null;
+        popText(spot || document.querySelector('.bc-pop-anchor') || scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true); // en el lugar libre de la mesa
         if (fxOn) { shake(document.querySelector('.bc-game'), big); if (big) { burstAt(scoreEl, { n: 60 }); fxZoomBlur(); fxChroma(); } }
         if (big) { setBanner(best > 0 && t.total > best ? '¡RÉCORD DE MANO!' : '¡GRAN MANO!'); setTimeout(() => setBanner(null), 1300); }
         const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 650;
@@ -486,7 +489,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const hand = document.querySelector('.bc-hand');
         if (hand) { hand.classList.remove('bc-full-hit'); void hand.offsetWidth; hand.classList.add('bc-full-hit'); clearTimeout(hand._fh); hand._fh = setTimeout(() => hand.classList.remove('bc-full-hit'), 650); }
         const el = document.querySelector(`.bc-hand [data-cid="${id}"]`);
-        if (el) { popText(el, 'MÁXIMO 5 CARTAS', 'mult'); shake(el); }
+        if (el) { popText(el, 'MÁXIMO 5\nCARTAS', 'mult'); shake(el); }
         return s;
       }
       sfx.select(s.length + 1); return [...s, id];
@@ -985,14 +988,18 @@ function End({ st, onNew, onMenu }) {
   const [sub, retry] = useSubmit(st);
   return (
     <section className={`bc-panel bc-end ${won ? 'won' : 'lost'}`}>
+      <div className="bc-end-ico" aria-hidden="true">{won ? '🏆' : '💥'}</div>
       <h2>{won ? '¡Orden de producción completa!' : 'La impresión falló'}</h2>
-      <p>{won ? `Superaste los ${LOTS} Lotes.` : `Llegaste al Lote ${st.lot + 1}, ${BLIND_NAMES[st.blind]}.`}</p>
-      <ul className="bc-endstats">
-        <li>Mejor mano: <b>{st.stats.bestHand.toLocaleString('es-AR')}</b></li>
-        <li>Impresiones: <b>{st.stats.prints}</b></li>
-        <li>Calidad total: <b>{st.stats.total.toLocaleString('es-AR')}</b></li>
-        <li>Semilla: <b>{st.seed}</b></li>
-      </ul>
+      <p className="bc-end-sub">{won ? `Superaste los ${LOTS} Lotes.` : `Llegaste al Lote ${st.lot + 1} · ${BLIND_NAMES[st.blind]}`}</p>
+      <div className="bc-endgrid">
+        <div className="hl"><small>Mejor mano</small><b>{st.stats.bestHand.toLocaleString('es-AR')}</b></div>
+        <div className="hl"><small>Calidad total</small><b>{st.stats.total.toLocaleString('es-AR')}</b></div>
+        <div><small>Impresiones</small><b>{st.stats.prints}</b></div>
+        <div><small>Lote</small><b>{st.lot + 1}/{LOTS}</b></div>
+        <div><small>Mods</small><b>{st.mods.length}</b></div>
+        <div><small>Mazo</small><b>{st.deck.length}</b></div>
+      </div>
+      <p className="bc-end-seed">Semilla <b>{st.seed}</b></p>
       {st.ranked ? (
         <div className="bc-rankres" role="status">
           {sub?.sending && 'Verificando tu partida en el servidor…'}

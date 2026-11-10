@@ -62,6 +62,27 @@ export function popText(el, text, kind = 'chips', big = false) {
   d.style.left = `${b.left + b.width / 2 + (Math.random() - 0.5) * 16}px`;
   d.style.top = `${b.top + (big ? b.height / 2 : 4)}px`;
   document.body.appendChild(d);
+  // Siempre adentro de la pantalla (PC, iPad y celular): se corrige en cada cuadro de la animación.
+  const M = 8;
+  { // ubicación inicial ya corregida, contando lo que crece en el golpe
+    const G = big ? 2.6 : 2.3, vw0 = document.documentElement.clientWidth;
+    const half = (d.offsetWidth * G) / 2;
+    if (half * 2 > vw0 - M * 2) d.style.fontSize = `${parseFloat(getComputedStyle(d).fontSize) * ((vw0 - M * 2) / (half * 2))}px`;
+    const h2 = (d.offsetWidth * G) / 2;
+    d.style.left = `${Math.min(vw0 - M - h2, Math.max(M + h2, parseFloat(d.style.left)))}px`;
+  }
+  const keep = () => {
+    if (!d.isConnected) return;
+    const vw = document.documentElement.clientWidth, vh = innerHeight;
+    const r = d.getBoundingClientRect();
+    if (r.width > vw - M * 2) d.style.fontSize = `${parseFloat(getComputedStyle(d).fontSize) * ((vw - M * 2) / r.width) * 0.97}px`;
+    let dx = 0, dy = 0;
+    if (r.left < M) dx = M - r.left; else if (r.right > vw - M) dx = vw - M - r.right;
+    if (r.top < M) dy = M - r.top; else if (r.bottom > vh - M) dy = vh - M - r.bottom;
+    if (dx || dy) { d.style.left = `${parseFloat(d.style.left) + dx}px`; d.style.top = `${parseFloat(d.style.top) + dy}px`; }
+    requestAnimationFrame(keep);
+  };
+  keep();
   setTimeout(() => d.remove(), big ? 1600 : 1000);
 }
 
