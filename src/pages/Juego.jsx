@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { navigate } from '../lib/router.js';
 import { GAME_URL, useLive, useMt } from '../lib/mtApi.js';
-import { BatcardLiveLine, ChallengeCard, Emblem, LiveLine, RankRows, num } from '../components/Tycoon.jsx';
+import { Avatar, BatcardLiveLine, ChallengeCard, Emblem, LiveLine, RankRows, num } from '../components/Tycoon.jsx';
 import { Options, SearchInput } from '../components/ui.jsx';
 import { farmLevel } from '../data/rewards.js';
 import { GAMES } from '../data/games.js';
@@ -191,7 +191,7 @@ function RankingBatcard() {
         <div className="mt-rank">
           {r.data.rows.map((x) => (
             <div key={x.rank + x.name} className={'mt-rank-row' + (x.me ? ' me' : '')}>
-              <span className="rk">{x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</span>
+              <span className="rk">{x.rank <= 3 ? ['🥇', '🥈', '🥉'][x.rank - 1] : x.rank}</span><Avatar name={x.name} frame={x.frame} src={x.avatar} size={30} />
               <span className="rn">{x.name}<small>{x.won ? '✔ Orden completa' : `Llegó al Lote ${x.lot}`} · mejor mano {num(x.best_hand)}</small></span>
               <b>{num(x.points)}</b>
             </div>
