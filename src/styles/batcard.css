@@ -914,3 +914,6 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-shop .bc-packs { max-width: 1040px; margin: 0 auto 6px; width: 100%; }
 .bc-shop h2, .bc-shop .bc-cash, .bc-shop > p { text-align: center; align-self: center; }
 @media (max-width: 640px) { .bc-pop { font-size: min(26px, 4.6vw); } .bc-pop.k-total { font-size: min(52px, 10vw); } }
+/* Mano llena: las elegidas siempre adelante, las bloqueadas detrás */
+.bc-hand.is-full .bc-card:not(.sel) { z-index: 1 !important; }
+.bc-hand.is-full .bc-card.sel { z-index: 20 !important; }
