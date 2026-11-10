@@ -16,7 +16,7 @@ import fcLogo from '../assets/filacolor-logo.png';
 
 const GAME_TABS = {
   tycoon: [['ranking', 'Ranking', 'trophy'], ['retos', 'Retos', 'star'], ['granjas', 'Granjas', 'users'], ['como', 'Cómo funciona', 'book']],
-  batcard: [['como', 'Cómo funciona', 'book'], ['ranking', 'Ranking', 'trophy']],
+  batcard: [['ranking', 'Ranking', 'trophy'], ['como', 'Cómo funciona', 'book']],
 };
 
 export default function Juego({ query }) {
