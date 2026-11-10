@@ -165,3 +165,23 @@ const crash = (g = 0.3, at = 0) => { sweep({ dur: 0.9, gain: g, at, f1: 9000, f2
   };
   sfx.cash = (n = 5) => { base.cash(n); kick(0.3); };
 }
+
+// ===== Sonidos de puntaje v3: nuevos de raíz (no capas sobre los viejos) =====
+sfx.tick = (i = 0) => {
+  const n = Math.min(i, 14), f = 392 * semi(n * 2);               // sube un tono entero por golpe
+  const pan = Math.max(-0.7, Math.min(0.7, -0.7 + n * 0.12));
+  kick(0.35 + n * 0.02);
+  sweep({ dur: 0.035, gain: 0.45, f1: 4500, f2: 9000, q: 3, pan });  // clack de ficha
+  tone({ f, dur: 0.06, type: 'square', gain: 0.13, pan, wet: 0.15 });
+  tone({ f: f * 2, dur: 0.16, type: 'triangle', gain: 0.12, at: 0.012, pan, wet: 0.35 });
+  tone({ f: f * 3, dur: 0.32, type: 'sine', gain: 0.07, at: 0.02, pan, wet: 0.55 });            // campanita
+  tone({ f: f * 4.01, dur: 0.22, type: 'sine', gain: 0.035, at: 0.025, pan, wet: 0.6 });
+};
+// Contador del total: bips de tragamonedas que suben (k = 0..1)
+sfx.roll = (k = 0) => { const f = 700 + k * 1400; tone({ f, dur: 0.028, type: 'square', gain: 0.07, wet: 0.1 }); tone({ f: f * 2, dur: 0.02, type: 'sine', gain: 0.04 }); };
+sfx.ding = () => {
+  kick(0.6);
+  [1568, 2093, 3136, 4186].forEach((f, j) => tone({ f, dur: 1.1 - j * 0.15, type: 'sine', gain: 0.12 - j * 0.02, at: j * 0.01, wet: 0.7, pan: (j - 1.5) * 0.3 }));
+  tone({ f: 784, dur: 0.5, type: 'triangle', gain: 0.1, wet: 0.5 });
+  crash(0.25);
+};

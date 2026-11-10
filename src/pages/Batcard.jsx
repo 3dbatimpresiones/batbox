@@ -443,8 +443,8 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         popText(spot || document.querySelector('.bc-pop-anchor') || scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true); // en el lugar libre de la mesa
         if (fxOn) { shake(document.querySelector('.bc-game'), big); if (big) { burstAt(scoreEl, { n: 60 }); fxZoomBlur(); fxChroma(); } }
         if (big) { setBanner(best > 0 && t.total > best ? '¡RÉCORD DE MANO!' : '¡GRAN MANO!'); setTimeout(() => setBanner(null), 1300); }
-        const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 650;
-        const roll = (now) => { const k = Math.min(1, (now - t0) / dur); setRolled(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(roll); else setRolled(null); };
+        const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 950;
+        let lastBip = 0; const roll = (now) => { const k = Math.min(1, (now - t0) / dur); setRolled(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (now - lastBip > 45 && k < 1) { lastBip = now; sfx.roll(k); } if (k < 1) requestAnimationFrame(roll); else { setRolled(null); sfx.ding(); } };
         requestAnimationFrame(roll);
       } else if (t.cardId && t.phase === 'repetir') {
         sfx.snap();
