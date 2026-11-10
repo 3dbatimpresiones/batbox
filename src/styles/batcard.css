@@ -118,7 +118,7 @@ kbd { font: 400 10px 'Outfit', sans-serif; opacity: .7; border: 1px solid curren
 .bc-card.scoring:not(.sel) .bc-card-in { box-shadow: 0 0 0 2px var(--bc-violet); }
 .bc-card.lit .bc-card-in { transform: translateY(-8px) scale(1.06); box-shadow: 0 0 0 3px var(--bc-cyan), 0 0 16px var(--bc-cyan); }
 .reduced .bc-card-in { transition: none; }
-.bc-motif { width: 52%; height: auto; image-rendering: pixelated; }
+.bc-motif { width: 52%; height: auto; }
 .bc-corner { position: absolute; display: flex; flex-direction: column; align-items: center; line-height: 1; }
 .bc-corner b { font: 700 calc(var(--bc-card-w) * .19) 'Silkscreen', monospace; }
 .bc-corner i { font-style: normal; font-size: calc(var(--bc-card-w) * .17); }
@@ -651,7 +651,7 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
   background: radial-gradient(circle at 50% 42%, #2a1a6e 0 38%, transparent 39%), repeating-linear-gradient(45deg, #873DFF 0 5px, #5a22c0 5px 10px);
   border: 2px solid #090B20; box-shadow: inset 0 0 0 3px #24DCFF, inset 0 0 0 5px #090B20, inset 0 0 0 7px #FF39B8; overflow: hidden; }
 .bc-back-logo { width: 52%; aspect-ratio: 1; display: grid; place-items: center; background: #fff; border: 2px solid #090B20; box-shadow: 3px 3px 0 #090B20; padding: 6%; image-rendering: pixelated; }
-.bc-back-logo svg { width: 100%; height: 100%; }
+.bc-back-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .bc-back i { font: 400 clamp(5px, calc(var(--bc-card-w, 80px) * .08), 9px) 'Press Start 2P', monospace; font-style: normal; color: #fff; text-shadow: 0 1px 0 #000; letter-spacing: 1px; }
 .bc-back::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.28) 45%, transparent 60%); background-size: 250% 100%; animation: bc-backshine 3.5s linear infinite; }
 @keyframes bc-backshine { 0% { background-position: 150% 0; } 100% { background-position: -100% 0; } }
@@ -681,3 +681,20 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 
 /* Durante el reparto solo corre el vuelo desde el mazo (el balanceo empieza al aterrizar) */
 .bc-hand.float .bc-card:not(.sel) .bc-card-in.deal, .bc-card-in.deal { animation: bc-receive .75s cubic-bezier(.25,1.2,.4,1) var(--deal) both !important; }
+
+/* Reparto v2: viaja boca abajo, gira recién al llegar */
+.bc-pilecard:nth-child(2) { transform: translate(0, -2px); } .bc-pilecard:nth-child(3) { transform: translate(0, -4px); } .bc-pilecard:nth-child(4) { transform: translate(0, -6px); }
+.bc-back-ov { animation: bc-backhide .8s linear var(--deal) both; }
+@keyframes bc-backhide { 0%, 66% { opacity: 1; } 68%, 100% { opacity: 0; visibility: hidden; } }
+.bc-hand.float .bc-card:not(.sel) .bc-card-in.deal, .bc-card-in.deal { animation: bc-receive .8s cubic-bezier(.3,.9,.4,1) var(--deal) both !important; }
+@keyframes bc-receive {
+  0% { transform: translate(var(--dx, 0px), var(--dy, 200px)) rotate(-6deg) rotateY(180deg) scale(.6); }
+  55% { transform: translate(calc(var(--dx, 0px) * .12), calc(var(--dy, 200px) * .12 - 26px)) rotate(2deg) rotateY(180deg) scale(.95); }
+  67% { transform: translate(0, -18px) rotateY(90deg) scale(1.02); }
+  82% { transform: translate(0, -8px) rotateY(0deg) scale(1.06); }
+  100% { transform: none; }
+}
+/* El dorso viaja girado 180°: se espeja para que el logo y el texto se lean derechos */
+.bc-back-ov { transform: scaleX(-1); }
+.bc-back-logo { width: 62%; padding: 7%; border-radius: 3px; }
+.bc-pilecard .bc-back-logo { width: 74%; padding: 6%; }

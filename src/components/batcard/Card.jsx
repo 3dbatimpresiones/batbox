@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from 'react';
+import logo3dbat from '../../assets/logo-3dbat.webp';
 import { SUITS, rankLabel, cardText } from '../../lib/batcard/hands.js';
 import { MATERIALS } from '../../lib/batcard/catalog.js';
 
@@ -12,19 +13,9 @@ const MOTIF = {
 const COL = { S: '#3167FF', H: '#873DFF', C: '#24DCFF', D: '#FF39B8' };
 const PAL = { b: '#181833', c: '#E2B13C', d: '#FF39B8' };
 
-// Logo 3DBAT (cubo escalonado) en SVG, colores de la marca.
+// Logo oficial 3DBAT (imagen de la marca).
 export function Logo3DBAT({ className = '' }) {
-  return (
-    <svg className={className} viewBox="270 160 1440 1800" aria-hidden="true">
-      <polygon fill="#F78FB6" points="306,600 994,178 1191,311 498,722" />
-      <polygon fill="#161E4A" points="520,760 1211,349 1211,436 736,1116 526,1240" />
-      <polygon fill="#5DDBDE" points="1239,471 1545,668 1109,1286 780,1126" />
-      <polygon fill="#161E4A" points="1582,727 1580,1051 1188,1276" />
-      <polygon fill="#F78FB6" points="549,1278 750,1157 1117,1368 1603,1088 1671,1131 996,1527" />
-      <polygon fill="#5DDBDE" points="289,639 477,760 486,1291 975,1564 975,1936 285,1556" />
-      <polygon fill="#161E4A" points="1017,1563 1690,1168 1691,1415 1017,1854" />
-    </svg>
-  );
+  return <img className={className} src={logo3dbat} alt="" draggable="false" />;
 }
 
 // Dorso BATCARD: marco pixel violeta con el logo de 3DBAT al centro.

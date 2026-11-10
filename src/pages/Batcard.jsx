@@ -323,7 +323,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
   const dealDelay = (id) => {
     const now = performance.now();
     let d = dealt.current.get(id);
-    if (!d) { const delay = dealQ.current++ * 90; d = { delay, until: now + delay + 900 }; dealt.current.set(id, d); }
+    if (!d) { const n = dealQ.current++, delay = n * 90; d = { delay, until: now + delay + 900 }; dealt.current.set(id, d); setTimeout(() => sfx.deal(n), delay + 520); }
     return now < d.until ? d.delay : null;
   };
   useEffect(() => { const h = setTimeout(() => { dealQ.current = 0; }, 50); return () => clearTimeout(h); });
