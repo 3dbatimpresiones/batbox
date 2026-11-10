@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FeatByName } from './Featured.jsx';
 import Icon from './Icon.jsx';
 import { EMBLEMS, REWARDS, metricLabel, rewardName, titleName, frameClass } from '../data/rewards.js';
 import { GAME_URL, useLive, useMt } from '../lib/mtApi.js';
 import tallerAnim from '../assets/tycoon-portada.webp';
+import batcardImg from '../assets/batcard-portada.webp';
 import fcIcon from '../assets/filacolor-icon.png';
 
 // =====================================================================
@@ -143,27 +144,26 @@ export function RankRows({ rows, farms, empty = 'Todavía no hay nadie en este r
   );
 }
 
-// ---------- Bloque destacado del Inicio ----------
-export function TycoonHomeBlock() {
+// ---------- Bloque destacado del Inicio: carrusel con un juego por diapositiva ----------
+function TycoonSlide() {
   const live = useLive();
   const ov = useMt('bb_mt_overview');
   const o = ov.data;
   const featured = o?.challenges?.find((c) => c.featured) || o?.challenges?.find((c) => c.scope === 'comunidad') || o?.challenges?.[0];
-  const [imgOk, setImgOk] = useState(true);
   return (
-    <section className="mt-home">
+    <>
       <div className="mt-home-media">
-        {imgOk ? <img src={tallerAnim} alt="Portada de 3DBAT Maker Tycoon: taller pixel art lleno de impresoras 3D" onError={() => setImgOk(false)} /> : <div className="mt-home-ph"><Icon name="gamepad" size={48} /></div>}
-        <span className="mt-new">NOVEDAD GRATIS</span>
+        <img src={tallerAnim} alt="Portada de 3DBAT Maker Tycoon: taller pixel art lleno de impresoras 3D" />
+        <span className="mt-new">GRATIS</span>
       </div>
       <div className="mt-home-txt">
-        <div className="section-label">NOVEDAD GRATIS · JUEGO DE 3DBAT</div>
+        <div className="section-label">SIMULADOR IDLE · JUEGO DE 3DBAT</div>
         <h2>3DBAT Maker Tycoon</h2>
         <p>Armá tu taller, producí, creá tu granja con otros makers y competí en los retos de la comunidad.</p>
         <LiveLine live={live} />
         <div className="mt-home-cta">
           <a className="btn primary" href={GAME_URL}><Icon name="gamepad" size={18} /> Jugar gratis</a>
-          <a className="btn ghost" href="#/juego?ver=ranking"><Icon name="trophy" size={16} /> Ver ranking</a>
+          <a className="btn ghost" href="#/juego?juego=tycoon&ver=ranking"><Icon name="trophy" size={16} /> Ver ranking</a>
         </div>
         {featured && (
           <div className="mt-home-ch">
@@ -184,6 +184,75 @@ export function TycoonHomeBlock() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+function BatcardSlide() {
+  const r = useMt('bb_bc_ranking', { p_kind: 'global', p_limit: 3 });
+  const w = useMt('bb_bc_ranking', { p_kind: 'semanal', p_limit: 3 });
+  const rows = (d) => (d?.rows || []).map((x) => ({ ...x, farm: null, title: null }));
+  return (
+    <>
+      <div className="mt-home-media">
+        <img src={batcardImg} alt="Portada de BATCARD: la A del título es un alicate de corte al ras" />
+        <span className="mt-new">NUEVO</span>
+      </div>
+      <div className="mt-home-txt">
+        <div className="section-label">ROGUELIKE DE CARTAS · NUEVO JUEGO DE 3DBAT</div>
+        <h2>BATCARD</h2>
+        <p>Cada partida es una orden de producción: armá manos de póker, sumá Mods de taller, controlá el Calor y pasá los controles de calidad.</p>
+        <div className="mt-home-cta">
+          <a className="btn primary" href="#/batcard"><Icon name="gamepad" size={18} /> Jugar gratis</a>
+          <a className="btn ghost" href="#/juego?juego=batcard&ver=ranking"><Icon name="trophy" size={16} /> Ver ranking</a>
+        </div>
+        <div className="mt-home-ch">
+          <div className="section-label">RANKING DEL MAKERS CLUB</div>
+          <p className="mt-help">Cada partida la rejuega el servidor: nadie puede inventar puntos. Gratis para todos; el ranking es para miembros.</p>
+        </div>
+      </div>
+      {!r.missing && (
+        <div className="mt-home-tops">
+          <div>
+            <div className="section-label">TOP BATCARD · HISTÓRICO</div>
+            <RankRows rows={rows(r.data)} empty="Todavía nadie: ¡podés ser el primero!" />
+          </div>
+          <div>
+            <div className="section-label">TOP BATCARD · ESTA SEMANA</div>
+            <RankRows rows={rows(w.data)} empty="Nadie jugó esta semana todavía." />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+const SLIDES = [['Maker Tycoon', TycoonSlide], ['BATCARD', BatcardSlide]];
+const AUTO_MS = 30000;
+
+export function TycoonHomeBlock() {
+  const [i, setI] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const go = (d) => setI((x) => (x + d + SLIDES.length) % SLIDES.length);
+  useEffect(() => {
+    if (paused) return undefined;
+    const h = setTimeout(() => go(1), AUTO_MS);
+    return () => clearTimeout(h);
+  }, [i, paused]);
+  const Slide = SLIDES[i][1];
+  return (
+    <section className="mt-home gm-car" aria-roledescription="carrusel" aria-label="Juegos de 3DBAT"
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+      <button className="gm-arrow l" onClick={() => go(-1)} aria-label="Juego anterior"><Icon name="arrowRight" size={20} /></button>
+      <button className="gm-arrow r" onClick={() => go(1)} aria-label="Juego siguiente"><Icon name="arrowRight" size={20} /></button>
+      <div className="gm-slide" key={i} aria-live="polite" aria-label={`${i + 1} de ${SLIDES.length}: ${SLIDES[i][0]}`}><Slide /></div>
+      <div className="gm-dots" role="tablist">
+        {SLIDES.map(([n], k) => (
+          <button key={n} role="tab" aria-selected={k === i} aria-label={n} className={k === i ? 'on' : ''} onClick={() => setI(k)}>
+            {k === i && !paused && <span className="gm-dot-bar" style={{ animationDuration: AUTO_MS + 'ms' }} />}
+          </button>
+        ))}
+      </div>
       <a className="mt-home-fc" href="#/filacolor">
         <img src={fcIcon} alt="" width="28" height="28" />
         <span><b>Abastecimiento oficial · FILACOLOR</b><small>Filamentos, impresoras, repuestos y servicio técnico para tu taller real</small></span>

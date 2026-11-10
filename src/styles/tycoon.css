@@ -217,3 +217,18 @@
 /* En celular las pestañas y filtros se desplazan en vez de desbordar la página */
 .mt-page .view-toggle, .mt-page .mt-panel > :first-child { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .mt-page .view-toggle .seg { flex: none; }
+
+/* Carrusel de juegos del Inicio */
+.gm-slide { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; animation: gm-in .45s ease; }
+@keyframes gm-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .gm-slide { animation: none; } }
+.gm-arrow { position: absolute; top: 160px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: rgba(12,16,48,.85); color: #fff; border: 1px solid rgba(93,218,219,.5); box-shadow: 0 6px 18px rgba(0,0,0,.45); transition: transform .15s, background .15s; }
+.gm-arrow:hover { background: var(--cyan); color: #0b1030; transform: scale(1.08); }
+.gm-arrow.l { left: 8px; } .gm-arrow.l svg { transform: rotate(180deg); } .gm-arrow.r { right: 8px; }
+.gm-dots { grid-column: 1 / -1; display: flex; justify-content: center; gap: 8px; }
+.gm-dots button { position: relative; overflow: hidden; width: 34px; height: 8px; border-radius: 999px; border: 0; padding: 0; cursor: pointer; background: rgba(255,255,255,.2); }
+.gm-dots button.on { width: 54px; background: rgba(93,218,219,.35); }
+.gm-dot-bar { position: absolute; inset: 0 auto 0 0; width: 100%; background: var(--cyan); transform-origin: left; animation: gm-bar linear forwards; }
+@keyframes gm-bar { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (max-width: 900px) { .gm-slide { grid-template-columns: 1fr; } .gm-arrow { top: 120px; } }
