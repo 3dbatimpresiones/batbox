@@ -12,6 +12,7 @@ import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { feedbackHref } from '../components/FeedbackButton.jsx';
 import { sb } from '../lib/supabase.js';
 
 // =====================================================================
@@ -95,7 +96,7 @@ export default function Batcard() {
           {screen === 'coleccion' && <Coleccion back={() => setScreen('menu')} />}
           {screen === 'ajustes' && <Ajustes set={set} patch={patch} back={() => setScreen(st ? 'juego' : 'menu')} />}
           {screen === 'juego' && st && (
-            <Juego st={st} setSt={setSt} speed={SPEED[set.speed]} reduced={reduced} fxOn={fxOn}
+            <Juego st={st} setSt={setSt} set={set} patch={patch} speed={SPEED[set.speed]} reduced={reduced} fxOn={fxOn}
               onMenu={aparcar} onAjustes={() => setScreen('ajustes')} onNew={nueva} />
           )}
         </div>
@@ -104,59 +105,72 @@ export default function Batcard() {
   );
 }
 
-// ---------------------------------------------------------------- Grieta de vidrio (procedural, solo en el fondo)
+// ---------------------------------------------------------------- Grieta pixel art (solo en el fondo)
+// Se dibuja en la misma grilla de 192×108 del fondo: cada trazo se rasteriza en píxeles (Bresenham)
+// y se pinta en 3 capas, rosa y celeste corridos un píxel y núcleo blanco (desregistro neón del juego).
+const CW = 192, CH = 108;
 function buildCrack() {
-  // Semilla fija: la grieta es siempre igual (no hace falta azar real).
-  let z = 7;
+  let z = 11;
   const rnd = () => { z = (z * 16807) % 2147483647; return (z - 1) / 2147483646; };
-  const cx = 64, cy = 40;
-  const rays = [], rings = [], shards = [];
-  const N = 15;
+  const cx = 122, cy = 40, N = 13;
+  const cells = new Map(); // "x,y" -> peso (1 = trazo fino, 2 = núcleo)
+  const plot = (x, y, w) => { if (x < 0 || y < 0 || x >= CW || y >= CH) return; const k = x + ',' + y; cells.set(k, Math.max(cells.get(k) || 0, w)); };
+  const line = (x0, y0, x1, y1, w) => {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let e = dx + dy;
+    for (;;) { plot(x0, y0, w); if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } }
+  };
   const ends = [];
   for (let k = 0; k < N; k++) {
-    const ang = (k / N) * Math.PI * 2 + (rnd() - 0.5) * 0.35;
-    let x = cx, y = cy, d = `M${cx} ${cy}`;
-    const len = 45 + rnd() * 70, steps = 7 + Math.floor(rnd() * 5);
-    const pts = [];
+    const ang = (k / N) * Math.PI * 2 + (rnd() - 0.5) * 0.4;
+    const len = 50 + rnd() * 90, steps = 6 + Math.floor(rnd() * 4);
+    let px = cx, py = cy; const pts = [];
     for (let j = 1; j <= steps; j++) {
-      const r = (len * j) / steps, jit = (rnd() - 0.5) * 0.28;
-      x = cx + Math.cos(ang + jit) * r * 1.25; y = cy + Math.sin(ang + jit) * r * 0.8;
-      d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; pts.push([x, y]);
-      if (j > 2 && rnd() < 0.3) { // rama
-        const ba = ang + (rnd() < 0.5 ? 1 : -1) * (0.4 + rnd() * 0.5), bl = 6 + rnd() * 14;
-        d += ` M${x.toFixed(1)} ${y.toFixed(1)} l${(Math.cos(ba) * bl).toFixed(1)} ${(Math.sin(ba) * bl * 0.7).toFixed(1)} M${x.toFixed(1)} ${y.toFixed(1)}`;
-      }
+      const r = (len * j) / steps, jit = (rnd() - 0.5) * 0.35;
+      const x = cx + Math.cos(ang + jit) * r * 1.3, y = cy + Math.sin(ang + jit) * r * 0.75;
+      line(px, py, x, y, j < 3 ? 2 : 1); pts.push([x, y]);
+      if (j > 1 && rnd() < 0.35) { const ba = ang + (rnd() < 0.5 ? 1 : -1) * (0.5 + rnd() * 0.6), bl = 5 + rnd() * 14; line(x, y, x + Math.cos(ba) * bl, y + Math.sin(ba) * bl * 0.7, 1); }
+      px = x; py = y;
     }
-    rays.push({ d, w: 0.18 + rnd() * 0.35 });
     ends.push(pts);
   }
-  // Anillos concéntricos cortados alrededor del impacto
-  for (const ri of [2, 4, 7]) {
-    let d = '';
-    for (let k = 0; k < N; k++) {
-      if (rnd() < 0.25) continue;
-      const p1 = ends[k][Math.min(ri, ends[k].length - 1)], p2 = ends[(k + 1) % N][Math.min(ri, ends[(k + 1) % N].length - 1)];
-      d += `M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)} `;
-      if (ri === 2 && rnd() < 0.6) shards.push(`M${cx} ${cy} L${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)} Z`);
-    }
-    rings.push(d);
+  const shards = [];
+  for (const ri of [1, 3]) for (let k = 0; k < N; k++) {
+    if (rnd() < 0.3) continue;
+    const p1 = ends[k][Math.min(ri, ends[k].length - 1)], p2 = ends[(k + 1) % N][Math.min(ri, ends[(k + 1) % N].length - 1)];
+    line(p1[0], p1[1], p2[0], p2[1], 1);
+    if (ri === 1 && rnd() < 0.55) shards.push([[cx, cy], p1, p2]);
   }
-  return { rays, rings, shards, cx, cy };
+  // Astillas: relleno con tramado (dither) de 1 de cada 2 píxeles, oscuro
+  const dither = [];
+  for (const [[ax, ay], [bx, by], [qx, qy]] of shards) {
+    const minX = Math.max(0, Math.floor(Math.min(ax, bx, qx))), maxX = Math.min(CW - 1, Math.ceil(Math.max(ax, bx, qx)));
+    const minY = Math.max(0, Math.floor(Math.min(ay, by, qy))), maxY = Math.min(CH - 1, Math.ceil(Math.max(ay, by, qy)));
+    const side = (x1, y1, x2, y2, x, y) => (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1);
+    for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
+      if ((x + y) % 2) continue;
+      const s1 = side(ax, ay, bx, by, x, y), s2 = side(bx, by, qx, qy, x, y), s3 = side(qx, qy, ax, ay, x, y);
+      if ((s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0)) dither.push([x, y]);
+    }
+  }
+  // Píxeles muertos: bloques sueltos de colores fuertes
+  const dead = Array.from({ length: 9 }, (_, i) => [Math.floor(rnd() * CW), Math.floor(rnd() * CH), ['#24DCFF', '#FF39B8', '#E2B13C', '#ffffff'][i % 4], 1 + Math.floor(rnd() * 2)]);
+  const pts = [...cells.entries()].map(([k, w]) => { const [x, y] = k.split(',').map(Number); return [x, y, w]; });
+  return { pts, dither, dead, cx, cy };
 }
 const CRACK = buildCrack();
 function Crack() {
-  const { rays, rings, shards, cx, cy } = CRACK;
+  const { pts, dither, dead, cx, cy } = CRACK;
   return (
-    <svg className="bc-crack" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      {shards.map((d, i) => <path key={'s' + i} d={d} fill={i % 2 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.25)'} />)}
-      <g fill="none" strokeLinejoin="bevel" strokeLinecap="round">
-        {rays.map((r, i) => <path key={'d' + i} d={r.d} stroke="rgba(0,0,0,.7)" strokeWidth={r.w + 0.5} />)}
-        {rings.map((d, i) => <path key={'e' + i} d={d} stroke="rgba(0,0,0,.6)" strokeWidth=".55" />)}
-        {rays.map((r, i) => <path key={'l' + i} d={r.d} stroke="rgba(225,240,255,.8)" strokeWidth={r.w} />)}
-        {rings.map((d, i) => <path key={'r' + i} d={d} stroke="rgba(225,240,255,.55)" strokeWidth=".22" />)}
-      </g>
-      <circle cx={cx} cy={cy} r="3.2" fill="rgba(255,255,255,.18)" />
-      <circle cx={cx} cy={cy} r="1.4" fill="rgba(255,255,255,.4)" />
+    <svg className="bc-crack" viewBox={`0 0 ${CW} ${CH}`} preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" aria-hidden="true">
+      <g fill="rgba(5,6,20,.55)">{dither.map(([x, y], i) => <rect key={i} x={x} y={y} width="1" height="1" />)}</g>
+      <g fill="#FF39B8" opacity=".8">{pts.map(([x, y], i) => <rect key={i} x={x + 1} y={y} width="1" height="1" />)}</g>
+      <g fill="#24DCFF" opacity=".8">{pts.map(([x, y], i) => <rect key={i} x={x - 1} y={y} width="1" height="1" />)}</g>
+      <g fill="#F5E9DB">{pts.map(([x, y, w], i) => <rect key={i} x={x} y={y} width="1" height="1" opacity={w > 1 ? 1 : 0.8} />)}</g>
+      <rect x={cx - 2} y={cy - 2} width="5" height="5" fill="#ffffff" />
+      <rect x={cx - 1} y={cy - 1} width="3" height="3" fill="#24DCFF" />
+      {dead.map(([x, y, c, sz], i) => <rect key={'d' + i} className="bc-dead" x={x} y={y} width={sz} height={sz} fill={c} />)}
     </svg>
   );
 }
@@ -190,7 +204,7 @@ function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont,
 }
 
 // ---------------------------------------------------------------- Juego
-function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
+function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
   const [rolled, setRolled] = useState(null); // contador que sube rodando
   const [banner, setBanner] = useState(null);
   const [sel, setSel] = useState([]);
@@ -360,6 +374,13 @@ function Juego({ st, setSt, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
           {r && <span className="bc-stat"><small>Impresiones</small><b>{r.prints}</b></span>}
           {r && <span className="bc-stat"><small>Descartes</small><b>{r.discards}</b></span>}
           <span className="bc-stat brass"><small>Créditos</small><b>{view.credits}</b></span>
+          <span className="bc-quick">
+            <button className={`bc-icon${set.motion === 'reducido' ? ' off' : ''}`} onClick={() => patch({ motion: set.motion === 'reducido' ? 'normal' : 'reducido' })}
+              aria-pressed={set.motion !== 'reducido'} title={set.motion === 'reducido' ? 'Activar fondo animado' : 'Quitar movimiento del fondo'} aria-label="Fondo animado">🌀</button>
+            <button className={`bc-icon${set.mute || !set.music ? ' off' : ''}`} onClick={() => patch(set.mute || !set.music ? { mute: false, music: set.music || 0.35 } : { music: 0 })}
+              aria-pressed={!set.mute && !!set.music} title={set.mute || !set.music ? 'Activar música' : 'Apagar música'} aria-label="Música">♪</button>
+            <a className="bc-icon" href={feedbackHref('batcard')} title="Enviar una sugerencia" aria-label="Sugerencias">💡</a>
+          </span>
           <button className="bc-icon" onClick={() => setHelp(true)} aria-label="¿Cómo se puntúa?">?</button>
           <button className="bc-icon" onClick={onAjustes} aria-label="Ajustes">⚙</button>
           <button className="bc-icon" onClick={onMenu} aria-label="Guardar y volver al menú">⏏</button>

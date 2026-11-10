@@ -319,3 +319,17 @@ kbd { font: 400 10px 'Outfit', sans-serif; opacity: .7; border: 1px solid curren
 .bc-set select { min-width: 150px; }
 .bc-set > p { margin-top: 10px; font-size: 13px; text-align: center; }
 .bc-panel.bc-coll { max-width: 900px; margin: 0 auto; }
+
+/* Grieta pixel: escalada con nearest y píxeles muertos que titilan */
+.bc-crack { image-rendering: pixelated; }
+.bc-crack .bc-dead { animation: bc-dead 1.3s steps(1) infinite; }
+.bc-crack .bc-dead:nth-child(2n) { animation-delay: .4s; } .bc-crack .bc-dead:nth-child(3n) { animation-delay: .9s; }
+@keyframes bc-dead { 50% { opacity: .2; } }
+.tv-broken .bc-crack { filter: drop-shadow(0 0 3px rgba(36,220,255,.45)); }
+
+/* Botones rápidos del HUD */
+.bc-quick { display: inline-flex; gap: 6px; padding-right: 6px; margin-right: 2px; border-right: 1px solid #3a3470; }
+a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
+.bc-icon { position: relative; }
+.bc-icon.off { opacity: .55; border-color: #4a4290; }
+.bc-icon.off::after { content: ''; position: absolute; left: 7px; right: 7px; top: 50%; height: 2px; background: var(--bc-pink); transform: rotate(-35deg); }
