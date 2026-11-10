@@ -765,3 +765,35 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-card.has-face .bc-corner.br { bottom: 4px; right: 5px; }
 /* Sin recuadro: el índice chico ya se borró de las imágenes */
 .bc-card.has-face .bc-corner { background: transparent; }
+
+/* =================== Inmersión: foco, latidos, aberración, zoom-blur =================== */
+.bc-root .bc-hand, .bc-root .bc-actions, .bc-root .bc-draw, .bc-root .bc-goal, .bc-root .bc-heat { transition: filter .35s ease, opacity .35s ease; }
+.bc-root.bc-scoring .bc-hand, .bc-root.bc-scoring .bc-actions, .bc-root.bc-scoring .bc-draw { filter: blur(2.5px) brightness(.55) saturate(.7); }
+.bc-root.bc-scoring .bc-heat { filter: blur(1px) brightness(.7); }
+.bc-root.bc-scoring .bc-bed { box-shadow: 0 0 0 2px rgba(36,220,255,.5), 0 0 40px rgba(135,61,255,.55), inset 0 0 60px rgba(135,61,255,.25); transition: box-shadow .3s; }
+/* Viñeta que late con cada golpe (más fuerte a medida que avanza la cuenta) */
+.bc-root::after { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1040; opacity: 0;
+  background: radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(135,61,255,calc(.25 + var(--pi, 0) * .45)) 100%); }
+.bc-root.fx-pulse::after { animation: fx-vig .26s ease-out; }
+@keyframes fx-vig { 0% { opacity: 1; } 100% { opacity: 0; } }
+.bc-root.fx-pulse .bc-bed { animation: fx-punch .26s ease-out; }
+@keyframes fx-punch { 0% { transform: scale(calc(1 + .006 + var(--pi, 0) * .012)); } 100% { transform: scale(1); } }
+/* Aberración cromática */
+.bc-root.fx-chroma .bc-bed, .bc-root.fx-chroma .bc-mods { animation: fx-chroma .38s steps(6) both; }
+@keyframes fx-chroma {
+  0% { filter: drop-shadow(5px 0 0 rgba(255,40,120,.75)) drop-shadow(-5px 0 0 rgba(0,230,255,.75)); }
+  50% { filter: drop-shadow(-3px 1px 0 rgba(255,40,120,.6)) drop-shadow(3px -1px 0 rgba(0,230,255,.6)); }
+  100% { filter: none; }
+}
+/* Zoom con desenfoque */
+.bc-root.fx-zoomblur .bc-stage { animation: fx-zoomblur .56s cubic-bezier(.2,.8,.3,1); }
+@keyframes fx-zoomblur { 0% { transform: scale(1.035); filter: blur(3px) brightness(1.5); } 40% { filter: blur(1px) brightness(1.15); } 100% { transform: none; filter: none; } }
+/* Capas y Mult: entran con desenfoque de movimiento y brillo */
+.bc-cm .chips, .bc-cm .mult { animation: fx-numin .32s cubic-bezier(.3,1.7,.5,1); }
+@keyframes fx-numin { 0% { transform: scale(1.45); filter: blur(3px) brightness(2); } 100% { transform: none; filter: none; } }
+.bc-root.bc-scoring .bc-cm .chips { box-shadow: 0 0 18px rgba(36,140,255,.8); }
+.bc-root.bc-scoring .bc-cm .mult { box-shadow: 0 0 18px rgba(255,57,184,.8); }
+/* Desenfoque de movimiento en las cartas que vuelan y las que salen */
+.bc-played.leaving .bc-card-in { filter: blur(1.5px); }
+.bc-root.reduced::after, .noflash.bc-root::after { display: none; }
+.reduced .bc-cm .chips, .reduced .bc-cm .mult { animation: none; }

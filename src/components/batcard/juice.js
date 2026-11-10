@@ -65,6 +65,21 @@ export function popText(el, text, kind = 'chips', big = false) {
   setTimeout(() => d.remove(), big ? 1600 : 1000);
 }
 
+// Efectos de pantalla por clase en .bc-root (se reinician en cada llamada).
+const rootEl = () => document.querySelector('.bc-root');
+function retrigger(cls, ms, vars = {}) {
+  const r = rootEl(); if (!r) return;
+  for (const [k, v] of Object.entries(vars)) r.style.setProperty(k, v);
+  r.classList.remove(cls); void r.offsetWidth; r.classList.add(cls);
+  clearTimeout(r['_t' + cls]); r['_t' + cls] = setTimeout(() => r.classList.remove(cls), ms);
+}
+// Latido: viñeta + micro zoom de la mesa; crece con la intensidad (0..1).
+export const fxPulse = (k = 0.3) => retrigger('fx-pulse', 260, { '--pi': Math.max(0, Math.min(1, k)).toFixed(2) });
+// Aberración cromática (rojo/cian separados) para golpes ×Mult.
+export const fxChroma = () => retrigger('fx-chroma', 380);
+// Zoom con desenfoque de toda la escena (total grande, ronda ganada).
+export const fxZoomBlur = () => retrigger('fx-zoomblur', 560);
+
 // Destello de toda la pantalla (golpes grandes, jefes, legendarios).
 export function flashScreen(color = '#fff', ms = 380) {
   const d = document.createElement('div');

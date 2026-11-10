@@ -6,7 +6,7 @@ import Plasma from '../components/batcard/Plasma.jsx';
 import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
-import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen } from '../components/batcard/juice.js';
+import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
 import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
@@ -390,6 +390,12 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
     return res;
   };
 
+  // Mientras se cuenta la mano: el resto de la pantalla se desenfoca y oscurece (foco en la mesa).
+  useEffect(() => {
+    const r = document.querySelector('.bc-root');
+    r?.classList.toggle('bc-scoring', !!anim && !reduced);
+    return () => r?.classList.remove('bc-scoring');
+  }, [anim, reduced]);
   // Animación por etapas de la traza de puntaje.
   useEffect(() => {
     if (!anim) return undefined;
@@ -405,6 +411,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         if (st.phase === 'shop' || st.phase === 'victory') {
           const pay = st.lastWin?.pay || 4;
           sfx.win(); setTimeout(() => sfx.cash(Math.min(10, pay)), 450);
+          if (fxOn) fxZoomBlur();
           if (fxOn) confetti({ n: st.phase === 'victory' ? 260 : 150, coins: pay * 3 });
           if (st.phase === 'victory' && fxOn) [300, 700, 1100].forEach((d) => setTimeout(() => confetti({ x: Math.random() * innerWidth, n: 120 }), d));
           const w = st.lastWin || {};
@@ -424,13 +431,14 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
     const h = setTimeout(() => {
       const t = anim.last.trace[anim.i];
       const prevT = anim.last.trace[anim.i - 1];
+      if (fxOn) fxPulse(anim.i / Math.max(1, anim.last.trace.length - 1));
       if (t.phase === 'total') {
         const best = anim.prev.stats.bestHand;
         const big = t.total >= anim.prev.round.target * 0.4 || (best > 0 && t.total > best);
         sfx.tick(10); if (big) sfx.big();
         const scoreEl = document.querySelector('.bc-score-num');
         popText(document.querySelector('.bc-pop-anchor') || scoreEl, `+${t.total.toLocaleString('es-AR')}`, 'total', true); // a la derecha de la cama, donde hay lugar
-        if (fxOn) { shake(document.querySelector('.bc-game'), big); if (big) burstAt(scoreEl, { n: 60 }); }
+        if (fxOn) { shake(document.querySelector('.bc-game'), big); if (big) { burstAt(scoreEl, { n: 60 }); fxZoomBlur(); fxChroma(); } }
         if (big) { setBanner(best > 0 && t.total > best ? '¡RÉCORD DE MANO!' : '¡GRAN MANO!'); setTimeout(() => setBanner(null), 1300); }
         const from = anim.prev.round.score, to = from + t.total, t0 = performance.now(), dur = reduced ? 1 : 650;
         const roll = (now) => { const k = Math.min(1, (now - t0) / dur); setRolled(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(roll); else setRolled(null); };
@@ -449,7 +457,9 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         popText(document.querySelector(`.bc-played [data-cid="${t.cardId}"]`), t.text.split(': ')[1].replace(' (+1 Calor)', ''), isMult ? 'mult' : 'chips');
       } else if (t.cardId) {
         sfx.tick(anim.i);
-        popText(document.querySelector(`.bc-played [data-cid="${t.cardId}"]`), `+${t.chips - (prevT ? prevT.chips : 0)}`, 'chips');
+        const cEl = document.querySelector(`.bc-played [data-cid="${t.cardId}"]`);
+        popText(cEl, `+${t.chips - (prevT ? prevT.chips : 0)}`, 'chips');
+        if (fxOn) burstAt(cEl, { n: 8 });
       } else if (t.modSlot != null) {
         const isMult = t.text.includes('Mult');
         if (isMult) sfx.mult(); else sfx.tick(anim.i);
@@ -457,7 +467,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const isX = t.text.includes('×');
         const legend = MOD[view.mods[t.modSlot]]?.legendary;
         popText(modEl, t.text.split(': ')[1], isMult ? 'mult' : 'chips', isX);
-        if (isX) { sfx.xmult(); if (fxOn) { flashScreen(legend ? '#ffd27a' : '#FF39B8', legend ? 520 : 300); shake(document.querySelector('.bc-bed'), true); } }
+        if (isX) { sfx.xmult(); if (fxOn) { fxChroma(); flashScreen(legend ? '#ffd27a' : '#FF39B8', legend ? 520 : 300); shake(document.querySelector('.bc-bed'), true); } }
         if (legend) { sfx.legend(); if (fxOn) burstAt(modEl, { n: 60 }); }
         if (fxOn) shake(modEl);
       } else sfx.tick(anim.i);
