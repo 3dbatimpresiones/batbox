@@ -763,3 +763,5 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-card.has-face .bc-corner i { font-size: calc(var(--bc-card-w) * .24); }
 .bc-card.has-face .bc-corner.tl { top: 4px; left: 5px; }
 .bc-card.has-face .bc-corner.br { bottom: 4px; right: 5px; }
+/* Sin recuadro: el índice chico ya se borró de las imágenes */
+.bc-card.has-face .bc-corner { background: transparent; }
