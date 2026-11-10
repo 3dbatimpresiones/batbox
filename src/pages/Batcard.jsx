@@ -6,7 +6,7 @@ import Plasma from '../components/batcard/Plasma.jsx';
 import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
-import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur } from '../components/batcard/juice.js';
+import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur, fxLayer } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
 import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, BLIND_PAY, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST, EDITIONS } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
@@ -321,7 +321,7 @@ function showPattern(pid, cards, mini, fxOn) {
   d.className = `bc-patfx${mini ? ' mini' : ''} p-${royal ? 'royal' : pid}${fxOn ? '' : ' calm'}`;
   d.innerHTML = `<span>${royal ? 'Escalera real' : PATTERN[pid].name}</span>`;
   Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${br.left}px`, width: `${br.width}px`, top: `${Math.min(top, br.bottom - h)}px`, height: `${h}px`, zIndex: 1045 });
-  document.body.appendChild(d);
+  fxLayer().appendChild(d);
   setTimeout(() => d.remove(), mini ? 1300 : 1500);
   return royal;
 }
@@ -780,7 +780,7 @@ function Sugerencias({ st, onClose }) {
         )}
       </div>
     </div>,
-    document.body,
+    fxLayer(),
   );
 }
 
@@ -819,7 +819,7 @@ function Ayuda({ onClose }) {
         </ul>
       </div>
     </div>,
-    document.body,
+    fxLayer(),
   );
 }
 const EJ = { alta: 'A', par: 'K K', doble: '9 9 · 4 4', trio: '7 7 7', escalera: '5 6 7 8 9', color: '5 del mismo palo', full: '3 3 3 · 9 9', poker: '8 8 8 8', ecolor: 'escalera del mismo palo' };
@@ -1015,7 +1015,7 @@ function PackOpen({ st, act }) {
         )}
       </div>
     </div>,
-    document.body,
+    fxLayer(),
   );
 }
 

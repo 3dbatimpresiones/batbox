@@ -1,3 +1,5 @@
+// En pantalla completa solo se ve lo que está dentro del elemento en fullscreen: los efectos van ahí.
+export const fxLayer = () => document.fullscreenElement || document.webkitFullscreenElement || document.body;
 import { audioCtx } from './sfx.js';
 // "Game feel" de BATCARD: confeti, números flotantes, temblor y música ambiente sintetizada.
 // Todo respeta movimiento reducido / destellos apagados (lo decide quien llama).
@@ -10,7 +12,7 @@ function ensureCanvas() {
   if (cv) return;
   cv = document.createElement('canvas');
   cv.className = 'bc-confetti';
-  document.body.appendChild(cv);
+  fxLayer().appendChild(cv);
   ctx2d = cv.getContext('2d');
 }
 function loop() {
@@ -61,7 +63,7 @@ export function popText(el, text, kind = 'chips', big = false) {
   d.textContent = text;
   d.style.left = `${b.left + b.width / 2 + (Math.random() - 0.5) * 16}px`;
   d.style.top = `${b.top + (big ? b.height / 2 : 4)}px`;
-  document.body.appendChild(d);
+  fxLayer().appendChild(d);
   // Siempre adentro de la pantalla (PC, iPad y celular): se corrige en cada cuadro de la animación.
   const M = 8;
   { // ubicación inicial ya corregida, contando lo que crece en el golpe
@@ -107,7 +109,7 @@ export function flashScreen(color = '#fff', ms = 380) {
   d.className = 'bc-flashfx';
   d.style.setProperty('--fc', color);
   d.style.animationDuration = ms + 'ms';
-  document.body.appendChild(d);
+  fxLayer().appendChild(d);
   setTimeout(() => d.remove(), ms + 50);
 }
 
