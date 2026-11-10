@@ -418,6 +418,14 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
 
       {view.phase === 'round' && r && (
         <>
+          <div className={`bc-goal${(rolled ?? shownScore) >= r.target ? ' done' : ''}${info.boss ? ' boss' : ''}`}>
+            <div className="bc-goal-l"><small>{info.boss ? `JEFE · ${info.name}` : info.name}</small><b>META {r.target.toLocaleString('es-AR')}</b></div>
+            <div className="bc-goal-bar" role="progressbar" aria-valuemin={0} aria-valuemax={r.target} aria-valuenow={rolled ?? shownScore} aria-label="Calidad hacia la meta">
+              <i style={{ width: `${Math.min(100, ((rolled ?? shownScore) / r.target) * 100)}%` }} />
+              <span>{(rolled ?? shownScore).toLocaleString('es-AR')} / {r.target.toLocaleString('es-AR')}</span>
+            </div>
+            <div className="bc-goal-r">{(rolled ?? shownScore) >= r.target ? <b>¡SUPERADA!</b> : <><small>TE FALTAN</small><b>{(r.target - (rolled ?? shownScore)).toLocaleString('es-AR')}</b></>}</div>
+          </div>
           <Heat heat={r.heat} forecast={pv ? pv.heat : over ? Math.min(6, r.heat + 2) : null} boss={r.boss} />
           <section className="bc-bed" aria-label="Cama de impresión">
             <span className="bc-pop-anchor" aria-hidden="true" />

@@ -464,3 +464,20 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-bed { position: relative; }
 .bc-pop-anchor { position: absolute; right: 16%; top: 50%; width: 1px; height: 1px; pointer-events: none; }
 @media (max-width: 640px) { .bc-pop-anchor { right: 50%; top: 0; } }
+
+/* Meta bien visible: panel con barra de progreso */
+.bc-goal { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px; padding: 10px 14px; background: rgba(7,9,26,.92);
+  border: 3px solid #E2B13C; box-shadow: 4px 4px 0 #090B20, 0 0 18px rgba(226,177,60,.25); }
+.bc-goal.boss { border-color: #FF39B8; box-shadow: 4px 4px 0 #090B20, 0 0 18px rgba(255,57,184,.3); }
+.bc-goal-l small, .bc-goal-r small { display: block; font: 700 11px 'Outfit', sans-serif; letter-spacing: .08em; color: #d9d4ff; text-transform: uppercase; }
+.bc-goal-l b { font: 400 22px 'Press Start 2P', monospace; color: #E2B13C; text-shadow: 2px 0 #FF39B8, -2px 0 #24DCFF, 0 3px 0 #000; }
+.bc-goal.boss .bc-goal-l b { color: #ffc4ea; }
+.bc-goal-r { text-align: right; }
+.bc-goal-r b { font: 400 18px 'Press Start 2P', monospace; color: #fff; }
+.bc-goal-bar { position: relative; height: 26px; background: #181833; border: 3px solid #090B20; overflow: hidden; }
+.bc-goal-bar i { position: absolute; inset: 0 auto 0 0; background: repeating-linear-gradient(90deg, #E2B13C 0 10px, #f5cd5e 10px 14px); transition: width .35s cubic-bezier(.2,1.4,.4,1); box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); }
+.bc-goal-bar span { position: relative; z-index: 1; display: block; text-align: center; line-height: 20px; font: 400 11px 'Press Start 2P', monospace; color: #fff; text-shadow: 0 2px 0 #000; }
+.bc-goal.done { border-color: #2bd67b; animation: bc-box-punch .5s cubic-bezier(.2,2.2,.4,1); }
+.bc-goal.done .bc-goal-r b { color: #2bd67b; }
+.bc-goal.done .bc-goal-bar i { background: repeating-linear-gradient(90deg, #2bd67b 0 10px, #7cf0b0 10px 14px); }
+@media (max-width: 640px) { .bc-goal { grid-template-columns: 1fr auto; } .bc-goal-bar { grid-column: 1 / -1; order: 3; } .bc-goal-l b { font-size: 16px; } }
