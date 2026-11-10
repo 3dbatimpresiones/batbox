@@ -374,3 +374,10 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.04) rotate(-.6deg); }
 .reduced .bc-hand .bc-card-in, .reduced .bc-card-tilt { animation: none !important; transform: none !important; }
 @media (max-width: 640px) { .bc-hand { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding: 34px 14px 10px; } .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.28); } }
+/* Legibilidad del abanico: menos encimado (se ve número y palo de cada carta) y la elegida
+   sube sin taparle la esquina a la de su derecha; solo el hover la trae al frente. */
+.bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.05); }
+.bc-hand .bc-card:first-child { margin-left: 0; }
+.bc-hand .bc-card.sel { z-index: auto !important; --lift: 40px; }
+@media (max-width: 640px) { .bc-hand .bc-card { margin-left: calc(var(--bc-card-w) * -.22); } }
+@media (max-width: 640px) { .bc-hand { padding-top: 54px; } }

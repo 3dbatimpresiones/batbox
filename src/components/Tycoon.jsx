@@ -38,6 +38,16 @@ export function Emblem({ emblem = 'nozzle', color = '#5DDADB', size = 36 }) {
   );
 }
 
+export function BatcardLiveLine({ live }) {
+  if (!live) return null;
+  return (
+    <p className="mt-live">
+      <i className="mt-dot" /> <b>{num(live.online)}</b> {live.online === 1 ? 'maker' : 'makers'} en BATBOX
+      {live.batcard != null && <span>· 🃏 <b>{num(live.batcard)}</b> jugando BATCARD ahora</span>}
+    </p>
+  );
+}
+
 export function LiveLine({ live, compact }) {
   if (!live) return null;
   return (
@@ -189,6 +199,7 @@ function TycoonSlide() {
 }
 
 function BatcardSlide() {
+  const live = useLive();
   const r = useMt('bb_bc_ranking', { p_kind: 'global', p_limit: 3 });
   const w = useMt('bb_bc_ranking', { p_kind: 'semanal', p_limit: 3 });
   const rows = (d) => (d?.rows || []).map((x) => ({ ...x, farm: null, title: null }));
@@ -202,6 +213,7 @@ function BatcardSlide() {
         <div className="section-label">ROGUELIKE DE CARTAS · NUEVO JUEGO DE 3DBAT</div>
         <h2>BATCARD</h2>
         <p>Cada partida es una orden de producción: armá manos de póker, sumá Mods de taller, controlá el Calor y pasá los controles de calidad.</p>
+        <BatcardLiveLine live={live} />
         <div className="mt-home-cta">
           <a className="btn primary" href="#/batcard"><Icon name="gamepad" size={18} /> Jugar gratis</a>
           <a className="btn ghost" href="#/juego?juego=batcard&ver=ranking"><Icon name="trophy" size={16} /> Ver ranking</a>
@@ -244,7 +256,7 @@ export function TycoonHomeBlock() {
   }, [i, paused]);
   return (
     <section className="mt-home gm-car" aria-roledescription="carrusel" aria-label="Juegos de 3DBAT"
-      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
       <button className="gm-arrow l" onClick={() => go(-1)} aria-label="Juego anterior"><Icon name="arrowRight" size={20} /></button>
       <button className="gm-arrow r" onClick={() => go(1)} aria-label="Juego siguiente"><Icon name="arrowRight" size={20} /></button>
       <div className={`gm-slide gm-fade${fading ? ' out' : ''}`} key={i} aria-live="polite" aria-label={`${i + 1} de ${SLIDES.length}: ${SLIDES[i][0]}`}>{(() => { const S = SLIDES[i][1]; return <S />; })()}</div>

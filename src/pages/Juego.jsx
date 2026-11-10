@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import { navigate } from '../lib/router.js';
 import { GAME_URL, useLive, useMt } from '../lib/mtApi.js';
-import { ChallengeCard, Emblem, LiveLine, RankRows, num } from '../components/Tycoon.jsx';
+import { BatcardLiveLine, ChallengeCard, Emblem, LiveLine, RankRows, num } from '../components/Tycoon.jsx';
 import { Options, SearchInput } from '../components/ui.jsx';
 import { farmLevel } from '../data/rewards.js';
 import { GAMES } from '../data/games.js';
@@ -44,6 +44,7 @@ export default function Juego({ query }) {
               <h2>{g.name}</h2>
               <p>{g.desc}</p>
               {g.live && <LiveLine live={live} />}
+              {g.id === 'batcard' && <BatcardLiveLine live={live} />}
               <div className="gm-cta">
                 <a className="btn primary" href={g.href}><Icon name="gamepad" size={18} /> Jugar gratis</a>
                 <button className="btn ghost" onClick={() => pick(g.id)} aria-pressed={game === g.id}><Icon name="book" size={15} /> Ver detalles</button>

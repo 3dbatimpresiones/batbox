@@ -17,7 +17,7 @@ export async function mt(fn, args) {
 }
 
 // Identificador al azar del navegador para contar "en línea" (el mismo que usa el juego).
-function clientId() {
+export function clientId() {
   const KEY = 'bb_live_id';
   try {
     let id = localStorage.getItem(KEY);
@@ -74,4 +74,19 @@ export function useMt(fn, args, deps = []) {
   }, deps); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [load]);
   return { ...state, reload: load };
+}
+
+// Presencia de BATCARD: mientras el juego de cartas está abierto y a la vista avisa cada 30 s.
+// (Requiere la migración 072; si no está, el servidor lo ignora en silencio.)
+export function useBatcardPresence(active) {
+  useEffect(() => {
+    if (!active) return undefined;
+    const cid = clientId();
+    if (!cid) return undefined;
+    const ping = () => { if (document.visibilityState === 'visible') sb.rpc('bb_live_ping', { p_client: cid, p_app: 'batcard' }).then(() => {}); };
+    ping();
+    const h = setInterval(ping, 30000);
+    document.addEventListener('visibilitychange', ping);
+    return () => { clearInterval(h); document.removeEventListener('visibilitychange', ping); };
+  }, [active]);
 }

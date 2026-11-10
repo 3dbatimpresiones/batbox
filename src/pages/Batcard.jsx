@@ -14,6 +14,7 @@ import { newSeed } from '../lib/batcard/rng.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { feedbackHref } from '../components/FeedbackButton.jsx';
 import { sb } from '../lib/supabase.js';
+import { useBatcardPresence } from '../lib/mtApi.js';
 
 // =====================================================================
 // #/batcard — BATCARD · Un juego de 3DBAT IMPRESIONES.
@@ -63,6 +64,7 @@ export default function Batcard() {
     music.setLevel(lv);
   }, [screen, st]);
   const fxOn = !reduced && set.flashes;
+  useBatcardPresence(screen === 'juego');
 
   const start = (s) => { setSt(s); setScreen('juego'); };
   const { simulated, signIn, user } = useAuth();
@@ -191,14 +193,14 @@ function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont,
         </div>
       )}
       <div className="bc-menu-btns">
-        {save && <button className="bc-btn primary" onClick={onCont}>Continuar <small>Lote {save.lot + 1} · {BLIND_NAMES[save.blind]}</small></button>}
+        {save && <button className="bc-btn primary" onClick={onCont}>Continuar <small>Lote {save.lot + 1} · {BLIND_NAMES[save.blind]}{save.ranked ? ' · cuenta para el ranking' : ''}</small></button>}
         <button className={`bc-btn${save ? '' : ' primary'}`} disabled={starting} onClick={() => { if (!save || confirm('Empezar otra partida reemplaza la guardada. ¿Seguimos?')) onNew(); }}>{starting ? 'Preparando…' : 'Nueva partida'}</button>
         <button className="bc-btn" onClick={() => go('coleccion')}>Colección</button>
         <button className="bc-btn" onClick={() => go('ajustes')}>Ajustes</button>
       </div>
       {rec && <p className="bc-rec">Récord: {rec.won ? 'orden completa' : `Lote ${rec.lot}`} · mejor mano {rec.best.toLocaleString('es-AR')} Calidad</p>}
       <p className="bc-foot">{canRank
-        ? <>🏆 Estás en el <b>ranking</b>: cada partida nueva cuenta. <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>
+        ? <>🏆 Estás en el <b>ranking</b>: cada partida entra al ranking <b>cuando termina</b> (ganes o pierdas). <a href="#/juego?juego=batcard&ver=ranking">Ver ranking</a></>
         : <>Gratis y sin límites, con o sin cuenta. <button className="bc-mini" onClick={() => signIn()}>Ingresá con Google</button> (la misma cuenta de BATBOX) para entrar al <a href="#/juego?juego=batcard&ver=ranking">ranking</a>.</>}</p>
     </div>
   );
