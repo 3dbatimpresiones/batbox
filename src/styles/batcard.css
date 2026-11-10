@@ -1103,3 +1103,9 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .marco-holo .bc-hand .bc-card-in { outline: 2px solid #FF39B8; outline-offset: -5px; }
 @media (max-width: 640px) { .bc-ch-grid, .bc-ach-grid, .bc-decks { grid-template-columns: 1fr; } .bc-toast { bottom: auto; top: 8px; } }
 .reduced.bc-lasthand .bc-goal, .reduced .bc-filament path { animation: none; }
+/* Mesa compacta: grande solo mientras se cuenta la mano */
+.bc-root.bc-full:not(.bc-scoring) .bc-bed { flex: 0 0 auto; min-height: 0; padding: 8px 12px; }
+.bc-root.bc-full:not(.bc-scoring) .bc-hand { margin-top: auto; }
+.bc-root.bc-full:not(.bc-scoring) .bc-actions { margin-bottom: auto; }
+.bc-root.bc-full.bc-scoring .bc-bed { animation: bed-open .35s cubic-bezier(.2,1.2,.4,1); }
+@keyframes bed-open { 0% { transform: scaleY(.55); opacity: .6; } 100% { transform: none; opacity: 1; } }
