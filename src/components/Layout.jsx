@@ -149,14 +149,9 @@ export function Footer() {
   );
 }
 
+// El cartel "Versión en desarrollo" se quitó a pedido (2026-11-09): la web ya está en producción.
 export function DevBanner() {
-  const { usingSamples } = useContent();
-  if (!usingSamples) return null;
-  return (
-    <div className="dev-banner">
-      Versión en desarrollo · el contenido marcado <span className="chip sample">EJEMPLO</span> es de muestra
-    </div>
-  );
+  return null;
 }
 
 export function Toast() {
