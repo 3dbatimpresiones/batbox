@@ -58,7 +58,7 @@ function untilt(e) {
   if (el) { el.style.setProperty('--rx', '0deg'); el.style.setProperty('--ry', '0deg'); }
 }
 
-export default function Card({ card, selected, scoring, lit, onClick, order, disabled, idx = 0, deal = null, fan = null }) {
+export default function Card({ card, selected, scoring, lit, onClick, order, disabled, idx = 0, deal = null, fan = null, marked = false }) {
   // Al repartir: la carta arranca boca abajo encima del mazo (.bc-deckpile) y viaja a su lugar.
   const inRef = useRef(null);
   useLayoutEffect(() => {
@@ -73,7 +73,7 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
   const face = faceUrl(card, skin);
   const suit = SUITS[card.s];
   const mat = card.m && MATERIALS[card.m];
-  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : '', card.ed ? 'ed-' + card.ed : '', face ? 'has-face suit-' + card.s + ' skin-' + skin : ''].join(' ');
+  const cls = ['bc-card', mat ? 'mat-' + card.m : '', suit.color === 'pink' ? 'is-pink' : '', selected ? 'sel' : '', scoring ? 'scoring' : '', lit ? 'lit' : '', marked ? 'marked' : '', card.ed ? 'ed-' + card.ed : '', face ? 'has-face suit-' + card.s + ' skin-' + skin : ''].join(' ');
   const label = `${cardText(card)}${mat ? `, de ${mat.name}: ${mat.desc}` : ''}${card.b ? `, +${card.b} Capas` : ''}${card.sl ? `, ${SEALS[card.sl].name}` : ''}${card.ed ? `, edición ${EDITIONS[card.ed].name}` : ''}${selected ? `, seleccionada ${order}` : ''}`;
   const inner = (
     <span className="bc-card-tilt">
@@ -89,6 +89,7 @@ export default function Card({ card, selected, scoring, lit, onClick, order, dis
       {card.ed && <span className="bc-edtag" title={`${EDITIONS[card.ed].name}: ${EDITIONS[card.ed].desc}`}>{EDITIONS[card.ed].name.slice(0, 4).toUpperCase()}</span>}
       {card.sl && <span className={`bc-seal s-${card.sl}`} title={`${SEALS[card.sl].name}: ${SEALS[card.sl].desc}`} />}
       {mat && <span className="bc-mat" title={`${mat.name}: ${mat.desc}`}>{mat.short}</span>}
+      {marked && <span className="bc-markx" title="Posición marcada por el jefe: no suma Capas">✕</span>}
       {selected && order && <span className="bc-order">{order}</span>}
     </span>
     </span>

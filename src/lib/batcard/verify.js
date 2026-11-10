@@ -5,11 +5,11 @@ import { RNG_VERSION } from './rng.js';
 
 export const MAX_LOG = 3000;
 
-export function replayRun(seed, log, v = 1) {
+export function replayRun(seed, log, v = 1, cfg = {}) {
   if (!SUPPORTED_RULES.includes(v)) return { ok: false, error: 'Versión de reglas desconocida.' };
   if (typeof seed !== 'string' || !/^[A-Za-z0-9]{3,40}$/.test(seed)) return { ok: false, error: 'Semilla inválida.' };
   if (!Array.isArray(log) || log.length < 2 || log.length > MAX_LOG) return { ok: false, error: 'Partida inválida.' };
-  let st = newGame(seed, v);
+  let st = newGame(seed, v, cfg || {});
   for (let i = 0; i < log.length; i++) {
     if (st.phase === 'victory' || st.phase === 'defeat') return { ok: false, error: `Hay jugadas después del final (paso ${i}).` };
     const r = step(st, expand(log[i] || {}));

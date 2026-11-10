@@ -79,6 +79,22 @@ export const MODS = [
   { id: 'imprenta_exp', since: 6, name: 'Imprenta Exponencial', rarity: 'rara', price: 8, finish: 'policromo', tags: ['xmult', 'crece'],
     desc: 'Crece: +×0,2 al Multiplicador por cada ronda que ganaste desde que la tenés.',
     effect: { phase: 'mods', when: (c) => (c.modData.imprenta_exp || 0) > 0, op: 'xmult', value: (c) => 1000 + 200 * (c.modData.imprenta_exp || 0) } },
+  // ---- Reglas v8: Mods de taller con sinergias ----
+  { id: 'purga_inteligente', since: 8, name: 'Purga Inteligente', rarity: 'común', price: 5, finish: 'laminado', tags: ['mult', 'descarte'],
+    desc: '+3 al Multiplicador por cada descarte que usaste en esta ronda.',
+    effect: { phase: 'mods', when: (c) => (c.chain?.discardsUsed || 0) > 0, op: 'mult', value: (c) => 3 * c.chain.discardsUsed } },
+  { id: 'extrusion_continua', since: 8, name: 'Extrusión Continua', rarity: 'poco común', price: 6, finish: 'holografico', tags: ['capas', 'palo'],
+    desc: 'Si todas las cartas puntuadas son del mismo palo que en tu mano anterior: +15 Capas por cada mano seguida de la racha.',
+    effect: { phase: 'mods', when: (c) => (c.chain?.suitStreak || 0) >= 2, op: 'chips', value: (c) => 15 * (c.chain.suitStreak - 1) } },
+  { id: 'cambio_boquilla', since: 8, name: 'Cambio de Boquilla', rarity: 'común', price: 5, finish: 'metalico', tags: ['mult', 'patrón'],
+    desc: '+2 al Multiplicador por cada vez que cambiaste de Patrón en esta ronda (esta mano incluida).',
+    effect: { phase: 'mods', when: (c) => (c.chain?.patternChanges || 0) > 0, op: 'mult', value: (c) => 2 * c.chain.patternChanges } },
+  { id: 'mod_multimaterial', since: 8, name: 'Multimaterial', rarity: 'poco común', price: 6, finish: 'policromo', tags: ['mult', 'palo'],
+    desc: '+2 al Multiplicador por cada palo distinto que puntuaste en esta ronda (esta mano incluida), con 2 o más.',
+    effect: { phase: 'mods', when: (c) => (c.chain?.suitsScored || 0) >= 2, op: 'mult', value: (c) => 2 * c.chain.suitsScored } },
+  { id: 'reimpresion', since: 8, name: 'Reimpresión', rarity: 'rara', price: 7, finish: 'policromo', tags: ['repetir'],
+    desc: 'La carta puntuada de mayor valor se dispara dos veces (su aporte se muestra aparte).',
+    effect: { phase: 'retrigger' } },
 ];
 // Ediciones de las cartas (reglas v6): acabados especiales que vienen en los sobres.
 export const EDITIONS = {
@@ -151,8 +167,25 @@ export const BOSSES = [
   { id: 'atasco', since: 5, name: 'Atasco de Extrusor', desc: 'La primera carta puntuada de cada mano no suma Capas.' },
   { id: 'stringing', since: 5, name: 'Stringing', desc: 'Cada carta jugada que no puntúa resta 5 Capas.' },
   { id: 'pie_elefante', since: 5, name: 'Pie de Elefante', desc: 'Las cartas del 2 al 5 no suman Capas.' },
+  { id: 'boquilla_tapada', since: 8, name: 'Boquilla Tapada', desc: 'Las cartas puntuadas con valor repetido aportan la mitad de Capas.' },
+  { id: 'cama_marcada', since: 8, name: 'Cama Desnivelada', desc: 'Las cartas que elegís en 2.º y 4.º lugar no suman Capas (se marcan antes de imprimir).' },
+  { id: 'corte_luz', since: 8, name: 'Corte de Luz', desc: 'Tenés 1 impresión menos para llegar a la meta.' },
 ];
-export const bossesFor = (v) => BOSSES.filter((b) => (b.since || 1) <= v);
+// v8 reemplaza la Cama Desnivelada vieja por la de posiciones marcadas.
+export const bossesFor = (v) => BOSSES.filter((b) => (b.since || 1) <= v && !(v >= 8 && b.id === 'cama_desnivelada'));
+
+// Eventos de taller (v8): opción segura y opción arriesgada, con todo visible antes de elegir.
+export const EVENTS = [
+  { id: 'oferta_filamento', name: 'Oferta de filamento', text: 'Un proveedor liquida stock.',
+    opts: [{ label: 'Comprar un poco', safe: true, desc: '+4 Créditos seguros.' }, { label: 'Llevarse el lote', desc: '50 %: +10 Créditos. 50 %: perdés 3 Créditos.' }] },
+  { id: 'calibracion_rapida', name: 'Calibración rápida', text: 'Te sobran unos minutos antes del próximo pedido.',
+    opts: [{ label: 'Ajuste fino', safe: true, desc: 'Tu Patrón más jugado sube 1 nivel.' }, { label: 'Firmware beta', desc: '50 %: tu Patrón más jugado sube 2 niveles. 50 %: 1 descarte menos en la próxima ronda.' }] },
+  { id: 'cama_nueva', name: 'Cama nueva', text: 'Llegó una cama PEI texturizada.',
+    opts: [{ label: 'Probarla tranquilo', safe: true, desc: '2 cartas al azar de tu mazo ganan +5 Capas.' }, { label: 'Imprimir a máxima velocidad', desc: '50 %: 2 cartas al azar se vuelven Policromas. 50 %: 2 cartas al azar se eliminan del mazo.' }] },
+  { id: 'horas_extra', name: 'Horas extra', text: 'El taller puede quedarse abierto de noche.',
+    opts: [{ label: 'Turno corto', safe: true, desc: '+1 impresión en la próxima ronda.' }, { label: 'Turno doble', desc: '50 %: +2 impresiones en la próxima ronda. 50 %: la próxima ronda arranca con Calor 4.' }] },
+];
+export const EVENT = Object.fromEntries(EVENTS.map((e) => [e.id, e]));
 
 export const MOD = Object.fromEntries(MODS.map((m) => [m.id, m]));
 export const CAL = Object.fromEntries([...CALIBRATIONS, ...SPOOLS, ...SEAL_CALS].map((m) => [m.id, m]));
@@ -165,7 +198,8 @@ export const BOSS = Object.fromEntries(BOSSES.map((m) => [m.id, m]));
 export const TARGETS = [[220, 330, 450], [550, 750, 1000], [1200, 1650, 2200], [2600, 3600, 4800]];
 // v7: curva más pareja (antes se disparaba en los Lotes 3 y 4).
 export const TARGETS_V7 = [[200, 300, 420], [500, 680, 900], [1000, 1350, 1750], [1900, 2500, 3200]];
-export const targetsFor = (v = 1) => (v >= 7 ? TARGETS_V7 : TARGETS);
+export const TARGETS_V8 = [[230, 360, 520], [620, 850, 1150], [1300, 1800, 2400], [2600, 3500, 4600]];
+export const targetsFor = (v = 1) => (v >= 8 ? TARGETS_V8 : v >= 7 ? TARGETS_V7 : TARGETS);
 export const BLIND_NAMES = ['Prototipo', 'Tanda', 'Control de Calidad'];
 export const BLIND_PAY = [3, 4, 5];
 export const RULES = { handSize: 8, prints: 4, discards: 3, maxMods: 4, maxCals: 2, heatMax: 6, overHeat: 2, overChips: 12, overLimit: 4 };

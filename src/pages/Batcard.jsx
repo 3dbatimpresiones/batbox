@@ -5,8 +5,11 @@ import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
 import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
+import { Setup, Desafios, Logros, EventPanel, RuleSheet, AchToasts } from '../components/batcard/Modos.jsx';
+import { observe, emptyProfile, REWARDS } from '../lib/batcard/achievements.js';
+import { CH, DECKS, DIFFS, encodeCode } from '../lib/batcard/modes.js';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
-import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur, fxLayer } from '../components/batcard/juice.js';
+import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur, fxLayer, filament } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS, RULES_VERSION as RULES_V } from '../lib/batcard/game.js';
 import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, BLIND_PAY, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST, EDITIONS, targetsFor } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS, patternsFor } from '../lib/batcard/hands.js';
@@ -22,7 +25,7 @@ import { useBatcardPresence, useLive } from '../lib/mtApi.js';
 // Gratis para todos. Con sesión de Google la semilla la da el servidor y la partida entra al ranking (verificada).
 // =====================================================================
 
-const K_SAVE = 'batcard.save', K_SET = 'batcard.ajustes', K_REC = 'batcard.record', K_TUTO = 'batcard.tutorial';
+const K_SAVE = 'batcard.save', K_SET = 'batcard.ajustes', K_REC = 'batcard.record', K_TUTO = 'batcard.tutorial', K_PROF = 'batcard.perfil';
 const ls = {
   get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sin almacenamiento */ } },
@@ -154,27 +157,52 @@ export default function Batcard() {
   }, [screen]);
   useBatcardPresence(screen === 'juego');
 
-  const start = (s) => { setSt(s); setScreen('juego'); };
+  // Perfil: logros, récords y cosméticos. Se guarda en este navegador (como el resto de BATCARD).
+  const [profile, setProfile] = useState(() => {
+    const p = ls.get(K_PROF);
+    if (p) return { ...emptyProfile(), ...p };
+    // Primera vez con logros: solo se acredita lo que el historial viejo prueba (récord guardado).
+    const np = emptyProfile(), rec = ls.get(K_REC);
+    if (rec) { np.unlocked.primera_capa = Date.now(); np.runs = 1; if (rec.won) { np.unlocked.pieza_terminada = Date.now(); np.wins = 1; } }
+    return np;
+  });
+  useEffect(() => { ls.set(K_PROF, profile); }, [profile]);
+  const [toasts, setToasts] = useState([]);
+  const popToast = useMemo(() => () => setToasts((q) => q.slice(1)), []);
+  const observar = (hecho) => {
+    setProfile((p) => {
+      const { perfil, nuevos } = observe(p, hecho);
+      if (nuevos.length) setTimeout(() => setToasts((q) => [...q, ...nuevos.filter((x) => !q.includes(x))]), 0);
+      return perfil;
+    });
+  };
+  const start = (s) => { setSt(s); setScreen('juego'); observar({ kind: 'start', st: s }); };
   const { simulated, signIn, user } = useAuth();
   const canRank = !!user && !simulated;
   const [starting, setStarting] = useState(false);
   // Con sesión: la semilla la da el servidor y la partida entra al ranking.
-  const nueva = async () => {
+  // cfg: { deck, diffs, ch } · opts: { seed, fromCode, retry }. Solo la partida estándar (FDM, sin dificultad ni desafío) entra al ranking público.
+  const nueva = async (cfg = {}, opts = {}) => {
     if (isTouch()) enterFull(); // en celular/tablet, pantalla completa al empezar
     ls.del(K_SAVE);
-    if (!canRank) { start(newGame(newSeed())); return; }
+    const standard = (!cfg.deck || cfg.deck === 'fdm') && !(cfg.diffs || []).length && !cfg.ch;
+    const extra = { ...(opts.fromCode ? { fromCode: true } : {}) };
+    if (opts.seed) { start({ ...newGame(opts.seed, RULES_V, cfg), ...extra, rankNote: opts.retry ? 'es un reintento de semilla' : undefined }); return; }
+    if (!canRank || !standard) { start({ ...newGame(newSeed(), RULES_V, cfg), ...extra, ...(standard ? {} : { rankNote: 'tiene mazo, dificultad o desafío distinto del estándar; queda como récord personal' }) }); return; }
     setStarting(true);
     const { data, error } = await sb.rpc('bb_bc_start');
     setStarting(false);
-    if (error || !data) { start({ ...newGame(newSeed()), rankNote: error?.message || 'Sin conexión con el ranking.' }); return; }
-    start({ ...newGame(data), ranked: true });
+    if (error || !data) { start({ ...newGame(newSeed(), RULES_V, cfg), rankNote: error?.message || 'Sin conexión con el ranking.' }); return; }
+    start({ ...newGame(data, RULES_V, cfg), ranked: true });
   };
+  const reintentar = (old) => nueva(old.cfg || {}, { seed: old.seed, retry: true });
+  const setCosmetic = (k, v) => setProfile((p) => ({ ...p, cosmetics: { ...(p.cosmetics || {}), [k]: v } }));
   const continuar = () => { if (!save) return; if (isTouch()) enterFull(); start(save); };
   const aparcar = () => { exitFull(); setSaveInfo(loadSave()); setScreen('menu'); };
   const descartarRoto = () => { ls.set(K_SAVE + '.roto', ls.get(K_SAVE)); ls.del(K_SAVE); setSaveInfo({ save: null, problem: null }); };
 
   return (
-    <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}${screen === 'juego' ? ' bc-full' : ''}`}>
+    <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}${screen === 'juego' ? ' bc-full' : ''}${profile.cosmetics?.marco ? ' ' + REWARDS[profile.cosmetics.marco]?.cls : ''}`}>
       <div className="bc-stage">
         <Plasma still={set.motion === 'reducido'} mood={screen === 'juego' ? mood : 'normal'} />
         <div className="bc-crt" aria-hidden="true" />
@@ -183,14 +211,18 @@ export default function Batcard() {
         <div className="bc-static" aria-hidden="true" />
         <div className="bc-content">
           {screen === 'menu' && (
-            <Menu save={save} problem={problem} canRank={canRank} logged={!!user} signIn={signIn} starting={starting} onNew={nueva} onCont={continuar} onDropBad={descartarRoto} go={setScreen} />
+            <Menu save={save} problem={problem} canRank={canRank} logged={!!user} signIn={signIn} starting={starting} onNew={() => setScreen('jugar')} onCont={continuar} onDropBad={descartarRoto} go={setScreen} profile={profile} />
           )}
+          {screen === 'jugar' && <Setup profile={profile} canRank={canRank} starting={starting} onStart={(cfg, opts) => nueva(cfg, opts)} back={() => setScreen('menu')} />}
+          {screen === 'desafios' && <Desafios profile={profile} onStart={(cfg, opts) => nueva(cfg, opts)} back={() => setScreen('menu')} />}
+          {screen === 'logros' && <Logros profile={profile} setCosmetic={setCosmetic} back={() => setScreen('menu')} />}
           {screen === 'coleccion' && <Coleccion back={() => setScreen('menu')} />}
           {screen === 'ajustes' && <Ajustes set={set} patch={patch} back={() => setScreen(st ? 'juego' : 'menu')} />}
           {screen === 'juego' && st && (
             <Juego st={st} setSt={setSt} setMood={setMood} set={set} patch={patch} speed={SPEED[set.speed]} reduced={reduced} fxOn={fxOn}
-              onMenu={aparcar} onAjustes={() => setScreen('ajustes')} onNew={nueva} />
+              onMenu={aparcar} onAjustes={() => setScreen('ajustes')} onNew={() => { setSt(null); setScreen('jugar'); }} onRetry={reintentar} observar={observar} profile={profile} />
           )}
+          <AchToasts queue={toasts} pop={popToast} />
         </div>
       </div>
     </div>
@@ -200,13 +232,13 @@ export default function Batcard() {
 // ---------------------------------------------------------------- Grieta pixel art (solo en el fondo)
 // Se dibuja en la misma grilla de 192×108 del fondo: cada trazo se rasteriza en píxeles (Bresenham)
 // y se pinta en 3 capas, rosa y celeste corridos un píxel y núcleo blanco (desregistro neón del juego).
-const CW = 192, CH = 108;
+const CW = 192, CRH = 108;
 function buildCrack() {
   let z = 11;
   const rnd = () => { z = (z * 16807) % 2147483647; return (z - 1) / 2147483646; };
   const cx = 122, cy = 40, N = 13;
   const cells = new Map(); // "x,y" -> peso (1 = trazo fino, 2 = núcleo)
-  const plot = (x, y, w) => { if (x < 0 || y < 0 || x >= CW || y >= CH) return; const k = x + ',' + y; cells.set(k, Math.max(cells.get(k) || 0, w)); };
+  const plot = (x, y, w) => { if (x < 0 || y < 0 || x >= CW || y >= CRH) return; const k = x + ',' + y; cells.set(k, Math.max(cells.get(k) || 0, w)); };
   const line = (x0, y0, x1, y1, w) => {
     x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
     const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
@@ -238,7 +270,7 @@ function buildCrack() {
   const dither = [];
   for (const [[ax, ay], [bx, by], [qx, qy]] of shards) {
     const minX = Math.max(0, Math.floor(Math.min(ax, bx, qx))), maxX = Math.min(CW - 1, Math.ceil(Math.max(ax, bx, qx)));
-    const minY = Math.max(0, Math.floor(Math.min(ay, by, qy))), maxY = Math.min(CH - 1, Math.ceil(Math.max(ay, by, qy)));
+    const minY = Math.max(0, Math.floor(Math.min(ay, by, qy))), maxY = Math.min(CRH - 1, Math.ceil(Math.max(ay, by, qy)));
     const side = (x1, y1, x2, y2, x, y) => (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1);
     for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
       if ((x + y) % 2) continue;
@@ -247,7 +279,7 @@ function buildCrack() {
     }
   }
   // Píxeles muertos: bloques sueltos de colores fuertes
-  const dead = Array.from({ length: 9 }, (_, i) => [Math.floor(rnd() * CW), Math.floor(rnd() * CH), ['#24DCFF', '#FF39B8', '#E2B13C', '#ffffff'][i % 4], 1 + Math.floor(rnd() * 2)]);
+  const dead = Array.from({ length: 9 }, (_, i) => [Math.floor(rnd() * CW), Math.floor(rnd() * CRH), ['#24DCFF', '#FF39B8', '#E2B13C', '#ffffff'][i % 4], 1 + Math.floor(rnd() * 2)]);
   const pts = [...cells.entries()].map(([k, w]) => { const [x, y] = k.split(',').map(Number); return [x, y, w]; });
   return { pts, dither, dead, cx, cy };
 }
@@ -255,7 +287,7 @@ const CRACK = buildCrack();
 function Crack() {
   const { pts, dither, dead, cx, cy } = CRACK;
   return (
-    <svg className="bc-crack" viewBox={`0 0 ${CW} ${CH}`} preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" aria-hidden="true">
+    <svg className="bc-crack" viewBox={`0 0 ${CW} ${CRH}`} preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" aria-hidden="true">
       <g fill="rgba(5,6,20,.55)">{dither.map(([x, y], i) => <rect key={i} x={x} y={y} width="1" height="1" />)}</g>
       <g fill="#FF39B8" opacity=".8">{pts.map(([x, y], i) => <rect key={i} x={x + 1} y={y} width="1" height="1" />)}</g>
       <g fill="#24DCFF" opacity=".8">{pts.map(([x, y], i) => <rect key={i} x={x - 1} y={y} width="1" height="1" />)}</g>
@@ -276,7 +308,7 @@ function LiveChip() {
   return <span className="bc-pill bc-live" title={`${live.online} makers en BATBOX ahora`}><i /> {n} {n === 1 ? 'jugando' : 'jugando'} ahora</span>;
 }
 
-function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont, onDropBad, go }) {
+function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont, onDropBad, go, profile }) {
   const rec = ls.get(K_REC);
   return (
     <div className="bc-menu">
@@ -292,7 +324,9 @@ function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont,
       )}
       <div className="bc-menu-btns">
         {save && <button className="bc-btn primary" onClick={onCont}>Continuar <small>Lote {save.lot + 1} · {BLIND_NAMES[save.blind]}{save.ranked ? ' · cuenta para el ranking' : ''}</small></button>}
-        <button className={`bc-btn${save ? '' : ' primary'}`} disabled={starting} onClick={() => { if (!save || confirm('Empezar otra partida reemplaza la guardada. ¿Seguimos?')) onNew(); }}>{starting ? 'Preparando…' : 'Nueva partida'}</button>
+        <button className={`bc-btn${save ? '' : ' primary'}`} disabled={starting} onClick={() => { if (!save || confirm('Empezar otra partida reemplaza la guardada. ¿Seguimos?')) onNew(); }}>{starting ? 'Preparando…' : 'Jugar'}</button>
+        <button className="bc-btn" onClick={() => go('desafios')}>Desafíos</button>
+        <button className="bc-btn" onClick={() => go('logros')}>Logros <small>{Object.keys(profile?.unlocked || {}).length}/40</small></button>
         <button className="bc-btn" onClick={() => go('coleccion')}>Colección</button>
         <button className="bc-btn" onClick={() => go('ajustes')}>Ajustes</button>
       </div>
@@ -326,7 +360,9 @@ function showPattern(pid, cards, mini, fxOn) {
   return royal;
 }
 
-function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
+function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, onAjustes, onNew, onRetry, observar, profile }) {
+  const [rules, setRules] = useState(false);
+  const [declare, setDeclare] = useState('');
   const [rolled, setRolled] = useState(null); // contador que sube rodando
   const [banner, setBanner] = useState(null);
   const [sel, setSel] = useState([]);
@@ -403,9 +439,11 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
 
   const act = (action, after) => {
     const res = step(st, action);
-    if (res.error) { setMsg(res.error); return null; }
+    if (res.error) { setMsg(res.error); sfx.blocked(); return null; }
     setMsg('');
     setSt(res.state);
+    observar({ kind: 'step', st: res.state, prev: st, action });
+    if (res.state.phase === 'victory' || res.state.phase === 'defeat') observar({ kind: 'end', st: res.state });
     after?.(res);
     return res;
   };
@@ -416,6 +454,18 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
     r?.classList.toggle('bc-scoring', !!anim && !reduced);
     return () => r?.classList.remove('bc-scoring');
   }, [anim, reduced]);
+  // Última mano con la meta pendiente: música baja, pulso grave y la meta resaltada.
+  const lastHand = st.phase === 'round' && st.round && st.round.prints === 1 && st.round.score < st.round.target && !anim;
+  useEffect(() => {
+    const root = document.querySelector('.bc-root');
+    root?.classList.toggle('bc-lasthand', lastHand);
+    music.duck(lastHand);
+    if (!lastHand) return undefined;
+    sfx.heartbeat();
+    const h = setInterval(() => sfx.heartbeat(), 1100);
+    return () => { clearInterval(h); music.duck(false); root?.classList.remove('bc-lasthand'); };
+  }, [lastHand]);
+
   // Animación por etapas de la traza de puntaje.
   useEffect(() => {
     if (!anim) return undefined;
@@ -509,6 +559,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const isMult = t.text.includes('Mult');
         if (isMult) sfx.mult(); else sfx.tick(anim.i);
         const modEl = document.querySelector(`[data-mslot="${t.modSlot}"]`);
+        if (fxOn) filament(modEl, document.querySelector('.bc-cm') || document.querySelector('.bc-bed'), isMult ? '#FF39B8' : '#24DCFF');
         const isX = t.text.includes('×');
         const legend = MOD[view.mods[t.modSlot]]?.legendary;
         popText(modEl, t.text.split(': ')[1], isMult ? 'mult' : 'chips', isX);
@@ -517,7 +568,14 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         if (fxOn) shake(modEl);
       } else sfx.tick(anim.i);
       setAnim((a) => a && { ...a, i: a.i + 1 });
-    }, anim.i === 0 ? 250 : Math.max(speed * 0.45, speed * Math.pow(0.9, anim.i))); // los golpes se aceleran a medida que suman
+    }, anim.i === 0 ? 250 : (() => {
+      const t = anim.last.trace[anim.i], pr = anim.prev.round;
+      // Antes del golpe final: pausa breve si esta mano define la ronda (remontada, última mano o jefe).
+      if (t?.phase === 'total' && !reduced && pr && pr.score + anim.last.total >= pr.target && (pr.prints === 1 || pr.boss)) { sfx.drumroll(); return 900; }
+      // Combo repetido: si la traza es larga se comprime para mantener el ritmo.
+      const n = anim.last.trace.length, k = n > 14 ? 0.55 : 1;
+      return Math.max(speed * 0.45 * k, speed * k * Math.pow(0.9, anim.i));
+    })()); // los golpes se aceleran a medida que suman
     return () => clearTimeout(h);
   }, [anim, speed, reduced, st.phase, fxOn]);
 
@@ -540,9 +598,11 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
   const imprimir = () => {
     if (anim || !sel.length) return;
     const prev = st;
-    const res = act({ type: 'PLAY', ids: sel, overextrude: over });
+    const ch = st.cfg?.ch ? CH[st.cfg.ch] : null;
+    if (ch?.declare && !declare) { setMsg('Todo o nada: elegí qué Patrón vas a puntuar antes de imprimir.'); sfx.blocked(); return; }
+    const res = act({ type: 'PLAY', ids: sel, overextrude: over, ...(ch?.declare ? { declare } : {}) });
     if (!res) return;
-    sfx.print();
+    sfx.print(); sfx.thud();
     setAnim({ prev, last: res.state.last, i: 0 });
     setSel([]); setOver(false);
     if (tuto === 0) setTuto(1);
@@ -600,6 +660,9 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
           <LiveChip />
           <span className="bc-pill">Lote {view.lot + 1}/{LOTS}</span>
           <span className={`bc-pill ${info.boss ? 'boss' : ''}`}>{info.name}</span>
+          {st.cfg?.ch && <span className="bc-pill ch" title={CH[st.cfg.ch].rule}>🎯 {CH[st.cfg.ch].name}</span>}
+          {st.cfg && st.cfg.deck !== 'fdm' && <span className="bc-pill">{DECKS[st.cfg.deck].icon} {DECKS[st.cfg.deck].name}</span>}
+          {profile?.cosmetics?.titulo && <span className="bc-pill title">{REWARDS[profile.cosmetics.titulo].name}</span>}
         </div>
         <div className="bc-hud-r">
           {r && <span className="bc-stat"><small>Calidad</small><b className={`bc-score-num${rolled != null ? ' bump' : ''}`}>{(rolled ?? shownScore).toLocaleString('es-AR')}</b></span>}
@@ -625,6 +688,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
             }} title="Cambiar el mazo (skin)" aria-label="Cambiar el mazo">🎴</button>
             <button className="bc-icon" onClick={() => setFb(true)} title="Enviar una sugerencia" aria-label="Sugerencias">💡</button>
           </span>
+          {(r?.boss || st.cfg?.ch) && <button className="bc-icon rules" onClick={() => setRules(true)} title="Reglas de esta ronda (jefe y desafío)" aria-label="Reglas de esta ronda">📋</button>}
           <button className="bc-icon" onClick={() => setHelp(true)} aria-label="¿Cómo se puntúa?">?</button>
           <button className="bc-icon" onClick={onAjustes} aria-label="Ajustes">⚙</button>
           <button className="bc-icon" onClick={onMenu} aria-label="Guardar y volver al menú">⏏</button>
@@ -635,7 +699,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
 
       {msg && <div className="bc-msg" role="status">{msg}</div>}
 
-      {view.phase === 'preview' && <Preview st={view} onStart={() => act({ type: 'START_ROUND' }, () => sfx.print())} onSkip={() => act({ type: 'SKIP_BLIND' }, () => sfx.cash(4))} />}
+      {view.phase === 'preview' && <Preview st={view} onStart={() => act({ type: 'START_ROUND' }, () => sfx.print())} onSkip={() => act({ type: 'SKIP_BLIND' }, () => sfx.cash(4))} onBoost={(s) => act({ type: 'BOOST_SUIT', suit: s }, () => sfx.cash(5))} />}
       {st.pack && !anim && <PackOpen key={st.log.length} st={st} act={act} />}
 
       {view.phase === 'round' && r && (
@@ -667,6 +731,9 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
                 {pv ? (
                   <>
                     <b>{PATTERN[pv.pattern].name}</b>{pv.level > 0 && <small> nivel {pv.level + 1}</small>}
+                    {pv.score.trace.filter((x) => x.phase === 'jefe' || x.phase === 'reto').length > 0 && (
+                      <div className="bc-bossnote">{pv.score.trace.filter((x) => x.phase === 'jefe' || x.phase === 'reto').map((x, k) => <span key={k}>⚠ {x.text}</span>)}</div>
+                    )}
                     <span className="bc-cm small"><span className="chips">{pv.score.chips}</span><span className="x">×</span><span className="mult">{fmtMult(pv.score.mult)}</span></span>
                     <span className="bc-est">= <b>{pv.score.total.toLocaleString('es-AR')}</b> de Calidad</span>
                     {pv.pattern !== 'alta' && (() => { const royal = pv.pattern === 'ecolor' && isRoyal(pv.scoring.map((id) => byId[id])); const k = royal ? 'royal' : pv.pattern; return (
@@ -684,7 +751,8 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
           <section className={`bc-hand${reduced ? '' : ' float'}${sel.length >= 5 ? ' is-full' : ''}${pvPat ? ' pat-' + pvPat : ''}`} aria-label="Tu mano">
             {hand.map((id, i) => (
               <Card key={id} card={byId[id]} idx={i} fan={{ i, n: hand.length }} deal={dealDelay(id)} selected={sel.includes(id)} order={sel.indexOf(id) + 1}
-                scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim} />
+                scoring={pv?.scoring.includes(id)} onClick={() => toggle(id)} disabled={!!anim}
+                marked={(r.boss === 'cama_marcada' || r.boss2 === 'cama_marcada') && [1, 3].includes(sel.indexOf(id))} />
             ))}
           </section>
           <div className="bc-draw">
@@ -695,6 +763,11 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
           </div>
 
           <div className="bc-actions">
+            {st.cfg?.ch && CH[st.cfg.ch].declare && (
+              <select className="bc-declare" value={declare} onChange={(e) => setDeclare(e.target.value)} aria-label="Patrón declarado">
+                <option value="">Declarar Patrón…</option>{Object.values(PATTERN).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            )}
             <button className="bc-btn primary big" onClick={imprimir} disabled={!!anim || !sel.length}>Imprimir <kbd>I</kbd></button>
             <label className={`bc-over${!canOver ? ' dis' : ''}`} title={canOver ? '' : 'Con Calor 5 o 6 no se puede'}>
               <input type="checkbox" checked={over} disabled={!canOver || !!anim} onChange={(e) => setOver(e.target.checked)} />
@@ -719,10 +792,12 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
       )}
 
       {help && <Ayuda onClose={() => setHelp(false)} />}
+      {rules && <RuleSheet st={st} onClose={() => setRules(false)} />}
       {fb && <Sugerencias st={st} onClose={() => setFb(false)} />}
       {banner && <div className="bc-banner" role="status" style={(() => { const b = document.querySelector('.bc-bed'); return b ? { top: `${Math.min(innerHeight - 60, b.getBoundingClientRect().bottom + 34)}px` } : undefined; })()}>{banner}</div>} {/* justo debajo de la mesa: no lo tapa el número dorado */}
       {view.phase === 'shop' && <Shop st={view} act={act} />}
-      {(view.phase === 'victory' || view.phase === 'defeat') && <End st={view} onNew={onNew} onMenu={onMenu} />}
+      {view.phase === 'shop' && st.event && !anim && <EventPanel st={st} act={act} />}
+      {(view.phase === 'victory' || view.phase === 'defeat') && <End st={view} onNew={onNew} onMenu={onMenu} onRetry={onRetry} profile={profile} />}
       <p className="bc-seed">Semilla {st.seed} · {st.deck.length} cartas en el mazo</p>
     </div>
   );
@@ -871,22 +946,29 @@ function ModCard({ mod, lit, children, slot, extra = '' }) {
   );
 }
 
-function Preview({ st, onStart, onSkip }) {
+function Preview({ st, onStart, onSkip, onBoost }) {
   const info = blindInfo(st);
   const ICON = ['🧪', '📦', '⚠'];
   return (
     <section className="bc-panel bc-preview bc-blinds-wrap">
-      <h2>Lote {st.lot + 1} de {LOTS}</h2>
+      <h2>{st.cfg?.ch ? `${CH[st.cfg.ch].name} · ` : ''}Lote {st.lot + 1}{st.cfg?.ch && CH[st.cfg.ch].endless ? '' : ` de ${LOTS}`}</h2>
+      {st.cfg?.ch && <p className="bc-chline">🎯 {CH[st.cfg.ch].rule} <b>{CH[st.cfg.ch].goal}</b>{CH[st.cfg.ch].rounds && CH[st.cfg.ch].rounds !== Infinity ? ` · Llevás ${st.cleared || 0} de ${CH[st.cfg.ch].rounds}.` : ''}</p>}
+      {st.cfg?.ch && CH[st.cfg.ch].boostSuit && !st.boosted && (
+        <div className="bc-boost">Elegí qué palo potenciar (+5 Capas a todas sus cartas):
+          {CH[st.cfg.ch].boostSuit.map((s) => <button key={s} className="bc-btn" onClick={() => onBoost(s)}>{SUITS[s].sym} {SUITS[s].name}</button>)}
+        </div>
+      )}
       <div className="bc-blinds">
-        {targetsFor(st.v)[st.lot].map((t, i) => {
+        {[0, 1, 2].map((t, i) => {
           const state = i < st.blind ? 'done' : i === st.blind ? 'cur' : 'next';
-          const boss = i === 2 ? BOSS[st.bosses[st.lot % st.bosses.length]] : null;
+          const bi = blindInfo({ ...st, blind: i }); const boss = bi.boss ? BOSS[bi.boss] : null; const boss2 = bi.boss2 ? BOSS[bi.boss2] : null; t = bi.target;
           return (
             <article key={i} className={`bc-blind b-${state}${boss ? ' is-boss' : ''}`} style={{ '--d': `${i * 90}ms` }}>
               <header><span className="bc-blind-ico" aria-hidden="true">{ICON[i]}</span><b>{BLIND_NAMES[i]}</b></header>
               <div className="bc-blind-goal"><small>Meta</small><strong>{t.toLocaleString('es-AR')}</strong><small>de Calidad</small></div>
               <div className="bc-blind-pay">Premio <b>{'$'.repeat(BLIND_PAY[i])}</b> <span>{BLIND_PAY[i]} Créditos</span></div>
               {boss && <div className="bc-blind-boss"><b>Jefe: {boss.name}</b><span>{boss.desc}</span></div>}
+              {boss2 && <div className="bc-blind-boss"><b>Y además: {boss2.name}</b><span>{boss2.desc}</span></div>}
               {state === 'done' && <div className="bc-blind-stamp">SUPERADO</div>}
               {state === 'cur' && (
                 <div className="bc-blind-act">
@@ -954,7 +1036,9 @@ function Shop({ st, act }) {
           </div>
         ))}
       </div>
-      <p className="muted">Hasta {RULES.maxMods} Mods y {RULES.maxCals} calibraciones. Los Mods se aplican de izquierda a derecha: ordenalos con ◀ ▶.</p>
+      {st.cfg?.ch && CH[st.cfg.ch].noBuy && <p className="bc-alert">Sin repuestos: en este desafío no se puede comprar.</p>}
+      {st.cfg?.ch && CH[st.cfg.ch].twoMods && <p className="bc-chline">Repuestos al azar: llevate uno de estos dos Mods.</p>}
+      <p className="muted">Hasta {(st.rules || RULES).maxMods} Mods y {RULES.maxCals} calibraciones. Los Mods se aplican de izquierda a derecha: ordenalos con ◀ ▶.</p>
       <div className="bc-actions">
         <button className="bc-btn" disabled={st.credits < st.shop.rerollCost} onClick={() => act({ type: 'REROLL' })}>Refrescar · {st.shop.rerollCost}</button>
         <button className="bc-btn primary big" onClick={() => act({ type: 'LEAVE_SHOP' })}>Siguiente ronda</button>
@@ -1026,7 +1110,7 @@ function useSubmit(st) {
   const [res, setRes] = useState(() => sent.get(st.seed) || null);
   const send = async () => {
     setRes({ sending: true });
-    const { data, error } = await sb.functions.invoke('batcard-submit', { body: { seed: st.seed, log: st.log, v: st.v } });
+    const { data, error } = await sb.functions.invoke('batcard-submit', { body: { seed: st.seed, log: st.log, v: st.v, cfg: st.cfg || {} } });
     let msg = error?.message;
     if (error?.context?.json) { try { msg = (await error.context.json()).error || msg; } catch { /* nada */ } }
     const r = error ? { error: msg || 'No se pudo enviar.' } : { ok: true, ...data };
@@ -1037,23 +1121,32 @@ function useSubmit(st) {
   return [res, send];
 }
 
-function End({ st, onNew, onMenu }) {
+function End({ st, onNew, onMenu, onRetry, profile }) {
+  const ch = st.cfg?.ch ? CH[st.cfg.ch] : null;
+  const rec = ch ? profile?.records?.[st.cfg.ch] : null;
+  const code = encodeCode(st.seed, st.cfg || {});
+  const faltan = st.phase === 'defeat' && st.round ? Math.max(0, st.round.target - st.round.score) : 0;
+  const bossReached = st.round?.boss ? BOSS[st.round.boss].name : (st.stats.bosses || []).length ? BOSS[st.stats.bosses.at(-1)].name : 'ninguno';
   const won = st.phase === 'victory';
   const [sub, retry] = useSubmit(st);
   return (
     <section className={`bc-panel bc-end ${won ? 'won' : 'lost'}`}>
       <div className="bc-end-ico" aria-hidden="true">{won ? '🏆' : '💥'}</div>
       <h2>{won ? '¡Orden de producción completa!' : 'La impresión falló'}</h2>
-      <p className="bc-end-sub">{won ? `Superaste los ${LOTS} Lotes.` : `Llegaste al Lote ${st.lot + 1} · ${BLIND_NAMES[st.blind]}`}</p>
+      <p className="bc-end-sub">{ch ? `Desafío ${ch.name}: ${won ? '¡cumplido!' : 'no cumplido'} · ${st.cleared || 0} ronda${st.cleared === 1 ? '' : 's'}` : won ? `Superaste los ${LOTS} Lotes.` : `Llegaste al Lote ${st.lot + 1} · ${BLIND_NAMES[st.blind]}`}</p>
+      {faltan > 0 && <p className="bc-end-short">Te faltaron <b>{faltan.toLocaleString('es-AR')}</b> de Calidad ({st.round.score.toLocaleString('es-AR')} de {st.round.target.toLocaleString('es-AR')}).</p>}
+      {st.defeatReason === 'precision' && <p className="bc-end-short">La pieza salió fuera de medida: te pasaste de la meta más de lo permitido.</p>}
       <div className="bc-endgrid">
         <div className="hl"><small>Mejor mano</small><b>{st.stats.bestHand.toLocaleString('es-AR')}</b></div>
         <div className="hl"><small>Calidad total</small><b>{st.stats.total.toLocaleString('es-AR')}</b></div>
         <div><small>Impresiones</small><b>{st.stats.prints}</b></div>
         <div><small>Lote</small><b>{st.lot + 1}/{LOTS}</b></div>
-        <div><small>Mods</small><b>{st.mods.length}</b></div>
-        <div><small>Mazo</small><b>{st.deck.length}</b></div>
+        <div><small>Combo más alto</small><b>{st.stats.bestCombo || 0} efectos</b></div>
+        <div><small>Jefe alcanzado</small><b className="small">{bossReached}</b></div>
       </div>
-      <p className="bc-end-seed">Semilla <b>{st.seed}</b></p>
+      <p className="bc-end-seed">Semilla <b>{st.seed}</b>{st.cfg ? ` · ${DECKS[st.cfg.deck].name}${(st.cfg.diffs || []).length ? ' · ' + st.cfg.diffs.map((d) => DIFFS[d].name).join(', ') : ''}` : ''}</p>
+      {rec && <p className="bc-end-seed">Tu marca en este desafío: <b>{rec.rounds} ronda{rec.rounds === 1 ? '' : 's'}</b> · {rec.score.toLocaleString('es-AR')} Calidad</p>}
+      <p className="bc-end-code">Código para compartir: <code>{code}</code> <button className="bc-mini" onClick={() => navigator.clipboard?.writeText(code)}>Copiar</button></p>
       {st.ranked ? (
         <div className="bc-rankres" role="status">
           {sub?.sending && 'Verificando tu partida en el servidor…'}
@@ -1063,6 +1156,7 @@ function End({ st, onNew, onMenu }) {
       ) : <p className="muted">{st.rankNote ? `Esta partida no cuenta para el ranking (${st.rankNote}).` : 'Esta partida no cuenta para el ranking: ingresá con tu cuenta de Google y empezá una partida nueva. Era sin la sesión iniciada.'}</p>}
       <div className="bc-actions">
         <button className="bc-btn primary big" onClick={onNew}>Nueva partida</button>
+        <button className="bc-btn" onClick={() => onRetry(st)} title="Misma semilla y reglas: no cuenta para el ranking">Reintentar semilla</button>
         <button className="bc-btn" onClick={onMenu}>Menú</button>
       </div>
     </section>

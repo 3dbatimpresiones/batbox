@@ -11,7 +11,8 @@ export const fmtMult = (m) => (m % 1000 === 0 ? String(m / 1000) : (m / 1000).to
 
 // input: { cards, scoringIdx, pattern, level, mods:[ids], boss, heat, overextrude, round }
 export function scoreHand(input) {
-  const { cards, scoringIdx, pattern, level = 0, mods = [], boss, heat, overextrude, round, modData = {}, v = 1 } = input;
+  const { cards, scoringIdx, pattern, level = 0, mods = [], boss, boss2, heat, overextrude, round, modData = {}, v = 1, chain = {} } = input;
+  const has = (b) => boss === b || boss2 === b;
   const P = patternFor(pattern, v);
   const trace = [];
   let chips = 0, m = 0, activations = 0;
@@ -20,7 +21,7 @@ export function scoreHand(input) {
 
   // 1. Contexto del jefe
   let warpIdx = -1;
-  if (boss === 'warping' && scoring.length) {
+  if (has('warping') && scoring.length) {
     let best = 0;
     scoring.forEach((c, i) => { if (c.r > scoring[best].r) best = i; });
     warpIdx = best;
@@ -31,35 +32,45 @@ export function scoreHand(input) {
   chips = P.chips + level * P.lvl[0];
   m = (P.mult + level * P.lvl[1]) * 1000;
   push('base', `${P.name}${level ? ` (nivel ${level + 1})` : ''}`);
-  if (boss === 'cama_desnivelada' && round.printsDone === 0) {
+  if (has('cama_desnivelada') && round.printsDone === 0) {
     chips = Math.max(0, chips - 8);
     push('jefe', 'Cama Desnivelada: −8 Capas en la primera impresión');
   }
   if (overextrude) { chips += 12; push('calor', 'Sobreextruir: +12 Capas'); }
-  if (boss === 'stringing' && cards.length > scoringIdx.length) {
+  if (has('stringing') && cards.length > scoringIdx.length) {
     const lost = 5 * (cards.length - scoringIdx.length);
     chips = Math.max(0, chips - lost);
     push('jefe', `Stringing: −${lost} Capas por cartas que no puntúan`);
   }
-  if (boss === 'atasco' && scoringIdx.length) push('jefe', 'Atasco de Extrusor: la primera carta no suma');
-  if (boss === 'pie_elefante' && scoringIdx.some((i) => cards[i].r <= 5)) push('jefe', 'Pie de Elefante: las cartas bajas no suman');
+  if (has('atasco') && scoringIdx.length) push('jefe', 'Atasco de Extrusor: la primera carta no suma');
+  if (has('pie_elefante') && scoringIdx.some((i) => cards[i].r <= 5)) push('jefe', 'Pie de Elefante: las cartas bajas no suman');
 
   // 3. Cartas puntuadas
   // Re-disparos (v4): Sello Rojo en la carta y Klipper en la primera carta puntuada.
-  let gold = 0;
+  let gold = 0, secret = false;
+  let topIdx = -1; scoring.forEach((c, i) => { if (topIdx < 0 || c.r > scoring[topIdx].r) topIdx = i; });
+  const reimp = mods.includes('reimpresion') ? topIdx : -1;
+  if (reimp === 0 && mods.includes('klipper')) secret = true; // Klipper y Reimpresión sobre la misma carta
   scoring.forEach((c, i) => {
-    let reps = 1;
-    if (c.sl === 'rojo') reps++;
-    if (i === 0 && mods.includes('klipper')) reps++;
+    const why = [];
+    if (c.sl === 'rojo') why.push(SEALS.rojo.name);
+    if (i === 0 && mods.includes('klipper')) why.push('Klipper');
+    if (i === reimp) why.push('Reimpresión');
+    const reps = 1 + why.length;
     for (let k = 0; k < reps; k++) {
-      if (k > 0) push('repetir', `${k === 1 && c.sl === 'rojo' ? SEALS.rojo.name : 'Klipper'}: ¡otra vez!`, { cardId: c.id });
+      if (k > 0) push('repetir', `${why[k - 1]}: ¡otra vez!`, { cardId: c.id, modSlot: why[k - 1] === 'Klipper' ? mods.indexOf('klipper') : why[k - 1] === 'Reimpresión' ? mods.indexOf('reimpresion') : undefined });
       scoreCard(c, i);
       if (c.sl === 'oro') { gold += 2; push('sello', `${SEALS.oro.name}: +2 Créditos`, { cardId: c.id }); }
     }
   });
   function scoreCard(c, i) {
-    const blocked = i === warpIdx || (boss === 'atasco' && i === 0) || (boss === 'pie_elefante' && c.r <= 5);
+    const marked = has('cama_marcada') && [1, 3].includes(cards.indexOf(c));
+    const blocked = i === warpIdx || (has('atasco') && i === 0) || (has('pie_elefante') && c.r <= 5) || marked;
     let add = blocked ? 0 : cardChips(c.r) + (c.b || 0);
+    const halved = !blocked && has('boquilla_tapada') && scoring.filter((x) => x.r === c.r).length > 1;
+    if (halved) add = Math.floor(add / 2);
+    if (halved) push('jefe', `Boquilla Tapada: ${rankLabel(c.r)}${SUITS[c.s].sym} repetida, aporta la mitad`, { cardId: c.id });
+    if (marked) push('jefe', `Cama Desnivelada: ${rankLabel(c.r)}${SUITS[c.s].sym} está en una posición marcada`, { cardId: c.id });
     if (!blocked && c.s === 'H' && mods.includes('corazon_benchy')) add += cardChips(c.r);
     chips += add;
     push('carta', `${rankLabel(c.r)}${SUITS[c.s].sym}: +${add} Capas`, { cardId: c.id });
@@ -78,7 +89,7 @@ export function scoreHand(input) {
   // 4. Cartas en mano: sin efectos en el MVP (fase reservada).
 
   // 5. Mods de izquierda a derecha
-  const ctx = { pattern, scoring, heat, round, modData, modCount: mods.length };
+  const ctx = { pattern, scoring, heat, round, modData, modCount: mods.length, chain };
   mods.forEach((id, slot) => {
     const mod = MOD[id];
     if (!mod || mod.effect.phase !== 'mods') return;
@@ -92,12 +103,14 @@ export function scoreHand(input) {
   });
 
   // 6. Ajustes finales
-  if (boss === 'hotend_saturado' && heat >= 6) {
+  if (has('hotend_saturado') && heat >= 6) {
     m = Math.max(1000, m - 2000);
     push('jefe', 'Hotend Saturado: −2 Mult (Calor 6)');
   }
 
+  if (secret) { m = m * 2; push('secreto', 'Dimensión oculta: Klipper + Reimpresión sobre la misma carta ×2 Mult'); }
   const total = Math.floor((chips * m) / 1000);
   trace.push({ phase: 'total', text: `${chips} × ${fmtMult(m)} = ${total}`, chips, mult: m, total });
-  return { chips, mult: m, total, trace, gold };
+  const effects = trace.filter((t) => ['mod', 'material', 'edicion', 'sello', 'repetir', 'secreto'].includes(t.phase)).length;
+  return { chips, mult: m, total, trace, gold, secret, effects };
 }

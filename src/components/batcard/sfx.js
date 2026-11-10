@@ -209,3 +209,9 @@ sfx.pattern = (id) => {
     default: kick(0.3);
   }
 };
+
+// ===== Expansión: golpe de carta, redoble, pulso de última mano, logro raro =====
+sfx.thud = () => { kick(0.55); sweep({ dur: 0.05, gain: 0.3, f1: 900, f2: 300, type: 'lowpass', q: 1 }); };
+sfx.drumroll = () => { for (let i = 0; i < 10; i++) sweep({ dur: 0.04, gain: 0.08 + i * 0.02, at: i * 0.075, f1: 1800, f2: 3500, q: 2 }); tone({ f: 60, f2: 45, dur: 0.8, type: 'sine', gain: 0.25 }); };
+sfx.heartbeat = () => { tone({ f: 55, f2: 38, dur: 0.16, type: 'sine', gain: 0.4 }); tone({ f: 50, f2: 34, dur: 0.18, type: 'sine', gain: 0.3, at: 0.22 }); };
+sfx.unstick = () => { sweep({ dur: 0.35, gain: 0.35, f1: 300, f2: 2400, q: 3 }); [0, 4, 7, 12, 16].forEach((s, j) => tone({ f: 784 * semi(s), dur: 0.4, type: 'triangle', gain: 0.07, at: 0.25 + j * 0.06, wet: 0.6 })); };

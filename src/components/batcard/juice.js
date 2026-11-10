@@ -210,5 +210,21 @@ export const music = {
     if (master && on) master.gain.setTargetAtTime(v, ac.currentTime, 0.1);
     if (v <= 0) music.stop();
   },
+  // Última mano: baja la música (no la corta) para que se escuche el pulso grave.
+  duck(d) { if (master && on) master.gain.setTargetAtTime(d ? vol * 0.35 : vol, ac.currentTime, 0.4); if (filt && ac) filt.frequency.setTargetAtTime(d ? 600 : (track.cutoff[level] || 1500), ac.currentTime, 0.4); },
   get playing() { return on; },
 };
+
+// Línea de filamento (celeste o magenta) desde un Mod hasta donde aporta.
+export function filament(fromEl, toEl, color = '#24DCFF') {
+  if (!fromEl || !toEl) return;
+  const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+  const x1 = a.left + a.width / 2, y1 = a.bottom - 4, x2 = b.left + b.width / 2, y2 = b.top + b.height / 2;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'bc-filament');
+  svg.setAttribute('width', innerWidth); svg.setAttribute('height', innerHeight);
+  const mx = (x1 + x2) / 2 + (x2 > x1 ? -60 : 60), my = Math.max(y1, y2) + 40;
+  svg.innerHTML = `<path d="M${x1},${y1} Q${mx},${my} ${x2},${y2}" stroke="${color}" stroke-width="4" fill="none" stroke-linecap="round" style="filter:drop-shadow(0 0 6px ${color})"/>`;
+  fxLayer().appendChild(svg);
+  setTimeout(() => svg.remove(), 650);
+}
