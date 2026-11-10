@@ -52,6 +52,7 @@ export default function Batcard() {
   const [screen, setScreen] = useState('menu');
   const [{ save, problem }, setSaveInfo] = useState(loadSave);
   const [st, setSt] = useState(null);
+  const [mood, setMood] = useState('normal'); // color del fondo: lo decide lo que se VE (no se adelanta al resultado)
   // La música arranca con la primera interacción (los navegadores lo exigen) y se corta al salir.
   useEffect(() => {
     // iPad/Safari: el audio se habilita al SOLTAR el dedo (touchend) o con click, no al apoyarlo.
@@ -88,7 +89,7 @@ export default function Batcard() {
   return (
     <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}`}>
       <div className="bc-stage">
-        <Plasma still={set.motion === 'reducido'} mood={screen === 'juego' && st ? (st.phase === 'shop' ? 'shop' : (st.phase === 'round' || st.phase === 'preview') && blindInfo(st).boss ? 'boss' : 'normal') : 'normal'} />
+        <Plasma still={set.motion === 'reducido'} mood={screen === 'juego' ? mood : 'normal'} />
         <div className="bc-crt" aria-hidden="true" />
         <Crack />
         <div className="bc-glitch" aria-hidden="true"><i /><i /><i /><i /></div>
@@ -100,7 +101,7 @@ export default function Batcard() {
           {screen === 'coleccion' && <Coleccion back={() => setScreen('menu')} />}
           {screen === 'ajustes' && <Ajustes set={set} patch={patch} back={() => setScreen(st ? 'juego' : 'menu')} />}
           {screen === 'juego' && st && (
-            <Juego st={st} setSt={setSt} set={set} patch={patch} speed={SPEED[set.speed]} reduced={reduced} fxOn={fxOn}
+            <Juego st={st} setSt={setSt} setMood={setMood} set={set} patch={patch} speed={SPEED[set.speed]} reduced={reduced} fxOn={fxOn}
               onMenu={aparcar} onAjustes={() => setScreen('ajustes')} onNew={nueva} />
           )}
         </div>
@@ -217,7 +218,7 @@ function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont,
 }
 
 // ---------------------------------------------------------------- Juego
-function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
+function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
   const [rolled, setRolled] = useState(null); // contador que sube rodando
   const [banner, setBanner] = useState(null);
   const [sel, setSel] = useState([]);
@@ -257,6 +258,8 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
   const view = anim ? anim.prev : st;
   const r = view.round;
   const info = blindInfo(view);
+  // El fondo cambia según lo que está en pantalla: con la animación del puntaje todavía corriendo no se adelanta el dorado.
+  useEffect(() => { setMood(view.phase === 'shop' ? 'shop' : (view.phase === 'round' || view.phase === 'preview') && info.boss ? 'boss' : 'normal'); }, [view.phase, info.boss, setMood]);
   const byId = useMemo(() => Object.fromEntries(view.deck.map((c) => [c.id, c])), [view.deck]);
 
   const act = (action, after) => {
