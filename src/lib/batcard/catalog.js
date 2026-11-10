@@ -163,6 +163,9 @@ export const BOSS = Object.fromEntries(BOSSES.map((m) => [m.id, m]));
 
 // Metas por Lote (Prototipo / Tanda / Control de Calidad). Hipótesis de balance.
 export const TARGETS = [[220, 330, 450], [550, 750, 1000], [1200, 1650, 2200], [2600, 3600, 4800]];
+// v7: curva más pareja (antes se disparaba en los Lotes 3 y 4).
+export const TARGETS_V7 = [[200, 300, 420], [500, 680, 900], [1000, 1350, 1750], [1900, 2500, 3200]];
+export const targetsFor = (v = 1) => (v >= 7 ? TARGETS_V7 : TARGETS);
 export const BLIND_NAMES = ['Prototipo', 'Tanda', 'Control de Calidad'];
 export const BLIND_PAY = [3, 4, 5];
 export const RULES = { handSize: 8, prints: 4, discards: 3, maxMods: 4, maxCals: 2, heatMax: 6, overHeat: 2, overChips: 12, overLimit: 4 };

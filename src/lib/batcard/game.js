@@ -2,11 +2,11 @@
 // Una acción inválida devuelve error SIN tocar el estado ni consumir RNG (se trabaja sobre una copia).
 import { RNG_VERSION, seedState, shuffle, randInt } from './rng.js';
 import { standardDeck, evaluate, SUIT_IDS, PATTERNS } from './hands.js';
-import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, SEALS, modsFor, shopModsFor, bossesFor, calsFor, INTEREST, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
+import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, SEALS, modsFor, shopModsFor, bossesFor, calsFor, INTEREST, targetsFor, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
 import { scoreHand } from './score.js';
 
-export const RULES_VERSION = 6; // v2: materiales · v3: sobres · v4: ahorro, saltear, sellos y Mods nuevos. Las partidas viejas siguen con sus reglas.
-export const SUPPORTED_RULES = [1, 2, 3, 4, 5, 6];
+export const RULES_VERSION = 7; // v2: materiales · v3: sobres · v4: ahorro, saltear, sellos y Mods nuevos. Las partidas viejas siguen con sus reglas.
+export const SUPPORTED_RULES = [1, 2, 3, 4, 5, 6, 7];
 export const LOTS = TARGETS.length;
 
 export function newGame(seed, v = RULES_VERSION) {
@@ -25,7 +25,7 @@ export function newGame(seed, v = RULES_VERSION) {
 }
 
 export const blindInfo = (st) => ({
-  name: BLIND_NAMES[st.blind], target: TARGETS[st.lot][st.blind],
+  name: BLIND_NAMES[st.blind], target: targetsFor(st.v)[st.lot][st.blind],
   pay: BLIND_PAY[st.blind], boss: st.blind === 2 ? st.bosses[st.lot % st.bosses.length] : null,
 });
 
@@ -78,7 +78,7 @@ function apply(st, a, ev) {
       const evald = evaluate(cards);
       const result = scoreHand({
         cards, scoringIdx: evald.scoring, pattern: evald.id, level: st.levels[evald.id] || 0,
-        mods: st.mods, boss: r.boss, heat, overextrude: over, round: r, modData: st.modData || {},
+        mods: st.mods, boss: r.boss, heat, overextrude: over, round: r, modData: st.modData || {}, v: st.v,
       });
       if (st.v >= 4) {
         if (result.gold) st.credits += result.gold;
@@ -345,7 +345,7 @@ export function preview(st, ids, overextrude) {
   const heat = overextrude ? Math.min(RULES.heatMax, st.round.heat + RULES.overHeat) : st.round.heat;
   const level = st.levels[e.id] || 0;
   // Mismo cálculo que al imprimir: el total estimado es exacto.
-  const score = scoreHand({ cards, scoringIdx: e.scoring, pattern: e.id, level, mods: st.mods, boss: st.round.boss, heat, overextrude: !!overextrude, round: st.round, modData: st.modData || {} });
+  const score = scoreHand({ cards, scoringIdx: e.scoring, pattern: e.id, level, mods: st.mods, boss: st.round.boss, heat, overextrude: !!overextrude, round: st.round, modData: st.modData || {}, v: st.v });
   return { pattern: e.id, scoring: e.scoring.map((i) => cards[i].id), heat, level, score };
 }
 

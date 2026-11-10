@@ -7,9 +7,9 @@ import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur, fxLayer } from '../components/batcard/juice.js';
-import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
-import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, BLIND_PAY, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST, EDITIONS } from '../lib/batcard/catalog.js';
-import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
+import { newGame, step, preview, blindInfo, validateSave, LOTS, RULES_VERSION as RULES_V } from '../lib/batcard/game.js';
+import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, BLIND_PAY, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST, EDITIONS, targetsFor } from '../lib/batcard/catalog.js';
+import { PATTERN, PATTERNS, SUITS, SUIT_IDS, patternsFor } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -804,7 +804,7 @@ function Ayuda({ onClose }) {
           <li>Después actúan tus Mods (de izquierda a derecha) y se multiplica.</li>
         </ol>
         <table className="bc-table"><thead><tr><th>Patrón</th><th>Capas × Mult</th><th>Ejemplo</th></tr></thead>
-          <tbody>{PATTERNS.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td className="muted">{EJ[p.id]}</td></tr>)}</tbody></table>
+          <tbody>{patternsFor(RULES_V).map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td className="muted">{EJ[p.id]}</td></tr>)}</tbody></table>
         <h3>Ejemplo</h3>
         <p>Par de K: (12 + 10 + 10) × 2 = <b>64</b>. Trío de 7: (30 + 21) × 3 = <b>153</b>. Una Carta alta casi no suma: buscá Patrones más grandes.</p>
         <h3>Consejos</h3>
@@ -878,7 +878,7 @@ function Preview({ st, onStart, onSkip }) {
     <section className="bc-panel bc-preview bc-blinds-wrap">
       <h2>Lote {st.lot + 1} de {LOTS}</h2>
       <div className="bc-blinds">
-        {TARGETS[st.lot].map((t, i) => {
+        {targetsFor(st.v)[st.lot].map((t, i) => {
           const state = i < st.blind ? 'done' : i === st.blind ? 'cur' : 'next';
           const boss = i === 2 ? BOSS[st.bosses[st.lot % st.bosses.length]] : null;
           return (
@@ -1093,7 +1093,7 @@ function Coleccion({ back }) {
       <div className="bc-mods wrap">{MODS.map((m) => <ModCard key={m.id} mod={m} lit={false}><span className="bc-mod-rar">{m.price} Créditos</span></ModCard>)}</div>
       <h3>Patrones y Perfiles</h3>
       <table className="bc-table"><thead><tr><th>Patrón</th><th>Base</th><th>Por nivel</th><th>Perfil</th></tr></thead>
-        <tbody>{PATTERNS.map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td>+{p.lvl[0]} / +{p.lvl[1]}</td><td>{PROFILES.find((x) => x.pattern === p.id)?.name}</td></tr>)}</tbody></table>
+        <tbody>{patternsFor(RULES_V).map((p) => <tr key={p.id}><td>{p.name}</td><td>{p.chips} × {p.mult}</td><td>+{p.lvl[0]} / +{p.lvl[1]}</td><td>{PROFILES.find((x) => x.pattern === p.id)?.name}</td></tr>)}</tbody></table>
       <h3>Ediciones de las cartas</h3>
       <div className="bc-mats">{Object.entries(EDITIONS).map(([k, m]) => (
         <div key={k} className="bc-mat-row"><span className={`bc-edtag ed-${k}`}>{m.name.slice(0, 4).toUpperCase()}</span><b>{m.name}</b><span>{m.desc} Salen en los Sobres de Cartas.</span></div>

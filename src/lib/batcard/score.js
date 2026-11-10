@@ -3,7 +3,7 @@
 // Un "×1,5" hace floor(m × 1500 / 1000): exacto con los factores del catálogo (múltiplos de 0,1).
 // Redondeo único hacia abajo al final (Capas × m / 1000).
 // Orden: contexto del jefe → base del Patrón → cartas puntuadas → cartas en mano → Mods (izq→der) → ajustes finales.
-import { PATTERN, cardChips, rankLabel, SUITS } from './hands.js';
+import { patternFor, cardChips, rankLabel, SUITS } from './hands.js';
 import { MOD, MATERIALS, SEALS, EDITIONS } from './catalog.js';
 
 export const MAX_ACTIVATIONS = 64; // tope de disparos por mano (no hay re-disparos en el MVP)
@@ -11,8 +11,8 @@ export const fmtMult = (m) => (m % 1000 === 0 ? String(m / 1000) : (m / 1000).to
 
 // input: { cards, scoringIdx, pattern, level, mods:[ids], boss, heat, overextrude, round }
 export function scoreHand(input) {
-  const { cards, scoringIdx, pattern, level = 0, mods = [], boss, heat, overextrude, round, modData = {} } = input;
-  const P = PATTERN[pattern];
+  const { cards, scoringIdx, pattern, level = 0, mods = [], boss, heat, overextrude, round, modData = {}, v = 1 } = input;
+  const P = patternFor(pattern, v);
   const trace = [];
   let chips = 0, m = 0, activations = 0;
   const push = (phase, text, extra = {}) => trace.push({ phase, text, chips, mult: m, ...extra });

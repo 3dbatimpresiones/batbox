@@ -33,6 +33,14 @@ export const PATTERNS = [
   { id: 'ecolor', name: 'Escalera de color', chips: 100, mult: 8, lvl: [40, 4] },
 ];
 export const PATTERN = Object.fromEntries(PATTERNS.map((p) => [p.id, p]));
+// Reglas v7: valores rebalanceados (manos más fuertes y Perfiles que suben más).
+const V7 = {
+  alta: { chips: 8, mult: 1, lvl: [12, 1] }, par: { chips: 15, mult: 2, lvl: [18, 1] }, doble: { chips: 25, mult: 2, lvl: [22, 1] },
+  trio: { chips: 35, mult: 3, lvl: [25, 2] }, escalera: { chips: 40, mult: 4, lvl: [35, 3] }, color: { chips: 40, mult: 4, lvl: [25, 2] },
+  full: { chips: 50, mult: 5, lvl: [30, 2] }, poker: { chips: 75, mult: 8, lvl: [35, 3] }, ecolor: { chips: 120, mult: 10, lvl: [45, 4] },
+};
+export const patternFor = (id, v = 1) => (v >= 7 ? { ...PATTERN[id], ...V7[id] } : PATTERN[id]);
+export const patternsFor = (v = 1) => PATTERNS.map((p) => patternFor(p.id, v));
 
 // Escalera de 5 rangos distintos. A-2-3-4-5 (as bajo) y 10-J-Q-K-A válidas; sin vuelta (Q-K-A-2-3 no).
 function isStraight(ranks) {

@@ -266,5 +266,12 @@ for (let k = 0; k < 200; k++) { seed6 = 'VSEIS' + k; s6 = newGame(seed6, 6); let
 const rv6 = replayRun(seed6, s6.log, 6);
 t('rejugada v6 ok', rv6.ok && rv6.result.total === s6.stats.total);
 
+// ---- Reglas v7 ----
+t('v7 par más fuerte', scoreHand({ cards: c7, scoringIdx: [0, 1], pattern: 'par', mods: [], heat: 0, round: { printsDone: 1 }, v: 7 }).chips === pr(c7).chips + 3);
+t('v6 sin cambios', newGame('X', 6).v === 6 && blindInfo({ ...newGame('X', 6), blind: 0 }).target === 220 && blindInfo({ ...newGame('X', 7), blind: 0 }).target === 200);
+let s7 = newGame('VSIETE1', 7), g7 = 0;
+while (!['victory', 'defeat'].includes(s7.phase) && g7++ < 800) { if (s7.pack) s7 = step(s7, { type: 'SKIP_PACK' }).state; else if (s7.phase === 'preview') s7 = step(s7, { type: 'START_ROUND' }).state; else if (s7.phase === 'shop') s7 = step(s7, { type: 'LEAVE_SHOP' }).state; else s7 = step(s7, { type: 'PLAY', ids: s7.round.hand.slice(0, 5) }).state; }
+const rv7 = replayRun('VSIETE1', s7.log, 7); t('rejugada v7 ok', rv7.ok && rv7.result.total === s7.stats.total);
+
 console.log(`${ok} OK, ${bad} fallas`);
 process.exit(bad ? 1 : 0);
