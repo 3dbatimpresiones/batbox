@@ -4,7 +4,7 @@ import '../styles/batcard.css';
 import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
 import Card from '../components/batcard/Card.jsx';
-import { sfx, setAudio } from '../components/batcard/sfx.js';
+import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
 import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK } from '../lib/batcard/catalog.js';
@@ -54,9 +54,11 @@ export default function Batcard() {
   const [st, setSt] = useState(null);
   // La música arranca con la primera interacción (los navegadores lo exigen) y se corta al salir.
   useEffect(() => {
-    const go = () => { if (!set.mute && set.music > 0) music.start(); };
-    window.addEventListener('pointerdown', go); window.addEventListener('keydown', go);
-    return () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); music.stop(); };
+    // iPad/Safari: el audio se habilita al SOLTAR el dedo (touchend) o con click, no al apoyarlo.
+    const go = () => { unlockAudio(); if (!set.mute && set.music > 0) music.start(); };
+    const evs = ['touchend', 'click', 'keydown'];
+    evs.forEach((e) => window.addEventListener(e, go, { passive: true }));
+    return () => { evs.forEach((e) => window.removeEventListener(e, go)); music.stop(); };
   }, [set.mute, set.music]);
   useEffect(() => {
     const lv = screen !== 'juego' || !st || st.phase !== 'round' ? 0 : st.round?.boss || st.round?.heat >= 5 ? 2 : 1;

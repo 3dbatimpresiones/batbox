@@ -23,6 +23,13 @@ function ac() {
   return ctx;
 }
 const on = () => !muted && volume > 0 && ac();
+// Contexto de audio compartido con la música (iPad/Safari solo habilita UN contexto creado dentro de un toque).
+export function audioCtx() { return ac(); }
+// Desbloqueo para iOS: un sonido mudo de 1 muestra dentro del gesto del usuario.
+export function unlockAudio() {
+  const a = ac(); if (!a) return;
+  try { const b = a.createBuffer(1, 1, 22050), s = a.createBufferSource(); s.buffer = b; s.connect(a.destination); s.start(0); } catch { /* nada */ }
+}
 
 // Salida común: ganancia → paneo → bus (+ envío a reverb)
 function out(a, node, { pan = 0, wet = 0.25 }) {

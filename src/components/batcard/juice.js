@@ -1,3 +1,4 @@
+import { audioCtx } from './sfx.js';
 // "Game feel" de BATCARD: confeti, números flotantes, temblor y música ambiente sintetizada.
 // Todo respeta movimiento reducido / destellos apagados (lo decide quien llama).
 
@@ -79,7 +80,8 @@ let ac = null, master = null, filt = null, timer = 0, stepN = 0, nextT = 0, leve
 
 function audio() {
   if (!ac) {
-    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; }
+    ac = audioCtx(); // el mismo contexto que los efectos (necesario en iPad/Safari)
+    if (!ac) return null;
     master = ac.createGain(); master.gain.value = 0;
     filt = ac.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = 1400; filt.Q.value = 4;
     filt.connect(master).connect(ac.destination);
