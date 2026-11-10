@@ -167,13 +167,15 @@ const crash = (g = 0.3, at = 0) => { sweep({ dur: 0.9, gain: g, at, f1: 9000, f2
 }
 
 // ===== Sonidos de puntaje v3: nuevos de raíz (no capas sobre los viejos) =====
+const aggrTick = sfx.tick; // golpe agresivo anterior (bombo + chasquido + bip) que se mantiene
 sfx.tick = (i = 0) => {
+  aggrTick(i);
   const n = Math.min(i, 14), f = 392 * semi(n * 2);               // sube un tono entero por golpe
   const pan = Math.max(-0.7, Math.min(0.7, -0.7 + n * 0.12));
   kick(0.35 + n * 0.02);
   sweep({ dur: 0.035, gain: 0.45, f1: 4500, f2: 9000, q: 3, pan });  // clack de ficha
-  tone({ f, dur: 0.06, type: 'square', gain: 0.13, pan, wet: 0.15 });
-  tone({ f: f * 2, dur: 0.16, type: 'triangle', gain: 0.12, at: 0.012, pan, wet: 0.35 });
+  tone({ f, dur: 0.07, type: 'square', gain: 0.17, pan, wet: 0.15 });
+  tone({ f: f * 2, dur: 0.18, type: 'triangle', gain: 0.16, at: 0.012, pan, wet: 0.35 });
   tone({ f: f * 3, dur: 0.32, type: 'sine', gain: 0.07, at: 0.02, pan, wet: 0.55 });            // campanita
   tone({ f: f * 4.01, dur: 0.22, type: 'sine', gain: 0.035, at: 0.025, pan, wet: 0.6 });
 };

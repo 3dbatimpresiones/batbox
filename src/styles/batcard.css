@@ -917,3 +917,12 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 /* Mano llena: las elegidas siempre adelante, las bloqueadas detrás */
 .bc-hand.is-full .bc-card:not(.sel) { z-index: 1 !important; }
 .bc-hand.is-full .bc-card.sel { z-index: 20 !important; }
+/* Pantallas de menú (previa, tienda, final): se ve la tele y el espiral detrás */
+.bc-panel.bc-preview, .bc-panel.bc-shop, .bc-panel.bc-end { background: rgba(9,11,32,.18); border-color: rgba(135,61,255,.35); box-shadow: inset 0 0 120px rgba(9,11,32,.45); }
+.bc-panel.bc-preview h2, .bc-panel.bc-shop h2 { text-shadow: 2px 0 var(--bc-pink), -2px 0 var(--bc-cyan), 0 3px 0 #090B20, 0 0 18px rgba(9,11,32,.9); }
+.bc-blinds-wrap > p, .bc-shop > p, .bc-end-sub, .bc-end-seed, .bc-end > p { background: rgba(7,9,26,.72); border-radius: 8px; padding: 4px 10px; }
+.bc-blind { background: linear-gradient(180deg, rgba(40,26,110,.9), rgba(12,10,40,.94)); }
+/* Título de derrota: blanco con resplandor rojo (no se pierde contra el fondo) */
+.bc-end.lost h2 { color: #fff; text-shadow: 0 0 2px #ff2b4a, 3px 0 0 #ff2b4a, -3px 0 0 #24DCFF, 0 4px 0 #090B20, 0 0 24px rgba(255,43,74,.9); background: rgba(7,9,26,.75); padding: 8px 16px; border-radius: 10px; border: 2px solid #ff2b4a; }
+.bc-end.won h2 { background: rgba(7,9,26,.75); padding: 8px 16px; border-radius: 10px; border: 2px solid #E2B13C; }
+.bc-end .bc-rankres { background: rgba(7,9,26,.85); }
