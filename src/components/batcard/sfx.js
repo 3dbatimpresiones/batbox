@@ -55,11 +55,13 @@ export const sfx = {
   select: (n = 1) => tone({ f: [523, 659, 784, 880, 1047][Math.min(4, n - 1)], dur: 0.06, gain: 0.08 }),
   deselect: () => tone({ f: 620, dur: 0.04, gain: 0.07 }),
   print: () => { for (let i = 0; i < 6; i++) tone({ f: 180 + i * 40, dur: 0.05, type: 'sawtooth', gain: 0.06, at: i * 0.05 }); },
-  // Escala mayor que sube con cada paso: cada carta suena más alto que la anterior.
-  tick: (i = 0) => { const sc = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]; const k = sc[Math.min(10, i)]; tone({ f: 523 * 2 ** (k / 12), dur: 0.09, type: 'triangle', gain: 0.12 }); tone({ f: 1046 * 2 ** (k / 12), dur: 0.05, type: 'square', gain: 0.03 }); },
+  // Golpe de ficha: "clinc" brillante (transitorio ~4 kHz) + cuerpo que sube un semitono por golpe.
+  tick: (i = 0) => { const k = Math.min(14, i); sweep({ dur: 0.05, gain: 0.3, f1: 3800 + k * 60, f2: 4600 + k * 60, q: 6 }); tone({ f: 1046 * 2 ** (k / 12), f2: 1046 * 2 ** ((k + 0.5) / 12), dur: 0.11, type: 'sine', gain: 0.1 }); tone({ f: 2093 * 2 ** (k / 12), dur: 0.05, type: 'triangle', gain: 0.04 }); },
+  tickOld: (i = 0) => { const sc = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24]; const k = sc[Math.min(10, i)]; tone({ f: 523 * 2 ** (k / 12), dur: 0.09, type: 'triangle', gain: 0.12 }); tone({ f: 1046 * 2 ** (k / 12), dur: 0.05, type: 'square', gain: 0.03 }); },
   big: () => { noise({ dur: 0.35, gain: 0.25, hp: 400 }); [262, 330, 392, 523, 659].forEach((f) => tone({ f, dur: 0.6, type: 'sawtooth', gain: 0.05 })); },
   cash: (n = 5) => { for (let i = 0; i < n; i++) { tone({ f: 988, dur: 0.05, gain: 0.07, at: i * 0.07 }); tone({ f: 1319, dur: 0.08, gain: 0.07, at: i * 0.07 + 0.035 }); } },
-  mult: () => tone({ f: 330, f2: 990, dur: 0.12, type: 'square', gain: 0.08 }),
+  // Multiplicador: campanita aguda sostenida con trémolo (bien distinta del golpe de ficha).
+  mult: () => { for (let j = 0; j < 8; j++) tone({ f: 2400, dur: 0.05, type: 'sine', gain: 0.07 * (1 - j / 10), at: j * 0.04 }); tone({ f: 1200, f2: 1800, dur: 0.25, type: 'triangle', gain: 0.06 }); },
   snap: () => { noise({ dur: 0.04, gain: 0.35, hp: 3000 }); tone({ f: 1400, f2: 700, dur: 0.05, type: 'square', gain: 0.06 }); },
   coin: () => { tone({ f: 988, dur: 0.06, gain: 0.08 }); tone({ f: 1319, dur: 0.12, gain: 0.08, at: 0.06 }); },
   win: () => [523, 659, 784, 1047].forEach((f, i) => tone({ f, dur: 0.14, gain: 0.09, at: i * 0.1 })),

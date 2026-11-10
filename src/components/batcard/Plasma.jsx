@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 // Si WebGL falla o se pierde el contexto, queda el degradé CSS de .bc-plasma (modo estático).
 const FRAG = `
 precision mediump float;
-uniform vec2 res; uniform float time;
+uniform vec2 res; uniform float time; uniform vec3 moodA; uniform vec3 moodB;
 void main(){
   vec2 uv = gl_FragCoord.xy / res;
   float aspect = res.x / res.y;
@@ -19,7 +19,7 @@ void main(){
   vec3 violet = vec3(0.53, 0.24, 1.0);
   vec3 cyan = vec3(0.14, 0.86, 1.0);
   vec3 pink = vec3(1.0, 0.22, 0.72);
-  vec3 tint = mix(violet, cyan, band);
+  vec3 tint = mix(moodA, moodB, band); // colores según la situación (normal / jefe / tienda)
   tint = mix(tint, pink, smoothstep(0.82, 1.0, band) * 0.5);
   // remolinos visibles en los bordes, más calmos en el centro (donde está la mesa)
   vec3 col = mix(navy, tint, 0.62 * (0.45 + 0.55 * smoothstep(0.12, 0.75, r)));
@@ -27,7 +27,12 @@ void main(){
 }`;
 const VERT = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
 
-export default function Plasma({ still }) {
+// Paletas por situación: normal (violeta→celeste), jefe (bordó→rosa), tienda (violeta→latón).
+const MOODS = { normal: [[0.53, 0.24, 1.0], [0.14, 0.86, 1.0]], boss: [[0.55, 0.05, 0.25], [1.0, 0.22, 0.45]], shop: [[0.45, 0.2, 0.75], [0.89, 0.69, 0.24]] };
+export default function Plasma({ still, mood = 'normal' }) {
+  const moodRef = useRef(MOODS.normal.map((c) => [...c]));
+  const targetRef = useRef(MOODS.normal);
+  targetRef.current = MOODS[mood] || MOODS.normal;
   const ref = useRef(null);
   useEffect(() => {
     const cv = ref.current;
@@ -43,7 +48,7 @@ export default function Plasma({ still }) {
     const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
     const loc = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    const uRes = gl.getUniformLocation(pr, 'res'), uTime = gl.getUniformLocation(pr, 'time');
+    const uRes = gl.getUniformLocation(pr, 'res'), uTime = gl.getUniformLocation(pr, 'time'), uA = gl.getUniformLocation(pr, 'moodA'), uB = gl.getUniformLocation(pr, 'moodB');
     let raf = 0, lost = false;
     const onLost = (e) => { e.preventDefault(); lost = true; cv.classList.add('off'); };
     cv.addEventListener('webglcontextlost', onLost);
@@ -52,6 +57,10 @@ export default function Plasma({ still }) {
       gl.viewport(0, 0, cv.width, cv.height);
       gl.uniform2f(uRes, cv.width, cv.height);
       gl.uniform1f(uTime, t / 1000);
+      // Transición suave de color hacia la paleta de la situación actual
+      const m = moodRef.current, tg = targetRef.current;
+      for (let k = 0; k < 2; k++) for (let j = 0; j < 3; j++) m[k][j] += (tg[k][j] - m[k][j]) * 0.03;
+      gl.uniform3fv(uA, m[0]); gl.uniform3fv(uB, m[1]);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       cv.classList.remove('off');
       if (!still && !document.hidden) raf = requestAnimationFrame(draw);

@@ -85,7 +85,7 @@ export default function Batcard() {
   return (
     <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}`}>
       <div className="bc-stage">
-        <Plasma still={set.motion === 'reducido'} />
+        <Plasma still={set.motion === 'reducido'} mood={screen === 'juego' && st ? (st.phase === 'shop' ? 'shop' : (st.phase === 'round' || st.phase === 'preview') && blindInfo(st).boss ? 'boss' : 'normal') : 'normal'} />
         <div className="bc-crt" aria-hidden="true" />
         <Crack />
         <div className="bc-glitch" aria-hidden="true"><i /><i /><i /><i /></div>
@@ -303,7 +303,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
         if (fxOn) shake(modEl);
       } else sfx.tick(anim.i);
       setAnim((a) => a && { ...a, i: a.i + 1 });
-    }, anim.i === 0 ? 250 : speed);
+    }, anim.i === 0 ? 250 : Math.max(speed * 0.45, speed * Math.pow(0.9, anim.i))); // los golpes se aceleran a medida que suman
     return () => clearTimeout(h);
   }, [anim, speed, reduced, st.phase, fxOn]);
 
