@@ -391,3 +391,11 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 @keyframes bc-pop-px { 0% { opacity: 0; transform: translate(-50%, 8px) scale(.5); } 15% { opacity: 1; transform: translate(-50%, -16px) scale(1.3); } 30% { transform: translate(-50%, -22px) scale(1); } 75% { opacity: 1; transform: translate(-50%, -40px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -56px) scale(1); } }
 .bc-banner { font: 400 clamp(20px, 4.4vw, 44px) 'Press Start 2P', monospace; text-shadow: 4px 0 #FF39B8, -4px 0 #24DCFF, 0 6px 0 #090B20, 0 0 30px #873DFF; animation-timing-function: steps(10) !important; }
 .bc-cm .chips, .bc-cm .mult { font-family: 'Press Start 2P', monospace; font-size: .8em; border-radius: 0; border: 3px solid #090B20; box-shadow: 3px 3px 0 #090B20; padding: 6px 10px 4px; }
+
+/* Ventana de sugerencias */
+.bc-fb { max-width: 520px; gap: 10px; }
+.bc-fb-kinds { display: flex; gap: 8px; flex-wrap: wrap; }
+.bc-fb textarea, .bc-fb input { width: 100%; box-sizing: border-box; background: #0d0f2b; color: var(--bc-text); border: 2px solid var(--bc-violet); border-radius: 6px; padding: 10px; font: 15px 'Outfit', sans-serif; resize: vertical; }
+.bc-fb textarea:focus, .bc-fb input:focus { outline: none; border-color: var(--bc-cyan); }
+.bc-fb label { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.bc-fb-err { color: #ffc4ea; background: rgba(255,57,184,.15); border-left: 3px solid var(--bc-pink); padding: 6px 10px; border-radius: 4px; }

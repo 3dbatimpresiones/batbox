@@ -12,7 +12,6 @@ import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { feedbackHref } from '../components/FeedbackButton.jsx';
 import { sb } from '../lib/supabase.js';
 import { useBatcardPresence } from '../lib/mtApi.js';
 
@@ -217,6 +216,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
   const [calPick, setCalPick] = useState(null); // índice de calibración esperando palo
   const [tuto, setTuto] = useState(() => ls.get(K_TUTO) ?? 0);
   const [help, setHelp] = useState(() => (ls.get(K_TUTO) ?? 0) === 0);
+  const [fb, setFb] = useState(false);
   const fx = useRef(null);
   // Reparto: cada carta que entra a la mano vuela desde el mazo, una detrás de otra.
   const seen = useRef(new Set());
@@ -382,7 +382,7 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
               aria-pressed={set.motion !== 'reducido'} title={set.motion === 'reducido' ? 'Activar fondo animado' : 'Quitar movimiento del fondo'} aria-label="Fondo animado">🌀</button>
             <button className={`bc-icon${set.mute || !set.music ? ' off' : ''}`} onClick={() => patch(set.mute || !set.music ? { mute: false, music: set.music || 0.35 } : { music: 0 })}
               aria-pressed={!set.mute && !!set.music} title={set.mute || !set.music ? 'Activar música' : 'Apagar música'} aria-label="Música">♪</button>
-            <a className="bc-icon" href={feedbackHref('batcard')} title="Enviar una sugerencia" aria-label="Sugerencias">💡</a>
+            <button className="bc-icon" onClick={() => setFb(true)} title="Enviar una sugerencia" aria-label="Sugerencias">💡</button>
           </span>
           <button className="bc-icon" onClick={() => setHelp(true)} aria-label="¿Cómo se puntúa?">?</button>
           <button className="bc-icon" onClick={onAjustes} aria-label="Ajustes">⚙</button>
@@ -461,11 +461,69 @@ function Juego({ st, setSt, set, patch, speed, reduced, fxOn, onMenu, onAjustes,
       )}
 
       {help && <Ayuda onClose={() => setHelp(false)} />}
+      {fb && <Sugerencias st={st} onClose={() => setFb(false)} />}
       {banner && <div className="bc-banner" role="status">{banner}</div>}
       {view.phase === 'shop' && <Shop st={view} act={act} />}
       {(view.phase === 'victory' || view.phase === 'defeat') && <End st={view} onNew={onNew} onMenu={onMenu} />}
       <p className="bc-seed">Semilla {st.seed} · {st.deck.length} cartas en el mazo</p>
     </div>
+  );
+}
+
+// Sugerencias: mismo comportamiento que Maker Tycoon (ventana dentro del juego, mismo canal bb_mt_feedback_send),
+// marcadas con [BATCARD] para distinguirlas en el panel.
+const FB_KINDS = [['idea', '💡 Una idea'], ['error', '🐞 Algo anda mal'], ['otro', '💬 Otra cosa']];
+function Sugerencias({ st, onClose }) {
+  const { user, signIn, displayName } = useAuth();
+  const [kind, setKind] = useState('idea');
+  const [msg, setMsg] = useState('');
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [sentOk, setSentOk] = useState(false);
+  const logged = !!user;
+  useEffect(() => { const k = (e) => e.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
+  const send = async () => {
+    setBusy(true); setErr('');
+    const { error } = await sb.rpc('bb_mt_feedback_send', {
+      p_message: '[BATCARD] ' + msg.trim(), p_kind: kind, p_contact: contact || null, p_name: logged ? null : name.trim(),
+      p_context: { game: 'batcard', lot: st.lot + 1, blind: st.blind, phase: st.phase, ua: (navigator.userAgent || '').slice(0, 120), w: window.innerWidth },
+    });
+    setBusy(false);
+    if (error) setErr(error.message || 'No se pudo enviar.'); else setSentOk(true);
+  };
+  return createPortal(
+    <div className="bc-root bc-modal" role="dialog" aria-modal="true" aria-label="Sugerencias" onClick={onClose}>
+      <div className="bc-panel bc-help bc-fb" onClick={(e) => e.stopPropagation()}>
+        <div className="bc-row"><h2>Sugerencias</h2><button className="bc-btn small" onClick={onClose}>Cerrar</button></div>
+        {sentOk ? (
+          <>
+            <p><b>¡Gracias! Ya le llegó al equipo de 3DBAT.</b> Las leemos todas: muchas cosas de los juegos salieron de ideas de la comunidad.</p>
+            <button className="bc-btn primary big" onClick={onClose} autoFocus>Seguir jugando</button>
+          </>
+        ) : (
+          <>
+            <p>¿Qué te gustaría que tenga BATCARD? ¿Algo no funciona como esperabas? Contanos: lo lee el equipo de 3DBAT.</p>
+            <div className="bc-fb-kinds">{FB_KINDS.map(([k, l]) => <button key={k} className={`bc-btn small${kind === k ? ' primary' : ''}`} onClick={() => setKind(k)}>{l}</button>)}</div>
+            <textarea rows={5} maxLength={980} value={msg} onChange={(e) => setMsg(e.target.value)} autoFocus
+              placeholder={kind === 'error' ? 'Ej.: cuando descarto en el celular, las cartas…' : 'Ej.: estaría bueno un Mod que premie las escaleras…'} />
+            <small className="muted">{msg.length}/980</small>
+            {!logged && (
+              <>
+                <label>¿Quién sos? (obligatorio)<input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre o apodo" /></label>
+                <label>¿Cómo te respondemos? (opcional)<input value={contact} maxLength={120} onChange={(e) => setContact(e.target.value)} placeholder="Tu Instagram, Discord o correo" /></label>
+                <p className="muted">O <button className="bc-mini" onClick={() => signIn()}>ingresá con Google</button> y se firma sola.</p>
+              </>
+            )}
+            {logged && <p className="muted">La mandás como <b>{displayName}</b>.</p>}
+            {err && <p className="bc-fb-err" role="alert">{err}</p>}
+            <button className="bc-btn primary big" disabled={busy || msg.trim().length < 5 || (!logged && name.trim().length < 2)} onClick={send}>{busy ? 'Enviando…' : 'Mandar sugerencia'}</button>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }
 
