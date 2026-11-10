@@ -112,7 +112,7 @@ export function ContentProvider({ children }) {
     let tools, items;
     if (state.source === 'db') {
       const pub = state.rows.filter((r) => r.pubStatus === 'published');
-      tools = pub.filter((r) => r.kind === 'tool');
+      tools = pub.filter((r) => r.kind === 'tool' && r.id !== 'maker-tycoon'); // los juegos van en Juegos, no en Herramientas
       items = pub.filter((r) => r.kind !== 'tool');
       // Ejemplos solo para tipos que todavía no tienen contenido real.
       for (const k of SAMPLE_KINDS) {
