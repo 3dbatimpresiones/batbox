@@ -707,7 +707,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
             <div className="bc-cals" aria-label="Calibraciones">
               {view.cals.map((id, i) => (
                 <div key={i} className="bc-cal">
-                  <b>{CAL[id].name}</b><small>{CAL[id].desc}</small>
+                  <span className="bc-cal-txt"><b>{CAL[id].name}</b><small>{CAL[id].desc}</small></span>
                   {calPick === i ? (
                     <span className="bc-suits">{SUIT_IDS.map((s) => <button key={s} className="bc-btn small" onClick={() => usarCal(i, s)} aria-label={SUITS[s].name}>{SUITS[s].sym}</button>)}<button className="bc-btn small" onClick={() => setCalPick(null)}>✕</button></span>
                   ) : <button className="bc-btn small" disabled={!!anim} onClick={() => usarCal(i)}>Usar</button>}
