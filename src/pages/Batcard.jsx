@@ -8,7 +8,7 @@ import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
 import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen, fxPulse, fxChroma, fxZoomBlur } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
-import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST } from '../lib/batcard/catalog.js';
+import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, BLIND_PAY, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
 import { fmtMult } from '../lib/batcard/score.js';
 import { newSeed } from '../lib/batcard/rng.js';
@@ -808,18 +808,41 @@ function ModCard({ mod, lit, children, slot, extra = '' }) {
 
 function Preview({ st, onStart, onSkip }) {
   const info = blindInfo(st);
+  const ICON = ['🧪', '📦', '⚠'];
   return (
-    <section className="bc-panel bc-preview">
-      <h2>Lote {st.lot + 1} · {info.name}</h2>
-      <p className="big">Meta: <b>{info.target.toLocaleString('es-AR')}</b> de Calidad</p>
-      <p>{RULES.prints} impresiones · {RULES.discards - (info.boss === 'bobina_enredada' ? 1 : 0)} descartes · mano de {RULES.handSize} · pago {info.pay} Créditos + 1 por impresión que sobre</p>
-      {info.boss && <div className="bc-boss"><b>Jefe: {BOSS[info.boss].name}</b><span>{BOSS[info.boss].desc}</span></div>}
-      <div className="bc-lotmap">{TARGETS[st.lot].map((t, i) => <span key={i} className={i === st.blind ? 'cur' : i < st.blind ? 'done' : ''}>{BLIND_NAMES[i]}<b>{t}</b></span>)}</div>
-      <div className="bc-actions">
-        <button className="bc-btn primary big" onClick={onStart} autoFocus>Arrancar la impresión</button>
-        {st.v >= 4 && st.blind < 2 && <button className="bc-btn bc-skip" onClick={onSkip} title="No jugás esta ronda ni cobrás su pago, pero abrís un sobre gratis.">Saltear · sobre gratis 🎁</button>}
+    <section className="bc-panel bc-preview bc-blinds-wrap">
+      <h2>Lote {st.lot + 1} de {LOTS}</h2>
+      <div className="bc-blinds">
+        {TARGETS[st.lot].map((t, i) => {
+          const state = i < st.blind ? 'done' : i === st.blind ? 'cur' : 'next';
+          const boss = i === 2 ? BOSS[st.bosses[st.lot % st.bosses.length]] : null;
+          return (
+            <article key={i} className={`bc-blind b-${state}${boss ? ' is-boss' : ''}`} style={{ '--d': `${i * 90}ms` }}>
+              <header><span className="bc-blind-ico" aria-hidden="true">{ICON[i]}</span><b>{BLIND_NAMES[i]}</b></header>
+              <div className="bc-blind-goal"><small>Meta</small><strong>{t.toLocaleString('es-AR')}</strong><small>de Calidad</small></div>
+              <div className="bc-blind-pay">Premio <b>{'$'.repeat(BLIND_PAY[i])}</b> <span>{BLIND_PAY[i]} Créditos</span></div>
+              {boss && <div className="bc-blind-boss"><b>Jefe: {boss.name}</b><span>{boss.desc}</span></div>}
+              {state === 'done' && <div className="bc-blind-stamp">SUPERADO</div>}
+              {state === 'cur' && (
+                <div className="bc-blind-act">
+                  <button className="bc-btn primary big" onClick={onStart} autoFocus>Arrancar</button>
+                  {st.v >= 4 && i < 2 && <button className="bc-btn bc-skip" onClick={onSkip} title="No jugás esta ronda ni cobrás su premio, pero abrís un sobre gratis.">Saltear · sobre 🎁</button>}
+                </div>
+              )}
+              {state === 'next' && <div className="bc-blind-next">Próximo</div>}
+            </article>
+          );
+        })}
       </div>
-      {st.v >= 4 && <p className="muted small">Ahorro: al ganar cobrás +1 Crédito por cada {INTEREST.per} que tengas (máximo +{INTEREST.max}).</p>}
+      <div className="bc-runinfo">
+        <span><small>Impresiones</small><b>{RULES.prints}</b></span>
+        <span><small>Descartes</small><b>{RULES.discards - (info.boss === 'bobina_enredada' ? 1 : 0) + (st.v >= 4 && st.mods.includes('spool_holder') ? 1 : 0)}</b></span>
+        <span><small>Mano</small><b>{RULES.handSize}</b></span>
+        <span><small>Mazo</small><b>{st.deck.length}</b></span>
+        <span><small>Mods</small><b>{st.mods.length}/{RULES.maxMods}</b></span>
+        {st.v >= 4 && <span><small>Ahorro</small><b>+{Math.min(INTEREST.max, Math.floor(st.credits / INTEREST.per))}</b></span>}
+      </div>
+      <p className="muted small">Ganás cada ronda llegando a la meta. Cobrás el premio + 1 Crédito por impresión que sobre{st.v >= 4 ? ` + ahorro (1 cada ${INTEREST.per} Créditos guardados, máx. ${INTEREST.max})` : ''}.</p>
     </section>
   );
 }

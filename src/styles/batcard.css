@@ -797,3 +797,66 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-played.leaving .bc-card-in { filter: blur(1.5px); }
 .bc-root.reduced::after, .noflash.bc-root::after { display: none; }
 .reduced .bc-cm .chips, .reduced .bc-cm .mult { animation: none; }
+
+/* =================== Pantalla previa: tarjetas de ronda =================== */
+.bc-blinds-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.bc-blinds-wrap h2 { margin: 0; }
+.bc-blinds { display: grid; grid-template-columns: repeat(3, minmax(0, 260px)); gap: 18px; width: 100%; justify-content: center; align-items: stretch; }
+.bc-blind { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px 14px 18px; border-radius: 14px; text-align: center;
+  background: linear-gradient(180deg, rgba(40,26,110,.85), rgba(12,10,40,.92)); border: 2px solid #3a3470; box-shadow: 0 8px 0 rgba(0,0,0,.45);
+  animation: bc-blindin .5s cubic-bezier(.3,1.5,.5,1) var(--d) both; }
+@keyframes bc-blindin { 0% { transform: translateY(40px) scale(.9); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.bc-blind header { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.bc-blind-ico { font-size: 34px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.5)); }
+.bc-blind header b { font: 400 13px 'Press Start 2P', monospace; color: #fff; }
+.bc-blind-goal { display: flex; flex-direction: column; align-items: center; background: rgba(7,9,26,.8); border-radius: 10px; padding: 8px 16px; width: 100%; box-sizing: border-box; }
+.bc-blind-goal small { font-size: 11px; color: #b9b2ea; text-transform: uppercase; letter-spacing: 1px; }
+.bc-blind-goal strong { font: 400 26px 'Press Start 2P', monospace; color: #ffd27a; text-shadow: 0 3px 0 #7a4b00; margin: 4px 0; }
+.bc-blind-pay { font-size: 13px; color: #d9d4ff; }
+.bc-blind-pay b { color: #ffd27a; font: 400 12px 'Press Start 2P', monospace; letter-spacing: 2px; margin: 0 4px; }
+.bc-blind-pay span { opacity: .7; }
+.bc-blind-boss { display: flex; flex-direction: column; gap: 4px; background: rgba(255,43,74,.15); border: 1px solid #ff2b4a; border-radius: 8px; padding: 8px; font-size: 12.5px; color: #ffd6dc; }
+.bc-blind-boss b { color: #ff5d74; font-size: 13px; }
+.bc-blind-act { display: flex; flex-direction: column; gap: 8px; width: 100%; margin-top: auto; }
+.bc-blind-act .bc-btn { width: 100%; }
+.bc-blind-next { margin-top: auto; font: 400 10px 'Press Start 2P', monospace; color: #8f88c8; padding: 10px; }
+.bc-blind.b-cur { border-color: #24DCFF; transform: translateY(-6px); box-shadow: 0 0 0 2px rgba(36,220,255,.35), 0 0 30px rgba(36,220,255,.35), 0 12px 0 rgba(0,0,0,.45); }
+.bc-blind.b-cur.is-boss { border-color: #ff2b4a; box-shadow: 0 0 0 2px rgba(255,43,74,.35), 0 0 34px rgba(255,43,74,.45), 0 12px 0 rgba(0,0,0,.45); }
+.bc-blind.b-cur .bc-blind-ico { animation: bc-bob 1.6s ease-in-out infinite; }
+@keyframes bc-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.bc-blind.b-next { opacity: .6; filter: saturate(.6); }
+.bc-blind.b-done { opacity: .55; filter: grayscale(.6); }
+.bc-blind-stamp { position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%) rotate(-14deg); font: 400 16px 'Press Start 2P', monospace; color: #3dffa2; border: 3px solid #3dffa2; padding: 6px 10px; border-radius: 6px; background: rgba(7,9,26,.7); filter: none; }
+.bc-runinfo { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.bc-runinfo span { display: flex; flex-direction: column; align-items: center; min-width: 74px; background: rgba(7,9,26,.8); border: 1px solid #3a3470; border-radius: 8px; padding: 6px 10px; }
+.bc-runinfo small { font-size: 10px; color: #b9b2ea; text-transform: uppercase; }
+.bc-runinfo b { font: 400 13px 'Press Start 2P', monospace; color: #fff; margin-top: 4px; }
+@media (max-width: 640px) {
+  .bc-blinds { grid-template-columns: 1fr; gap: 10px; }
+  .bc-blind { flex-direction: row; flex-wrap: wrap; justify-content: space-between; padding: 10px 12px; gap: 8px; }
+  .bc-blind header { flex-direction: row; } .bc-blind-ico { font-size: 22px; }
+  .bc-blind-goal { width: auto; padding: 4px 10px; } .bc-blind-goal strong { font-size: 16px; }
+  .bc-blind.b-next .bc-blind-boss, .bc-blind.b-done .bc-blind-pay { display: none; }
+  .bc-blind.b-cur { transform: none; }
+  .bc-blind-act { flex-direction: row; } .bc-blind-next { padding: 0; }
+  .bc-runinfo span { min-width: 56px; padding: 4px 6px; }
+}
+/* Golpe de cada punto: más agresivo (zoom + desenfoque + aberración que crecen con la cuenta) */
+.bc-root.fx-pulse .bc-bed { animation: fx-hit .3s cubic-bezier(.2,.9,.3,1); }
+@keyframes fx-hit {
+  0% { transform: scale(calc(1.02 + var(--pi, 0) * .035)) rotate(calc((var(--pi, 0) - .5) * .8deg));
+       filter: blur(calc(1.5px + var(--pi, 0) * 2.5px)) brightness(calc(1.3 + var(--pi, 0) * .5))
+               drop-shadow(calc(4px + var(--pi, 0) * 6px) 0 0 rgba(255,40,120,.85)) drop-shadow(calc(-4px - var(--pi, 0) * 6px) 0 0 rgba(0,230,255,.85)); }
+  45% { filter: blur(.6px) drop-shadow(-2px 0 0 rgba(255,40,120,.6)) drop-shadow(2px 0 0 rgba(0,230,255,.6)); }
+  100% { transform: none; filter: none; }
+}
+.bc-root.fx-pulse .bc-cm { animation: fx-cmhit .3s ease-out; }
+@keyframes fx-cmhit { 0% { transform: scale(calc(1.15 + var(--pi, 0) * .2)); filter: blur(2px) drop-shadow(5px 0 0 rgba(255,40,120,.9)) drop-shadow(-5px 0 0 rgba(0,230,255,.9)); } 100% { transform: none; filter: none; } }
+.bc-root.fx-pulse::after { animation: fx-vig .3s ease-out; }
+.bc-root.fx-chroma .bc-bed, .bc-root.fx-chroma .bc-mods { animation: fx-chroma2 .45s steps(7) both; }
+@keyframes fx-chroma2 {
+  0% { filter: blur(3px) drop-shadow(10px 0 0 rgba(255,40,120,.9)) drop-shadow(-10px 0 0 rgba(0,230,255,.9)); transform: scale(1.03) skewX(-2deg); }
+  40% { filter: blur(1px) drop-shadow(-6px 2px 0 rgba(255,40,120,.7)) drop-shadow(6px -2px 0 rgba(0,230,255,.7)); transform: skewX(1.5deg); }
+  100% { filter: none; transform: none; }
+}
+.reduced .bc-bed, .reduced .bc-cm, .noflash .bc-bed, .noflash .bc-cm { animation: none !important; }
