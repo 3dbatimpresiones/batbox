@@ -238,3 +238,19 @@ kbd { font: 400 10px 'Outfit', sans-serif; opacity: .7; border: 1px solid curren
 @keyframes bc-flicker { 0%, 100% { opacity: 1; } 48% { opacity: .93; } 50% { opacity: 1; } 73% { opacity: .96; } }
 .reduced .bc-crt { animation: none !important; }
 @media (max-width: 640px) { .bc-root { padding: 6px; border-radius: 16px; margin: -8px -12px 0; } .bc-stage { border-radius: 12px; } }
+
+/* Legibilidad sobre la pantalla CRT: paneles oscuros sólidos y textos chicos más grandes */
+.bc-bed { background-color: rgba(7, 9, 26, .9); }
+.bc-nomods { background: rgba(7, 9, 26, .88); color: #d9d4ff; font-size: 14px; border-color: #4a4290; }
+.bc-heat { background: rgba(7, 9, 26, .85); border-radius: 8px; padding: 6px 10px; align-self: flex-start; }
+.bc-heat .txt, .bc-heat .seg { color: #d9d4ff; font-size: 12px; }
+.bc-draw, .bc-seed { align-self: flex-end; background: rgba(7, 9, 26, .85); color: #d9d4ff; border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+.bc-seed { align-self: center; }
+.bc-forecast, .bc-forecast .muted { color: #f1edff; font-size: 16px; }
+.bc-forecast small, .bc-over small, .bc-cal small, .bc-mod-rar { font-size: 13px; color: #d9d4ff; }
+.bc-over small { color: #e8e3ff; }
+.bc-btn:disabled { opacity: .6; }
+.bc-msg, .bc-tip { background-color: rgba(7, 9, 26, .9); }
+.bc-menu .bc-tag, .bc-menu .bc-foot { background: rgba(7, 9, 26, .8); border-radius: 10px; padding: 8px 14px; }
+.bc-foot { color: #d9d4ff; font-size: 14px; }
+.bc-game, .bc-menu { text-shadow: 0 1px 2px rgba(0, 0, 0, .8); }
