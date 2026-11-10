@@ -70,7 +70,7 @@ function usePwaHead() {
     const add = (tag, attrs) => { const el = document.createElement(tag); Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); el.dataset.batcard = '1'; document.head.appendChild(el); added.push(el); };
     const prevManifest = document.querySelector('link[rel="manifest"]:not([data-batcard])');
     if (prevManifest) prevManifest.setAttribute('rel', 'x-manifest-off');
-    add('link', { rel: 'manifest', href: base + 'batcard.webmanifest' });
+    add('link', { rel: 'manifest', href: base + 'batcard-manifest.json' });
     add('link', { rel: 'apple-touch-icon', href: base + 'batcard-180.png' });
     add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
     add('meta', { name: 'mobile-web-app-capable', content: 'yes' });
