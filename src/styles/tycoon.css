@@ -237,4 +237,11 @@
 .gm-stack { grid-column: 1 / -1; display: grid; }
 .gm-stack > .gm-slide { grid-area: 1 / 1; animation: none; opacity: 0; visibility: hidden; transition: opacity .9s ease, visibility 0s linear .9s; }
 .gm-stack > .gm-slide.on { opacity: 1; visibility: visible; transition: opacity .9s ease, visibility 0s; }
-@media (prefers-reduced-motion: reduce) { .gm-stack > .gm-slide { transition: none; } }
+/* El fundido se mantiene aunque el sistema pida menos movimiento: es solo opacidad, no desplazamiento. */
+.gm-stack > .gm-slide { align-content: start; align-items: start; }
+.gm-stack > .gm-slide .mt-home-tops { align-self: start; }
+
+/* Fundido en dos tiempos (reemplaza al apilado) */
+.gm-slide.gm-fade { animation: none !important; opacity: 1; transition: opacity .45s ease !important; }
+.gm-slide.gm-fade.out { opacity: 0; }
+@keyframes gm-fade-in { from { opacity: 0; } to { opacity: 1; } }

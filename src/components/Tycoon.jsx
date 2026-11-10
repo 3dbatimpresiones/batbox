@@ -233,7 +233,10 @@ const AUTO_MS = 10000;
 export function TycoonHomeBlock() {
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
-  const go = (d) => setI((x) => (x + d + SLIDES.length) % SLIDES.length);
+  const [fading, setFading] = useState(false);
+  // Fundido en dos tiempos: se apaga la actual, se cambia sin que se vea y aparece la nueva (cada juego con su alto).
+  const show = (k) => { if (fading) return; setFading(true); setTimeout(() => { setI(k); requestAnimationFrame(() => requestAnimationFrame(() => setFading(false))); }, 450); };
+  const go = (d) => show((i + d + SLIDES.length) % SLIDES.length);
   useEffect(() => {
     if (paused) return undefined;
     const h = setTimeout(() => go(1), AUTO_MS);
@@ -244,15 +247,12 @@ export function TycoonHomeBlock() {
       onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
       <button className="gm-arrow l" onClick={() => go(-1)} aria-label="Juego anterior"><Icon name="arrowRight" size={20} /></button>
       <button className="gm-arrow r" onClick={() => go(1)} aria-label="Juego siguiente"><Icon name="arrowRight" size={20} /></button>
-      {/* Todas las diapositivas apiladas en la misma celda: fundido cruzado real y alto estable */}
-      <div className="gm-stack" aria-live="polite">
-        {SLIDES.map(([n, S], k) => (
-          <div key={n} className={`gm-slide${k === i ? ' on' : ''}`} aria-hidden={k !== i} aria-label={`${k + 1} de ${SLIDES.length}: ${n}`} inert={k !== i ? '' : undefined}><S /></div>
-        ))}
-      </div>
+      <div className={`gm-slide gm-fade${fading ? ' out' : ''}`} key={i} aria-live="polite" aria-label={`${i + 1} de ${SLIDES.length}: ${SLIDES[i][0]}`}>{(() => { const S = SLIDES[i][1]; return <S />; })()}</div>
+      {/* La otra diapositiva se monta oculta para que sus datos ya estén cargados al cambiar */}
+      <div hidden>{SLIDES.map(([n, S], k) => k !== i && <S key={n} />)}</div>
       <div className="gm-dots" role="tablist">
         {SLIDES.map(([n], k) => (
-          <button key={n} role="tab" aria-selected={k === i} aria-label={n} className={k === i ? 'on' : ''} onClick={() => setI(k)}>
+          <button key={n} role="tab" aria-selected={k === i} aria-label={n} className={k === i ? 'on' : ''} onClick={() => k !== i && show(k)}>
             {k === i && !paused && <span className="gm-dot-bar" style={{ animationDuration: AUTO_MS + 'ms' }} />}
           </button>
         ))}

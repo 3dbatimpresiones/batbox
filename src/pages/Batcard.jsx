@@ -34,7 +34,8 @@ function useSettings() {
   const [s, setS] = useState(() => ({ ...DEF_SET, ...(ls.get(K_SET) || {}) }));
   useEffect(() => { ls.set(K_SET, s); setAudio(s.vol, s.mute); music.setVolume(s.mute ? 0 : s.music); }, [s]);
   const sysReduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const reduced = s.motion === 'reducido' || (s.motion === 'auto' && sysReduced);
+  // Solo se reduce si el jugador lo elige en el juego: con 'reducir animaciones' de Windows el juego quedaba casi sin vida.
+  const reduced = s.motion === 'reducido' || (s.motion === 'auto' && sysReduced && false);
   return [s, (patch) => setS((p) => ({ ...p, ...patch })), reduced];
 }
 
@@ -694,7 +695,7 @@ function Ajustes({ set, patch, back }) {
       </label>
       <label>Movimiento
         <select value={set.motion} onChange={(e) => patch({ motion: e.target.value })}>
-          <option value="auto">Según el sistema</option><option value="normal">Normal</option><option value="reducido">Reducido (fondo quieto)</option>
+          <option value="auto">Normal (recomendado)</option><option value="normal">Normal</option><option value="reducido">Reducido (fondo quieto)</option>
         </select>
       </label>
       <label><input type="checkbox" checked={set.flashes} onChange={(e) => patch({ flashes: e.target.checked })} /> Destellos y brillos</label>

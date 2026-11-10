@@ -111,7 +111,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 /* "Reducir movimiento" del sistema: las animaciones se ejecutan UNA vez y quedan quietas.
    Sin iteration-count 1, las infinitas (fondo del Inicio) se repetían cada .01ms y parpadeaban. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  /* Excepciones: BATCARD tiene su propio interruptor de movimiento (Ajustes / 🌀) y el carrusel de juegos solo funde. */
+  :where(*:not(.bc-root, .bc-root *, .bc-pop, .bc-banner, .gm-slide)), :where(*:not(.bc-root, .bc-root *, .bc-pop, .bc-banner))::before, :where(*:not(.bc-root, .bc-root *, .bc-pop, .bc-banner))::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .spinner { animation-duration: 1.2s !important; animation-iteration-count: infinite !important; } /* "cargando" sigue girando */
 }
 
