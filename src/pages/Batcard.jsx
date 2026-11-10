@@ -306,6 +306,26 @@ function Menu({ save, problem, canRank, logged, signIn, starting, onNew, onCont,
 }
 
 // ---------------------------------------------------------------- Juego
+// Cartel de jugada: debajo del contador Capas × Mult de la mesa (así no lo pisa), nítido y fuera de la mesa.
+const isRoyal = (cards) => cards.length === 5 && [10, 11, 12, 13, 14].every((r) => cards.some((c) => c.r === r));
+function showPattern(pid, cards, mini, fxOn) {
+  const bed = document.querySelector('.bc-bed');
+  if (!bed) return null;
+  const royal = pid === 'ecolor' && isRoyal(cards);
+  const br = bed.getBoundingClientRect();
+  const cm = bed.querySelector('.bc-cm');
+  const top = cm ? cm.getBoundingClientRect().bottom + 6 : br.top + br.height / 2 - 45;
+  const h = Math.max(70, Math.min(110, br.bottom - top - 4));
+  document.querySelectorAll('.bc-patfx').forEach((e) => e.remove());
+  const d = document.createElement('div');
+  d.className = `bc-patfx${mini ? ' mini' : ''} p-${royal ? 'royal' : pid}${fxOn ? '' : ' calm'}`;
+  d.innerHTML = `<span>${royal ? 'Escalera real' : PATTERN[pid].name}</span>`;
+  Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${br.left}px`, width: `${br.width}px`, top: `${Math.min(top, br.bottom - h)}px`, height: `${h}px`, zIndex: 1045 });
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), mini ? 1300 : 1500);
+  return royal;
+}
+
 function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, onAjustes, onNew }) {
   const [rolled, setRolled] = useState(null); // contador que sube rodando
   const [banner, setBanner] = useState(null);
@@ -438,15 +458,8 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         document.querySelectorAll('.bc-patfx.mini').forEach((e) => e.remove());
         sfx.pattern(pid);
         const bed = document.querySelector('.bc-bed');
-        if (bed) {
-          const d = document.createElement('div');
-          d.className = `bc-patfx p-${pid}${fxOn ? '' : ' calm'}`;
-          d.innerHTML = `<span>${PATTERN[pid].name}</span>`;
-          const br = bed.getBoundingClientRect(); // fuera de la mesa: el golpe la desenfoca y el cartel tiene que verse nítido
-          Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${br.left}px`, top: `${br.top}px`, width: `${br.width}px`, height: `${br.height}px`, zIndex: 1045 });
-          document.body.appendChild(d);
-          setTimeout(() => d.remove(), 1500);
-        }
+        const royal = showPattern(pid, (anim.last.scoring || []).map((id) => anim.prev.deck.find((c) => c.id === id)).filter(Boolean), false, fxOn);
+        if (royal) { sfx.legend(); if (fxOn) { flashScreen('#ffd27a', 700); confetti({ n: 260, coins: 20 }); } }
         if (fxOn) {
           if (['full', 'poker', 'ecolor', 'color', 'escalera'].includes(pid)) { flashScreen(pid === 'poker' ? '#ff2b4a' : pid === 'ecolor' ? '#ffffff' : '#24DCFF', 420); fxChroma(); }
           if (['full', 'poker', 'ecolor'].includes(pid)) confetti({ n: pid === 'ecolor' ? 200 : 110 });
@@ -565,16 +578,8 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
     const prevP = lastPat.current; lastPat.current = pvPat;
     if (!pvPat || pvPat === prevP || pvPat === 'alta') return;
     sfx.pattern(pvPat);
-    const bed = document.querySelector('.bc-bed');
-    if (!bed) return;
-    const r = bed.getBoundingClientRect(); // en el centro de la mesa
-    document.querySelectorAll('.bc-patfx.mini').forEach((e) => e.remove());
-    const d = document.createElement('div');
-    d.className = `bc-patfx mini p-${pvPat}${fxOn ? '' : ' calm'}`;
-    d.innerHTML = `<span>${PATTERN[pvPat].name}</span>`;
-    Object.assign(d.style, { inset: 'auto', position: 'fixed', left: `${r.left}px`, width: `${r.width}px`, top: `${r.top}px`, height: `${r.height}px`, zIndex: 1045 });
-    document.body.appendChild(d);
-    setTimeout(() => d.remove(), 1300);
+    const royal = showPattern(pvPat, (pv?.scoring || []).map((id) => byId[id]).filter(Boolean), true, fxOn);
+    if (royal) sfx.legend();
   }, [pvPat]); // eslint-disable-line react-hooks/exhaustive-deps
   const canOver = st.phase === 'round' && st.round.heat <= RULES.overLimit;
   const tShown = anim ? anim.last.trace[Math.min(anim.i, anim.last.trace.length) - 1] : null;

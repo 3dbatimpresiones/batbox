@@ -996,3 +996,10 @@ a.bc-icon { display: inline-grid; place-items: center; text-decoration: none; }
 .bc-patfx.mini::before { display: block; }
 .bc-played.leaving .bc-card.lit .bc-card-in, .bc-played.leaving .bc-card.scoring .bc-card-in, .bc-played.leaving .bc-card .bc-card-in { animation: bc-leave .45s cubic-bezier(.5,0,.8,.4) both !important; }
 .bc-played.leaving .bc-card:nth-child(2) .bc-card-in { animation-delay: .05s !important; } .bc-played.leaving .bc-card:nth-child(3) .bc-card-in { animation-delay: .1s !important; } .bc-played.leaving .bc-card:nth-child(4) .bc-card-in { animation-delay: .15s !important; } .bc-played.leaving .bc-card:nth-child(5) .bc-card-in { animation-delay: .2s !important; }
+
+/* Cartel de jugada en franja debajo del contador */
+.bc-patfx { background: none; }
+.bc-patfx span, .bc-patfx.mini span { font-size: clamp(20px, 4.2vw, 48px); }
+.p-royal { --pc1: #ffd27a; --pc2: #ffffff; --pbg: rgba(255,210,122,.55); }
+.p-royal span { background: linear-gradient(90deg, #fff6c2, #ffd27a, #e07a1c, #ffd27a, #fff6c2); background-size: 200% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none;
+  filter: drop-shadow(0 5px 0 #7a4b00) drop-shadow(0 0 26px #ffd27a); animation: pat-in 1.5s cubic-bezier(.2,1.6,.35,1) forwards, bc-foil .8s linear infinite; }
