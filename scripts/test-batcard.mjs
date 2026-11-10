@@ -222,5 +222,29 @@ const rv4 = replayRun(seed4, s4.log, 4);
 t('rejugada v4 ok', rv4.ok && rv4.result.total === s4.stats.total && s4.log.some((x) => x.t === 'SKIP_BLIND'), JSON.stringify(rv4).slice(0, 160));
 t('guardado v4 válido', validateSave(JSON.parse(JSON.stringify(s4))) === null);
 
+// ---- Reglas v5 ----
+const pr = (cards, extra) => scoreHand({ cards, scoringIdx: [0, 1], pattern: 'par', mods: [], heat: 0, round: { printsDone: 1 }, ...extra });
+const c7 = C('7S 7H'), c3 = C('3S 3H');
+t('Atasco: primera carta no suma', pr(c7, { boss: 'atasco' }).chips === pr(c7).chips - 7);
+t('Pie de Elefante: bajas no suman', pr(c3, { boss: 'pie_elefante' }).chips === pr(c3).chips - 6);
+const st5 = scoreHand({ cards: C('7S 7H 2D'), scoringIdx: [0, 1], pattern: 'par', mods: [], heat: 0, round: { printsDone: 1 }, boss: 'stringing' });
+t('Stringing resta 5 por carta suelta', st5.chips === pr(c7).chips - 5);
+t('Benchy de Oro ×1,5 por corazón', pr(c7, { mods: ['benchy_oro'] }).mult === pr(c7).mult * 1.5);
+t('v4 sigue con 4 jefes', newGame('JEFES', 4).bosses.length === 4 && newGame('JEFES', 5).bosses.length === 7);
+t('jefes v4 iguales que antes', JSON.stringify(newGame('JEFES', 4).bosses) === JSON.stringify(newGame('JEFES', 3).bosses));
+let lg = 0; for (let k = 0; k < 40; k++) { const g = winTo('LEGEND' + k, 5); if (g.shop.items.some((it) => it.id === 'corexy' || it.id === 'benchy_oro')) lg++; }
+t('legendarios no salen en la tienda', lg === 0);
+let s5, seed5;
+for (let k = 0; k < 200; k++) { seed5 = 'VCINCO' + k; s5 = newGame(seed5, 5); let g = 0;
+  while (!['victory', 'defeat'].includes(s5.phase) && g++ < 800) {
+    if (s5.pack) { const r1 = step(s5, { type: 'PICK_PACK', idx: 0 }); s5 = r1.error ? step(s5, { type: 'SKIP_PACK' }).state : r1.state; }
+    else if (s5.phase === 'preview') s5 = step(s5, { type: 'START_ROUND' }).state;
+    else if (s5.phase === 'shop') { const i = s5.shop.items.findIndex((x) => !x.sold && x.kind === 'mod' && x.price <= s5.credits && s5.mods.length < 4); s5 = i >= 0 ? step(s5, { type: 'BUY', slot: i }).state : step(s5, { type: 'LEAVE_SHOP' }).state; }
+    else s5 = step(s5, { type: 'PLAY', ids: s5.round.hand.slice(0, 5) }).state;
+  }
+  if (s5.lot >= 1) break; }
+const rv5 = replayRun(seed5, s5.log, 5);
+t('rejugada v5 ok', rv5.ok && rv5.result.total === s5.stats.total, JSON.stringify(rv5).slice(0, 120));
+
 console.log(`${ok} OK, ${bad} fallas`);
 process.exit(bad ? 1 : 0);

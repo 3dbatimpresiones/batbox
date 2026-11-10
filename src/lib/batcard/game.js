@@ -2,18 +2,18 @@
 // Una acción inválida devuelve error SIN tocar el estado ni consumir RNG (se trabaja sobre una copia).
 import { RNG_VERSION, seedState, shuffle, randInt } from './rng.js';
 import { standardDeck, evaluate, SUIT_IDS, PATTERNS } from './hands.js';
-import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, SEALS, modsFor, calsFor, INTEREST, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
+import { MODS, MOD, CALIBRATIONS, SPOOLS, CAL, PROFILES, PROF, PACKS, MATERIALS, SEALS, modsFor, shopModsFor, bossesFor, calsFor, INTEREST, BOSSES, TARGETS, BLIND_NAMES, BLIND_PAY, RULES, MIN_DECK } from './catalog.js';
 import { scoreHand } from './score.js';
 
-export const RULES_VERSION = 4; // v2: materiales · v3: sobres · v4: ahorro, saltear, sellos y Mods nuevos. Las partidas viejas siguen con sus reglas.
-export const SUPPORTED_RULES = [1, 2, 3, 4];
+export const RULES_VERSION = 5; // v2: materiales · v3: sobres · v4: ahorro, saltear, sellos y Mods nuevos. Las partidas viejas siguen con sus reglas.
+export const SUPPORTED_RULES = [1, 2, 3, 4, 5];
 export const LOTS = TARGETS.length;
 
 export function newGame(seed, v = RULES_VERSION) {
   const rng = { deck: seedState(seed + '/mazo'), shop: seedState(seed + '/tienda'), boss: seedState(seed + '/jefe') };
   if (v >= 3) rng.pack = seedState(seed + '/sobres');
   const modData = {};
-  const bosses = shuffle(rng.boss, BOSSES.map((b) => b.id));
+  const bosses = shuffle(rng.boss, bossesFor(v).map((b) => b.id));
   return {
     v, rngVersion: RNG_VERSION, seed, rng,
     phase: 'preview', lot: 0, blind: 0, credits: 4,
@@ -322,7 +322,7 @@ function rollPack(st, kind) {
 // 2 Mods (que no tengas) + 2 consumibles (Perfil 60 % / calibración 40 %).
 function rollShop(st) {
   const s = st.rng.shop;
-  const pool = modsFor(st.v).filter((m) => !st.mods.includes(m.id));
+  const pool = shopModsFor(st.v).filter((m) => !st.mods.includes(m.id));
   const items = [];
   for (let i = 0; i < 2 && pool.length; i++) {
     const m = pool.splice(randInt(s, pool.length), 1)[0];

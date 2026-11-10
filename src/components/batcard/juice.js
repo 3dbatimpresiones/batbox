@@ -65,6 +65,16 @@ export function popText(el, text, kind = 'chips', big = false) {
   setTimeout(() => d.remove(), big ? 1600 : 1000);
 }
 
+// Destello de toda la pantalla (golpes grandes, jefes, legendarios).
+export function flashScreen(color = '#fff', ms = 380) {
+  const d = document.createElement('div');
+  d.className = 'bc-flashfx';
+  d.style.setProperty('--fc', color);
+  d.style.animationDuration = ms + 'ms';
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), ms + 50);
+}
+
 export function shake(el, strong = false) {
   if (!el) return;
   el.classList.remove('bc-shake', 'bc-shake-big');

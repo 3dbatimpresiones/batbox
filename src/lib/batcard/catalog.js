@@ -62,8 +62,16 @@ export const MODS = [
   { id: 'volcano', since: 4, name: 'Hotend Volcano', rarity: 'rara', price: 8, finish: 'policromo', tags: ['xmult', 'calor'],
     desc: '×2 al Multiplicador con Calor 6.',
     effect: { phase: 'mods', when: (c) => c.heat >= 6, op: 'xmult', value: 2000 } },
+  // ---- Reglas v5: legendarios (solo salen en el Sobre Maker) ----
+  { id: 'corexy', since: 5, legendary: true, name: 'CoreXY Legendaria', rarity: 'legendaria', price: 10, finish: 'legendario', tags: ['xmult'],
+    desc: '×3 al Multiplicador si puntúan 5 cartas.',
+    effect: { phase: 'mods', when: (c) => c.scoring.length >= 5, op: 'xmult', value: 3000 } },
+  { id: 'benchy_oro', since: 5, legendary: true, name: 'Benchy de Oro', rarity: 'legendaria', price: 10, finish: 'legendario', tags: ['xmult', 'benchy'],
+    desc: '×1,5 al Multiplicador por cada carta de Corazones (Benchy) puntuada.',
+    effect: { phase: 'mods', when: (c) => c.scoring.some((x) => x.s === 'H'), op: 'xmult', value: (c) => Math.round(1000 * Math.pow(1.5, c.scoring.filter((x) => x.s === 'H').length)) } },
 ];
 export const modsFor = (v) => MODS.filter((m) => (m.since || 1) <= v);
+export const shopModsFor = (v) => modsFor(v).filter((m) => !m.legendary);
 
 function hasLowPair(cards) {
   const cnt = {};
@@ -124,7 +132,11 @@ export const BOSSES = [
   { id: 'bobina_enredada', name: 'Bobina Enredada', desc: 'Empezás la ronda con 1 descarte menos.' },
   { id: 'warping', name: 'Warping', desc: 'La carta puntuada de mayor rango no suma Capas.' },
   { id: 'hotend_saturado', name: 'Hotend Saturado', desc: 'Si una mano termina con Calor 6, el Multiplicador final baja 2 (mínimo 1).' },
+  { id: 'atasco', since: 5, name: 'Atasco de Extrusor', desc: 'La primera carta puntuada de cada mano no suma Capas.' },
+  { id: 'stringing', since: 5, name: 'Stringing', desc: 'Cada carta jugada que no puntúa resta 5 Capas.' },
+  { id: 'pie_elefante', since: 5, name: 'Pie de Elefante', desc: 'Las cartas del 2 al 5 no suman Capas.' },
 ];
+export const bossesFor = (v) => BOSSES.filter((b) => (b.since || 1) <= v);
 
 export const MOD = Object.fromEntries(MODS.map((m) => [m.id, m]));
 export const CAL = Object.fromEntries([...CALIBRATIONS, ...SPOOLS, ...SEAL_CALS].map((m) => [m.id, m]));

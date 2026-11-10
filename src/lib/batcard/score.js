@@ -36,6 +36,13 @@ export function scoreHand(input) {
     push('jefe', 'Cama Desnivelada: −8 Capas en la primera impresión');
   }
   if (overextrude) { chips += 12; push('calor', 'Sobreextruir: +12 Capas'); }
+  if (boss === 'stringing' && cards.length > scoringIdx.length) {
+    const lost = 5 * (cards.length - scoringIdx.length);
+    chips = Math.max(0, chips - lost);
+    push('jefe', `Stringing: −${lost} Capas por cartas que no puntúan`);
+  }
+  if (boss === 'atasco' && scoringIdx.length) push('jefe', 'Atasco de Extrusor: la primera carta no suma');
+  if (boss === 'pie_elefante' && scoringIdx.some((i) => cards[i].r <= 5)) push('jefe', 'Pie de Elefante: las cartas bajas no suman');
 
   // 3. Cartas puntuadas
   // Re-disparos (v4): Sello Rojo en la carta y Klipper en la primera carta puntuada.
@@ -51,7 +58,8 @@ export function scoreHand(input) {
     }
   });
   function scoreCard(c, i) {
-    const add = i === warpIdx ? 0 : cardChips(c.r) + (c.b || 0);
+    const blocked = i === warpIdx || (boss === 'atasco' && i === 0) || (boss === 'pie_elefante' && c.r <= 5);
+    const add = blocked ? 0 : cardChips(c.r) + (c.b || 0);
     chips += add;
     push('carta', `${rankLabel(c.r)}${SUITS[c.s].sym}: +${add} Capas`, { cardId: c.id });
     // Material de la carta (reglas v2)

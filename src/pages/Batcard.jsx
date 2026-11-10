@@ -5,7 +5,7 @@ import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
 import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { sfx, setAudio, unlockAudio } from '../components/batcard/sfx.js';
-import { confetti, burstAt, popText, shake, music, TRACKS } from '../components/batcard/juice.js';
+import { confetti, burstAt, popText, shake, music, TRACKS, flashScreen } from '../components/batcard/juice.js';
 import { newGame, step, preview, blindInfo, validateSave, LOTS } from '../lib/batcard/game.js';
 import { MODS, MOD, CALIBRATIONS, CAL, PROFILES, PROF, BOSSES, BOSS, RULES, TARGETS, BLIND_NAMES, MIN_DECK, MATERIALS, SPOOLS, PACKS, SEALS, SEAL_CALS, INTEREST } from '../lib/batcard/catalog.js';
 import { PATTERN, PATTERNS, SUITS, SUIT_IDS } from '../lib/batcard/hands.js';
@@ -362,6 +362,22 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
   // El fondo cambia según lo que está en pantalla: con la animación del puntaje todavía corriendo no se adelanta el dorado.
   useEffect(() => { setMood(view.phase === 'shop' ? 'shop' : (view.phase === 'round' || view.phase === 'preview') && info.boss ? 'boss' : 'normal'); }, [view.phase, info.boss, setMood]);
   const byId = useMemo(() => Object.fromEntries(view.deck.map((c) => [c.id, c])), [view.deck]);
+  // Llega el jefe: golpe grave, destello rojo y cartel.
+  const bossKey = view.phase === 'preview' && info.boss ? `${view.lot}-${info.boss}` : '';
+  useEffect(() => {
+    if (!bossKey) return undefined;
+    const h = setTimeout(() => {
+      sfx.boss();
+      if (fxOn) { flashScreen('#ff2b4a', 600); shake(document.querySelector('.bc-preview'), true); }
+      setBanner(`⚠ JEFE: ${BOSS[info.boss].name}`);
+      setTimeout(() => setBanner(null), 1700);
+    }, 250);
+    return () => clearTimeout(h);
+  }, [bossKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Créditos: el número salta cuando suben.
+  const prevCred = useRef(view.credits);
+  const [credPop, setCredPop] = useState(0);
+  useEffect(() => { if (view.credits > prevCred.current) setCredPop((n) => n + 1); prevCred.current = view.credits; }, [view.credits]);
 
   const act = (action, after) => {
     const res = step(st, action);
@@ -389,7 +405,10 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
           sfx.win(); setTimeout(() => sfx.cash(Math.min(10, pay)), 450);
           if (fxOn) confetti({ n: st.phase === 'victory' ? 260 : 150, coins: pay * 3 });
           if (st.phase === 'victory' && fxOn) [300, 700, 1100].forEach((d) => setTimeout(() => confetti({ x: Math.random() * innerWidth, n: 120 }), d));
-          setBanner(st.phase === 'victory' ? '¡ORDEN COMPLETA!' : `¡APROBADO! +${pay}`);
+          const w = st.lastWin || {};
+          const oneShot = w.left === RULES.prints - 1, over = w.score >= w.target * 2;
+          setBanner(st.phase === 'victory' ? '¡ORDEN COMPLETA!' : oneShot ? `¡DE UNA! +${pay}` : over ? `¡SOBRADO! +${pay}` : `¡APROBADO! +${pay}`);
+          if ((oneShot || over) && fxOn && st.phase !== 'victory') { flashScreen('#ffd27a', 450); [250, 600].forEach((d) => setTimeout(() => confetti({ x: Math.random() * innerWidth, n: 90, coins: 10 }), d)); }
           setTimeout(() => setBanner(null), 1800);
         }
         if (st.phase === 'defeat') {
@@ -433,7 +452,11 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
         const isMult = t.text.includes('Mult');
         if (isMult) sfx.mult(); else sfx.tick(anim.i);
         const modEl = document.querySelector(`[data-mslot="${t.modSlot}"]`);
-        popText(modEl, t.text.split(': ')[1], isMult ? 'mult' : 'chips');
+        const isX = t.text.includes('×');
+        const legend = MOD[view.mods[t.modSlot]]?.legendary;
+        popText(modEl, t.text.split(': ')[1], isMult ? 'mult' : 'chips', isX);
+        if (isX) { sfx.xmult(); if (fxOn) { flashScreen(legend ? '#ffd27a' : '#FF39B8', legend ? 520 : 300); shake(document.querySelector('.bc-bed'), true); } }
+        if (legend) { sfx.legend(); if (fxOn) burstAt(modEl, { n: 60 }); }
         if (fxOn) shake(modEl);
       } else sfx.tick(anim.i);
       setAnim((a) => a && { ...a, i: a.i + 1 });
@@ -508,7 +531,7 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
           {r && <span className="bc-stat"><small>Calidad</small><b className={`bc-score-num${rolled != null ? ' bump' : ''}`}>{(rolled ?? shownScore).toLocaleString('es-AR')}</b></span>}
           {r && <span className="bc-stat"><small>Impresiones</small><b>{r.prints}</b></span>}
           {r && <span className="bc-stat"><small>Descartes</small><b>{r.discards}</b></span>}
-          <span className="bc-stat brass"><small>Créditos</small><b>{view.credits}</b></span>
+          <span className="bc-stat brass"><small>Créditos</small><b key={credPop} className={credPop ? 'bc-credpop' : ''}>{view.credits}</b></span>
           <span className="bc-quick">
             {canFull() && <button className="bc-icon" onClick={() => (isFull() ? exitFull() : enterFull())} title="Pantalla completa" aria-label="Pantalla completa">⛶</button>}
             <button className={`bc-icon${set.motion === 'reducido' ? ' off' : ''}`} onClick={() => patch({ motion: set.motion === 'reducido' ? 'normal' : 'reducido' })}
@@ -843,7 +866,7 @@ function PackOpen({ st, act }) {
   }, []);
   useEffect(() => {
     if (stage !== 'reveal' || shown >= opts.length) return undefined;
-    const h = setTimeout(() => { sfx.flip(shown); setShown((n) => n + 1); if (shown === opts.length - 1 && kind === 'maker') sfx.shimmer(); }, 230);
+    const h = setTimeout(() => { sfx.flip(shown); const o = opts[shown]; if (o?.kind === 'mod' && MOD[o.id].legendary) { sfx.legend(); flashScreen('#ffd27a', 500); } setShown((n) => n + 1); if (shown === opts.length - 1 && kind === 'maker') sfx.shimmer(); }, 230);
     return () => clearTimeout(h);
   }, [stage, shown, opts.length, kind]);
   const pick = (i, el) => act({ type: 'PICK_PACK', idx: i }, () => { sfx.cash(5); burstAt(el, { n: 50 }); confetti({ n: 70 }); });
