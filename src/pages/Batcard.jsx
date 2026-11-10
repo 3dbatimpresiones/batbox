@@ -390,7 +390,6 @@ function Juego({ st, setSt, setMood, set, patch, speed, reduced, fxOn, onMenu, o
           <LiveChip />
           <span className="bc-pill">Lote {view.lot + 1}/{LOTS}</span>
           <span className={`bc-pill ${info.boss ? 'boss' : ''}`}>{info.name}</span>
-          {r && <span className="bc-pill">Meta <b>{r.target.toLocaleString('es-AR')}</b></span>}
         </div>
         <div className="bc-hud-r">
           {r && <span className="bc-stat"><small>Calidad</small><b className={`bc-score-num${rolled != null ? ' bump' : ''}`}>{(rolled ?? shownScore).toLocaleString('es-AR')}</b></span>}
