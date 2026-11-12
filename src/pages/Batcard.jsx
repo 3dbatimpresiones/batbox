@@ -150,7 +150,12 @@ export default function Batcard() {
   }, [screen, st]);
   // El audio del easter egg se escucha limpio y la música de BATCARD vuelve al terminar.
   useEffect(() => {
-    music.setVolume(trollPlaying || set.mute ? 0 : set.music);
+    if (trollPlaying || set.mute) {
+      music.setVolume(0);
+      return;
+    }
+    music.setVolume(set.music);
+    if (set.music > 0) music.start();
   }, [trollPlaying, set.mute, set.music]);
   const fxOn = !reduced && set.flashes;
   usePwaHead();
