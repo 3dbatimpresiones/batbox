@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import '../styles/batcard.css';
 import portada from '../assets/batcard-portada.webp';
 import Plasma from '../components/batcard/Plasma.jsx';
+import TrollVideo from '../components/batcard/TrollVideo.jsx';
 import Card, { CardBack } from '../components/batcard/Card.jsx';
 import { SKINS, setSkin, preloadSkin } from '../components/batcard/skins.js';
 import { Setup, Desafios, Logros, EventPanel, RuleSheet, AchToasts } from '../components/batcard/Modos.jsx';
@@ -134,6 +135,7 @@ export default function Batcard() {
   const [{ save, problem }, setSaveInfo] = useState(loadSave);
   const [st, setSt] = useState(null);
   const [mood, setMood] = useState('normal'); // color del fondo: lo decide lo que se VE (no se adelanta al resultado)
+  const [trollPlaying, setTrollPlaying] = useState(false);
   // La música arranca con la primera interacción (los navegadores lo exigen) y se corta al salir.
   useEffect(() => {
     // iPad/Safari: el audio se habilita al SOLTAR el dedo (touchend) o con click, no al apoyarlo.
@@ -146,6 +148,10 @@ export default function Batcard() {
     const lv = screen !== 'juego' || !st || st.phase !== 'round' ? 0 : st.round?.boss || st.round?.heat >= 5 ? 2 : 1;
     music.setLevel(lv);
   }, [screen, st]);
+  // El audio del easter egg se escucha limpio y la música de BATCARD vuelve al terminar.
+  useEffect(() => {
+    music.setVolume(trollPlaying || set.mute ? 0 : set.music);
+  }, [trollPlaying, set.mute, set.music]);
   const fxOn = !reduced && set.flashes;
   usePwaHead();
   // En partida el juego ocupa toda la pantalla (sin scroll de la página).
@@ -205,6 +211,7 @@ export default function Batcard() {
     <div className={`bc-root crt-${set.crt}${reduced ? ' reduced' : ''}${set.flashes ? '' : ' noflash'}${screen === 'juego' ? ' bc-full' : ''}${profile.cosmetics?.marco ? ' ' + REWARDS[profile.cosmetics.marco]?.cls : ''}`}>
       <div className="bc-stage">
         <Plasma still={set.motion === 'reducido'} mood={screen === 'juego' ? mood : 'normal'} />
+        <TrollVideo visible={screen === 'juego'} onPlayingChange={setTrollPlaying} />
         <div className="bc-crt" aria-hidden="true" />
         <Crack />
         <div className="bc-glitch" aria-hidden="true"><i /><i /><i /><i /></div>

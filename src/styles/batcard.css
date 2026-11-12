@@ -11,6 +11,20 @@
 .bc-stage { position: relative; min-height: min(86vh, 900px); background: radial-gradient(ellipse at center, #1a1450 0%, var(--bc-bg) 70%); }
 .bc-plasma { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; transition: opacity .4s; }
 .bc-plasma.off { opacity: 0; }
+.bc-troll-video { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; background: #050612; opacity: 0; pointer-events: none; transition: opacity .2s steps(3); }
+.bc-troll-video.is-playing { opacity: 1; }
+.bc-troll-trigger { position: fixed; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); z-index: 65; width: clamp(64px, 7vw, 88px); aspect-ratio: 1; display: grid; place-items: center; padding: 3px; border: 3px solid var(--bc-violet); border-radius: 12px; background: rgba(9,11,32,.9); box-shadow: 0 5px 0 #050612, 0 0 0 2px #181833, 0 0 18px rgba(36,220,255,.35); cursor: pointer; transition: transform .12s, border-color .12s, filter .12s; }
+.bc-troll-trigger img { display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.bc-troll-trigger:hover { transform: translateY(-2px) rotate(-2deg); border-color: var(--bc-cyan); filter: brightness(1.12); }
+.bc-troll-trigger:active { transform: translateY(3px); box-shadow: 0 2px 0 #050612, 0 0 0 2px #181833; }
+.bc-troll-trigger:focus-visible { outline: 3px solid var(--bc-cyan); outline-offset: 3px; }
+.bc-troll-trigger.is-playing { border-color: var(--bc-pink); animation: bc-troll-pulse .8s steps(2) infinite; }
+@keyframes bc-troll-pulse { 50% { filter: drop-shadow(-3px 0 var(--bc-cyan)) drop-shadow(3px 0 var(--bc-pink)); } }
+.reduced .bc-troll-video { transition: none; }
+.reduced .bc-troll-trigger.is-playing { animation: none; }
+@media (max-width: 640px) {
+  .bc-troll-trigger { width: 62px; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); }
+}
 
 /* CRT: solo decoración, debajo del HUD y los controles (nada interactivo se distorsiona). */
 .bc-crt { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
