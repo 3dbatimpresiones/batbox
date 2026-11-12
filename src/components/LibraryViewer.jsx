@@ -106,13 +106,21 @@ export default function LibraryViewer({ previewKey, meta, name }) {
         model.updateMatrixWorld(true);
         // Camas de impresión (256 × 256 mm, como en el laminador), en las coordenadas del archivo.
         const plates = gltf.parser.json.extras?.plates?.length ? gltf.parser.json.extras.plates : null;
-        const bedMat = new THREE.MeshStandardMaterial({ map: bedTexture(), roughness: 0.85 });
-        const edgeMat = new THREE.MeshStandardMaterial({ color: '#10152b' });
+        // Una placa plana y translúcida, como la cama del laminador. La caja sólida
+        // anterior mostraba sus laterales/base negros cuando la cámara quedaba debajo.
+        const bedMat = new THREE.MeshStandardMaterial({
+          map: bedTexture(),
+          roughness: 0.85,
+          transparent: true,
+          opacity: 0.34,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        });
         const mb0 = new THREE.Box3().setFromObject(model);
         const list = plates || (() => { const sz = mb0.getSize(new THREE.Vector3()), c = mb0.getCenter(new THREE.Vector3()); return [{ x: c.x, y: -c.z, w: Math.max(256, sz.x + 10), d: Math.max(256, sz.z + 10) }]; })();
         for (const p of list) {
-          const bed = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.d, 3), [edgeMat, edgeMat, edgeMat, edgeMat, bedMat, edgeMat]);
-          bed.position.set(p.x, p.y, -1.6); model.add(bed);
+          const bed = new THREE.Mesh(new THREE.PlaneGeometry(p.w, p.d), bedMat);
+          bed.position.set(p.x, p.y, -0.2); model.add(bed);
         }
         // Apoya el conjunto sobre la cama, centrado.
         const b = new THREE.Box3().setFromObject(model), size = b.getSize(new THREE.Vector3()), center = b.getCenter(new THREE.Vector3());
