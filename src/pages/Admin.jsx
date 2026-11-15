@@ -44,7 +44,7 @@ const STATUS = {
   draft: { label: 'Borrador', cls: 'sample' },
   archived: { label: 'Archivado', cls: 'muted' },
 };
-const TOOL_ICONS = ['calculator', 'pin', 'wrench', 'box', 'sparkles', 'graduation', 'library', 'video', 'link', 'star', 'book', 'edit', 'users', 'crown', 'shield'];
+const TOOL_ICONS = ['download', 'calculator', 'pin', 'wrench', 'box', 'sparkles', 'graduation', 'library', 'video', 'link', 'star', 'book', 'edit', 'users', 'crown', 'shield'];
 const SOCIAL_ICONS = ['instagram', 'youtube', 'message', 'users', 'link'];
 
 // ---------------------------------------------------------------------
@@ -442,7 +442,7 @@ function Editor({ slug, kind: newKind }) {
             <div className="pink-input"><textarea rows={3} value={form.description} onChange={(e) => set({ description: e.target.value })} /></div>
           </Field>
           <Field label={form.kind === 'tool' ? 'Enlace de la herramienta' : 'Enlace (YouTube, Instagram o página web)'}
-            hint={form.kind === 'tool' ? 'La dirección que abre el botón "Abrir herramienta": un enlace https:// o una sección de BATBOX (ej: #/pedidos).' : 'Pegá el enlace y se completan solos título, descripción y miniatura (YouTube, Instagram o cualquier página).'}>
+            hint={form.kind === 'tool' ? 'La dirección que abre el botón "Abrir herramienta": un enlace https:// o una sección de BATBOX (ej: #/pedidos). Si el enlace termina en .exe o .msi, el botón dice "Descargar instalador".' : 'Pegá el enlace y se completan solos título, descripción y miniatura (YouTube, Instagram o cualquier página).'}>
             <div className="pink-input"><input value={form.url} onChange={(e) => onUrl(e.target.value)} onPaste={onPasteUrl} placeholder="https://…" /></div>
           </Field>
           {form.kind !== 'tool' && (form.youtube_id || form.instagram_code || isHttpUrl(form.url)) && (

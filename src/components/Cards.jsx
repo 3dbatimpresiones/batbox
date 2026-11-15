@@ -9,6 +9,7 @@ import Icon from './Icon.jsx';
 import { AccessChip, SampleChip } from './ui.jsx';
 import { CardStats } from './Interaction.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
+import { downloadKind, fileNameFromUrl } from '../lib/files.js';
 
 const KIND_ICON = { tutorial: 'graduation', video: 'play', resource: 'library', news: 'newspaper' };
 
@@ -120,7 +121,13 @@ function ToolAction({ tool }) {
   // Las herramientas propias de BATBOX (#/…) se abren en la misma pestaña.
   const url = safeUrl(tool.url);
   const internal = url?.startsWith('#/');
-  const open = !url ? <button className="btn ghost" disabled>Sin enlace</button> : internal ? (
+  const kind = url ? downloadKind(url) : null;
+  // Un instalador baja directo (no abre otra pestaña); otros archivos (PDF, ZIP…) se abren en pestaña nueva.
+  const open = !url ? <button className="btn ghost" disabled>Sin enlace</button> : kind ? (
+    <a className="btn primary" href={url} {...(kind === 'installer' ? {} : { target: '_blank' })} rel="noopener noreferrer" title={fileNameFromUrl(url)}>
+      <Icon name="download" size={16} /> {kind === 'installer' ? 'Descargar instalador' : 'Descargar'}
+    </a>
+  ) : internal ? (
     <a className="btn primary" href={url}>Abrir herramienta <Icon name="arrowRight" size={16} /></a>
   ) : (
     <a className="btn primary" href={url} target="_blank" rel="noopener noreferrer">
@@ -139,6 +146,8 @@ export function ToolCard({ tool }) {
   const st = TOOL_STATUS[tool.status] || TOOL_STATUS.available;
   const [shotOk, setShotOk] = useState(true);
   const shot = shotOk ? thumbSrc(tool) : null;
+  // Un instalador siempre lleva la flechita de descarga como ícono (sin tener que elegirla en el editor).
+  const iconName = downloadKind(safeUrl(tool.url)) === 'installer' ? 'download' : tool.icon;
   const chips = (
     <div className="chips">
       <span className={'chip ' + st.cls}>{st.label}</span>
@@ -151,11 +160,11 @@ export function ToolCard({ tool }) {
         <div className="tool-shot">
           <img src={shot} alt={`Vista de ${tool.name}`} loading="lazy" onError={() => setShotOk(false)} />
           {chips}
-          <div className="card-icon lg"><Icon name={tool.icon} size={24} /></div>
+          <div className="card-icon lg"><Icon name={iconName} size={24} /></div>
         </div>
       ) : (
         <div className="tool-top">
-          <div className="card-icon lg"><Icon name={tool.icon} size={24} /></div>
+          <div className="card-icon lg"><Icon name={iconName} size={24} /></div>
           {chips}
         </div>
       )}
