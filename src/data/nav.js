@@ -8,6 +8,7 @@ export const NAV = [
   { to: '/wiki', key: 'wiki', label: 'WikiBAT', short: 'WikiBAT', icon: 'book' },
   { to: '/biblioteca', key: 'biblioteca', label: 'Biblioteca 3D', short: 'Biblioteca 3D', icon: 'box' },
   { to: '/library', key: 'library', label: 'Recursos', short: 'Recursos', icon: 'library' },
+  { to: '/trabajos', key: 'trabajos', label: 'Trabajos', short: 'Trabajos', icon: 'image' },
   { to: '/community', key: 'community', label: 'Comunidad', short: 'Comunidad', icon: 'users' },
   // Módulos de comunidad (sub: true): no van en la barra principal; se listan dentro de #/community.
   // Se muestran solo a miembros y si el flag de bb_settings está activo.
