@@ -14,7 +14,6 @@ import AdminFeedback from './AdminFeedback.jsx';
 import AdminCommunity from './AdminCommunity.jsx';
 import AdminPartners from './AdminPartners.jsx';
 import AdminBiblioteca from './AdminBiblioteca.jsx';
-import AdminTrabajos from './AdminTrabajos.jsx';
 import { navigate } from '../lib/router.js';
 import { matches } from '../lib/text.js';
 import { isHttpUrl, parseMediaUrl, slugify, thumbSrc, ytThumb } from '../lib/media.js';
@@ -73,7 +72,7 @@ export default function Admin({ route }) {
       <MigrationNotice />
       {sub === 'nuevo' && <Editor key={'new-' + arg} kind={KIND[arg] ? arg : 'tutorial'} />}
       {sub === 'editar' && <Editor key={'edit-' + arg} slug={arg} />}
-      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', sugerencias: 'feedback', comentarios: 'comments', redes: 'socials', wiki: 'wiki', juego: 'tycoon', biblioteca: 'library3d', trabajos: 'catalog' }[route.query.tab] || 'content'} />}
+      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', sugerencias: 'feedback', comentarios: 'comments', redes: 'socials', wiki: 'wiki', juego: 'tycoon', biblioteca: 'library3d' }[route.query.tab] || 'content'} />}
     </div>
   );
 }
@@ -115,7 +114,6 @@ function Dashboard({ initialTab }) {
         <button className={'seg' + (tab === 'community' ? ' active' : '')} onClick={() => setTab('community')}>Comunidad</button>
         {isAdmin && <button className={'seg' + (tab === 'library3d' ? ' active' : '')} onClick={() => setTab('library3d')}>Biblioteca 3D</button>}
         {isAdmin && <button className={'seg' + (tab === 'partners' ? ' active' : '')} onClick={() => setTab('partners')}>Patrocinadores</button>}
-        <button className={'seg' + (tab === 'catalog' ? ' active' : '')} onClick={() => setTab('catalog')}>Trabajos</button>
         <button className={'seg' + (tab === 'wiki' ? ' active' : '')} onClick={() => setTab('wiki')}>WikiBAT</button>
         <button className={'seg' + (tab === 'comments' ? ' active' : '')} onClick={() => setTab('comments')}>Comentarios</button>
         <button className={'seg' + (tab === 'socials' ? ' active' : '')} onClick={() => setTab('socials')}>Redes</button>
@@ -125,7 +123,6 @@ function Dashboard({ initialTab }) {
       {tab === 'members' && isAdmin && <AdminMembers />}
       {tab === 'comments' && <AdminComments />}
       {tab === 'wiki' && <AdminWiki />}
-      {tab === 'catalog' && <AdminTrabajos />}
       {tab === 'community' && <AdminCommunity />}
       {tab === 'partners' && isAdmin && <AdminPartners />}
       {tab === 'library3d' && isAdmin && <AdminBiblioteca />}

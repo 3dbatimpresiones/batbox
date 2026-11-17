@@ -15,7 +15,6 @@ import Juego from './pages/Juego.jsx';
 import Filacolor from './pages/Filacolor.jsx';
 import Feedback from './pages/Feedback.jsx';
 // El Creador de Llaveros trae el motor 3D: se descarga solo al abrirlo.
-const Trabajos = lazy(() => import('./pages/Trabajos.jsx'));
 const Keychains = lazy(() => import('./pages/Keychains.jsx'));
 // El Personalizador de chops también trae el motor 3D: se descarga solo al abrirlo.
 const Chops = lazy(() => import('./pages/Chops.jsx'));
@@ -68,7 +67,6 @@ function Page({ route }) {
     case 'mapa': return <Suspense fallback={<Loading />}><MapMaker /></Suspense>;
     case 'patrocinadores': return <Suspense fallback={<Loading />}><Partners route={route} /></Suspense>;
     case 'biblioteca': return <Suspense fallback={<Loading />}><Biblioteca route={route} /></Suspense>;
-    case 'trabajos': return <Suspense fallback={<Loading />}><Trabajos route={route} /></Suspense>;
     case 'galeria': return <Suspense fallback={<Loading />}><Gallery route={route} /></Suspense>;
     case 'batcard': return <Suspense fallback={<Loading />}><Batcard /></Suspense>;
     case 'juego': return <Juego query={query} />;
