@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { sb } from '../lib/supabase.js';
 import { currentRoute } from '../lib/router.js';
+import { switchPushOwner } from '../lib/rifasPush.js';
 
 // =====================================================================
 // AUTH DE BATBOX
@@ -121,6 +122,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         lastUid.current = null;
+        setTimeout(() => switchPushOwner(null).catch(() => {}), 0);
         setState({ loading: false, session: null, member: null, error: null });
         return;
       }
@@ -135,7 +137,10 @@ export function AuthProvider({ children }) {
         }
         lastUid.current = uid;
         // Supabase recomienda no esperar otras llamadas dentro de este callback.
-        setTimeout(() => loadMember(session), 0);
+        setTimeout(async () => {
+          await switchPushOwner(uid).catch(() => {});
+          if (lastUid.current === uid) loadMember(session);
+        }, 0);
         return;
       }
       // TOKEN_REFRESHED, USER_UPDATED: solo se actualiza la sesión.
@@ -159,7 +164,11 @@ export function AuthProvider({ children }) {
   // scope 'local': cierra la sesión en este navegador (BATBOX y cotizador),
   // sin desconectar los otros dispositivos de la persona.
   const signOut = useCallback(async () => {
-    if (!SIM) await sb.auth.signOut({ scope: 'local' });
+    if (!SIM) {
+      await switchPushOwner(null, true).catch(() => {});
+      if (/^\/rifas\/(p\/|[^/]+\/mi\/)/.test(currentRoute())) window.location.hash = '/rifas';
+      await sb.auth.signOut({ scope: 'local' });
+    }
     lastUid.current = null;
     setState({ loading: false, session: null, member: null, error: null });
   }, []);

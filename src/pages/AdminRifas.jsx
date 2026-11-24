@@ -4,6 +4,7 @@ import * as api from '../lib/rifasApi.js';
 import { navigate, useRoute } from '../lib/router.js';
 import Icon from '../components/Icon.jsx';
 import { Confirm, Empty } from '../components/ui.jsx';
+import { RafflePushAdmin } from '../components/RafflePush.jsx';
 import '../styles/rifas.css';
 
 // Pestaña "Rifas" del panel (#/admin?tab=rifas). Solo administradores: cada función
@@ -33,6 +34,7 @@ function Qr({ text, size = 150 }) {
 export default function AdminRifas() {
   const { query } = useRoute();
   if (query.r) return <RafflePanel key={query.r} id={query.r} view={query.v || 'admin'} />;
+  if (query.v === 'notificaciones') return <RafflePushAdmin />;
   return <MyRaffles />;
 }
 
@@ -51,6 +53,7 @@ function MyRaffles() {
   return (
     <div className="rf-admin">
       <div className="rf-mine-head"><h3>Rifas activas</h3><button type="button" className="btn primary" onClick={() => setCreate(true)}><Icon name="sparkles" size={16} /> Nueva rifa</button></div>
+      <p><a className="btn ghost" href="#/admin?tab=rifas&v=notificaciones"><Icon name="bell" size={16} /> Notificaciones de rifas</a></p>
       {error && <div className="feedback-error">{error}</div>}
       {!list ? <div className="cm-loading"><span className="spinner xs" /></div> : (
         <>

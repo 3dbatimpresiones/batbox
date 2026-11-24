@@ -74,8 +74,9 @@ function usePwaHead() {
     const base = import.meta.env.BASE_URL || '/batbox/';
     const added = [];
     const add = (tag, attrs) => { const el = document.createElement(tag); Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v)); el.dataset.batcard = '1'; document.head.appendChild(el); added.push(el); };
-    const prevManifest = document.querySelector('link[rel="manifest"]:not([data-batcard])');
-    if (prevManifest) prevManifest.setAttribute('rel', 'x-manifest-off');
+    const previousLinks = [...document.querySelectorAll('link:is([rel="manifest"],[rel="apple-touch-icon"]):not([data-batcard])')]
+      .map((link) => [link, link.rel]);
+    previousLinks.forEach(([link]) => { link.rel = 'x-batcard-off'; });
     add('link', { rel: 'manifest', href: base + 'batcard-manifest.json' });
     add('link', { rel: 'apple-touch-icon', href: base + 'batcard-180.png' });
     add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
@@ -83,7 +84,7 @@ function usePwaHead() {
     add('meta', { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' });
     add('meta', { name: 'apple-mobile-web-app-title', content: 'BATCARD' });
     add('meta', { name: 'theme-color', content: '#090B20' });
-    return () => { added.forEach((el) => el.remove()); if (prevManifest) prevManifest.setAttribute('rel', 'manifest'); };
+    return () => { added.forEach((el) => el.remove()); previousLinks.forEach(([link, rel]) => { link.rel = rel; }); };
   }, []);
 }
 function InstallButton() {

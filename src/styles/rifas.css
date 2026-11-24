@@ -440,3 +440,17 @@
 .rf-head h1.rf-title.l { font-size: clamp(14px, 3.6vw, 26px); }
 .rf-head h1.rf-title.xl { font-size: clamp(12px, 3vw, 22px); }
 @media (min-width: 960px) { .rf-head h1.rf-title { font-size: 26px; } .rf-head h1.rf-title.l { font-size: 22px; } .rf-head h1.rf-title.xl { font-size: 19px; } }
+.rf-push { max-width: 760px; margin: 1rem auto; padding: clamp(1rem, 3vw, 1.5rem); }
+.rf-push h2, .rf-push h3 { margin: 0 0 .55rem; }
+.rf-push :is(p, details, section) { margin-block: .65rem; }
+.rf-push details { border-top: 1px solid currentColor; padding-top: .65rem; }
+.rf-push summary { cursor: pointer; font-weight: 700; }
+.rf-push .rf-actions { flex-wrap: wrap; gap: .5rem; }
+.rf-push form { display: grid; gap: .7rem; }
+.rf-push-check { display: flex; align-items: center; gap: .55rem; }
+.rf-push-preview, .rf-push-list li { border-radius: .6rem; padding: .7rem; background: rgb(127 127 200 / 10%); }
+.rf-push-preview > *, .rf-push-list small { display: block; }
+.rf-push-list { padding: 0; list-style: none; display: grid; gap: .5rem; }
+.rf-push-list li p { margin: .3rem 0; overflow-wrap: anywhere; }
+.rf-push-list .rf-push-unread { border-inline-start: 3px solid #63bcff; }
+.rf-open-ticket { margin-inline: 0; }

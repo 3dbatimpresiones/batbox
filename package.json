@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:rifas": "node scripts/test-rifas.mjs",
+    "test:rifas-push": "node scripts/test-rifas-push.mjs",
     "test:community": "node scripts/test-community.mjs",
     "test:support": "node scripts/test-support.mjs",
     "test:texture": "node scripts/test-texture.mjs"

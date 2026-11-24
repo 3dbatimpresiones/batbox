@@ -6,6 +6,8 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import Icon from '../components/Icon.jsx';
 import { Empty } from '../components/ui.jsx';
 import RaffleVerify from '../components/RaffleVerify.jsx';
+import { TicketNotices } from '../components/RafflePush.jsx';
+import { linkedTicket } from '../lib/rifasPush.js';
 import '../styles/rifas.css';
 
 // BAT RIFAS — vistas públicas:
@@ -18,7 +20,7 @@ const ADMIN_ONLY = api.RIFAS_ADMIN_ONLY;
 export default function Rifas({ route }) {
   const { isAdmin, access } = useAuth();
   const dec = (x) => { try { return x ? decodeURIComponent(x) : x; } catch { return x; } };
-  const [, a0, b] = route.parts;
+  const [, a0, b, entryId] = route.parts;
   const a = dec(a0);
   if (ADMIN_ONLY && !isAdmin) {
     if (access === 'loading') return <Loading />;
@@ -29,10 +31,23 @@ export default function Rifas({ route }) {
       </div>
     );
   }
-  if (a === 'p' && b) return <TicketView token={b} isNew={route.query.nuevo === '1'} />;
+  if (a === 'p' && b) return <TicketView key={b} token={b} isNew={route.query.nuevo === '1'} />;
   if (a === 'v' && b) return <VerifyView code={b} />;
+  if (a && b === 'mi' && entryId) return <PushTicket slug={a} entryId={entryId} />;
   if (a) return <RaffleView slug={a} isAdmin={isAdmin} />;
   return <RifasHome />;
+}
+
+function PushTicket({ slug, entryId }) {
+  const { access, user, signIn } = useAuth();
+  if (access === 'loading') return <Loading />;
+  const token = linkedTicket(entryId, user?.id ?? null);
+  if (token) return <TicketView key={token} token={token} />;
+  return <div className="narrow rf">
+    <Empty icon="lock" title="Mi participación" text="Este dispositivo no tiene acceso a ese ticket. Abrí el enlace privado que recibiste por correo." />
+    {!user && <button type="button" className="btn ghost" onClick={() => signIn(`/rifas/${encodeURIComponent(slug)}/mi/${entryId}`)}>Ingresar a BATBOX</button>}
+    <a className="btn text" href={'#/rifas/' + encodeURIComponent(slug)}>Ver talonario</a>
+  </div>;
 }
 
 // ---------------------------------------------------------------------
@@ -66,6 +81,20 @@ function RifasHome() {
   return (
     <div className="rf">
       <header className="rf-home-head"><span className="rf-kicker">BAT RIFAS · Makers 3DBAT</span><h1>{h.active.length ? '¡Rifa activa!' : 'Rifas'}</h1></header>
+      <details className="card rf-push rf-open-ticket">
+        <summary>Abrir mi ticket</summary>
+        <form onSubmit={(ev) => {
+          ev.preventDefault();
+          const field = ev.currentTarget.elements.namedItem('ticket');
+          const match = field.value.trim().match(/#\/rifas\/p\/([a-f0-9]{64})(?:\?.*)?$/);
+          if (match) { navigate('/rifas/p/' + match[1]); return; }
+          field.setCustomValidity('Pegá el enlace privado del ticket que recibiste por correo.');
+          field.reportValidity();
+        }}>
+          <label className="field"><span>Enlace privado del ticket</span><input name="ticket" required type="text" autoComplete="off" onChange={(ev) => ev.target.setCustomValidity('')} /></label>
+          <button type="submit" className="btn ghost">Abrir ticket</button>
+        </form>
+      </details>
       {h.active.map((r) => {
         const pct = r.total ? Math.round((r.taken / r.total) * 100) : 0;
         const list = (r.prizes || []).flatMap((p) => String(p).split(/\n+/)).filter(Boolean);
@@ -416,6 +445,7 @@ function TicketView({ token, isNew }) {
   const [e, setE] = useState(undefined);
   const [error, setError] = useState('');
   const [intro, setIntro] = useState(isNew);
+  const createdHere = useRef(isNew);
   const load = useCallback(() => api.getEntry(token).then(setE).catch((err) => { setError(err.message); setE(null); }), [token]);
   useEffect(() => { load(); }, [load]);
   if (e === undefined) return <Loading />;
@@ -452,6 +482,7 @@ function TicketView({ token, isNew }) {
         {e.can_upload && <ProofUpload token={token} onDone={load} />}
       </article>
 
+      <TicketNotices token={token} isNew={createdHere.current} />
       {e.status === 'confirmed' && (
         <section className="rf-tickets" aria-label="Números validados">
           {e.tickets.map((t) => (
