@@ -221,6 +221,27 @@ check(home.finished?.slug === 'rifa-prueba-makers' && home.finished.winners.leng
 await as(ADMIN, 'select public.bb_rf_admin_set_winners($1,$2)', [rid, [50]]);
 check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-prueba-makers'])).winners[0].name === null, 'número no vendido: sin nombre');
 
+// ---- Tarea programada: recordatorio (faltan <= 12 h) y aviso de vencimiento ----
+{
+  const g2 = await as(ADMIN, 'select public.bb_rf_admin_save($1)', [{ slug: 'rifa-tick', title: 'Rifa tick', terms: 'Bases de prueba tick.', price_cents: 100, transfer_info: 'Alias x.y.z', pay_hours: 48 }]);
+  await as(ADMIN, "select public.bb_rf_admin_set_status($1, 'published')", [g2]);
+  const q = (n) => as(ANON, 'select public.bb_rf_reserve($1,$2,$3,$4,$5,$6,$7)', ['rifa-tick', [n], 'Tick ' + n, 't@ejemplo.test', '1155550000', 1, uuid()]);
+  const a1 = await q(1); const a2 = await q(2); const a3 = await q(3);
+  // a1: faltan 6 h (reservó hace 42 h) → recordatorio · a2: venció → aviso · a3: recién reservada → nada
+  await as(SU, "update public.bb_raffle_entries set expires_at = now() + interval '6 hours', updated_at = now() - interval '42 hours' where id = $1", [a1.entry_id]);
+  await as(SU, "update public.bb_raffle_entries set expires_at = now() - interval '1 minute' where id = $1", [a2.entry_id]);
+  check(await fails(ANON, 'select public.bb_rf_cron_tick()'), 'anon no corre la tarea');
+  const ids = await as(SERVICE, 'select public.bb_rf_cron_tick()');
+  await as(SERVICE, 'select public.bb_rf_cron_tick()');   // correr dos veces no duplica
+  const kinds = async (id) => (await as(SU, "select coalesce(jsonb_agg(kind order by created_at), '[]') from public.bb_raffle_mail where entry_id = $1", [id]));
+  check(JSON.stringify(await kinds(a1.entry_id)) === '["reserved","reminder"]', 'recordatorio una sola vez: ' + JSON.stringify(await kinds(a1.entry_id)));
+  check(JSON.stringify(await kinds(a2.entry_id)) === '["reserved","expired"]', 'aviso de vencimiento: ' + JSON.stringify(await kinds(a2.entry_id)));
+  check(JSON.stringify(await kinds(a3.entry_id)) === '["reserved"]', 'recién reservada: sin recordatorio');
+  check((await as(SU, 'select status from public.bb_raffle_entries where id = $1', [a2.entry_id])) === 'expired', 'la tarea libera la vencida');
+  check(Array.isArray(ids) && ids.includes(a1.entry_id) && ids.includes(a2.entry_id), 'la tarea devuelve las participaciones con correos por enviar');
+  check((await as(SERVICE, 'select public.bb_rf_cron_check($1)', ['cualquiera'])) === false, 'clave de tarea inválida rechazada');
+}
+
 // ---- Borrar cancelados/vencidos ----
 {
   const before = await as(SU, "select count(*)::int from public.bb_raffle_entries where raffle_id = $1 and status in ('cancelled','expired')", [rid]);
