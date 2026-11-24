@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import * as api from '../lib/rifasApi.js';
 import { navigate } from '../lib/router.js';
@@ -66,7 +66,8 @@ function RifasHome() {
         const pct = r.total ? Math.round((r.taken / r.total) * 100) : 0;
         const list = (r.prizes || []).flatMap((p) => String(p).split(/\n+/)).filter(Boolean);
         return (
-          <a key={r.slug} className="card rf-live-card" href={'#/rifas/' + r.slug}>
+          <Fragment key={r.slug}>
+          <a className="card rf-live-card" href={'#/rifas/' + r.slug}>
             {r.cover_url ? <img src={r.cover_url} alt="" /> : <div className="rf-coverph"><Icon name="trophy" size={44} /><b>BAT RIFAS</b></div>}
             <div className="rf-live-txt">
               <span className="rf-live-badge">{r.status === 'paused' ? 'Reservas pausadas' : 'Activa · elegí tus números'}</span>
@@ -76,7 +77,15 @@ function RifasHome() {
               <small>{pct}% vendido · {api.money(r.price_cents)} por número · {api.fmtDate(r.draw_at, false) || 'se sortea al agotar los números'}</small>
               <span className="btn primary">Participar</span>
             </div>
-          </a>);
+          </a>
+          {r.terms && (
+            <section className="card rf-terms-card rf-terms-full" aria-label={'Bases y condiciones de ' + r.title}>
+              <h2><Icon name="book" size={18} /> Bases y condiciones</h2>
+              <div className="rf-terms-txt">{r.terms}</div>
+              <a className="btn primary" href={'#/rifas/' + r.slug}>Ir al talonario y participar</a>
+            </section>
+          )}
+          </Fragment>);
       })}
       {fin && (
         <section className="rf-finished" aria-labelledby="rf-fin-h">
