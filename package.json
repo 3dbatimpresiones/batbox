@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test:rifas": "node scripts/test-rifas.mjs",
     "test:community": "node scripts/test-community.mjs",
     "test:support": "node scripts/test-support.mjs",
     "test:texture": "node scripts/test-texture.mjs"
@@ -18,11 +19,13 @@
     "leaflet": "1.9.4",
     "manifold-3d": "3.5.1",
     "opentype.js": "1.3.4",
+    "qrcode-generator": "1.4.4",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "three": "0.185.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.14",
     "@vitejs/plugin-react": "5.2.0",
     "meshoptimizer": "1.3.0",
     "node-unrar-js": "2.0.2",

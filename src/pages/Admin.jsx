@@ -14,6 +14,7 @@ import AdminFeedback from './AdminFeedback.jsx';
 import AdminCommunity from './AdminCommunity.jsx';
 import AdminPartners from './AdminPartners.jsx';
 import AdminBiblioteca from './AdminBiblioteca.jsx';
+import AdminRifas from './AdminRifas.jsx';
 import { navigate } from '../lib/router.js';
 import { matches } from '../lib/text.js';
 import { isHttpUrl, parseMediaUrl, slugify, thumbSrc, ytThumb } from '../lib/media.js';
@@ -72,7 +73,7 @@ export default function Admin({ route }) {
       <MigrationNotice />
       {sub === 'nuevo' && <Editor key={'new-' + arg} kind={KIND[arg] ? arg : 'tutorial'} />}
       {sub === 'editar' && <Editor key={'edit-' + arg} slug={arg} />}
-      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', sugerencias: 'feedback', comentarios: 'comments', redes: 'socials', wiki: 'wiki', juego: 'tycoon', biblioteca: 'library3d' }[route.query.tab] || 'content'} />}
+      {!sub && <Dashboard initialTab={{ miembros: 'members', suscripciones: 'subs', whatsapp: 'group', actividad: 'activity', sugerencias: 'feedback', comentarios: 'comments', redes: 'socials', wiki: 'wiki', juego: 'tycoon', biblioteca: 'library3d', rifas: 'rifas' }[route.query.tab] || 'content'} />}
     </div>
   );
 }
@@ -97,7 +98,7 @@ function MigrationNotice() {
 function Dashboard({ initialTab }) {
   const { isAdmin } = useAuth();
   // Miembros y Actividad muestran datos personales: solo admins (los editores no).
-  const [tab, setTab] = useState(!isAdmin && ['members', 'subs', 'group', 'activity', 'feedback', 'partners', 'library3d'].includes(initialTab) ? 'content' : initialTab);
+  const [tab, setTab] = useState(!isAdmin && ['members', 'subs', 'group', 'activity', 'feedback', 'partners', 'library3d', 'rifas'].includes(initialTab) ? 'content' : initialTab);
   const { socials } = useContent();
   return (
     <div>
@@ -114,6 +115,7 @@ function Dashboard({ initialTab }) {
         <button className={'seg' + (tab === 'community' ? ' active' : '')} onClick={() => setTab('community')}>Comunidad</button>
         {isAdmin && <button className={'seg' + (tab === 'library3d' ? ' active' : '')} onClick={() => setTab('library3d')}>Biblioteca 3D</button>}
         {isAdmin && <button className={'seg' + (tab === 'partners' ? ' active' : '')} onClick={() => setTab('partners')}>Patrocinadores</button>}
+        {isAdmin && <button className={'seg' + (tab === 'rifas' ? ' active' : '')} onClick={() => setTab('rifas')}>Rifas</button>}
         <button className={'seg' + (tab === 'wiki' ? ' active' : '')} onClick={() => setTab('wiki')}>WikiBAT</button>
         <button className={'seg' + (tab === 'comments' ? ' active' : '')} onClick={() => setTab('comments')}>Comentarios</button>
         <button className={'seg' + (tab === 'socials' ? ' active' : '')} onClick={() => setTab('socials')}>Redes</button>
@@ -126,6 +128,7 @@ function Dashboard({ initialTab }) {
       {tab === 'community' && <AdminCommunity />}
       {tab === 'partners' && isAdmin && <AdminPartners />}
       {tab === 'library3d' && isAdmin && <AdminBiblioteca />}
+      {tab === 'rifas' && isAdmin && <AdminRifas />}
       {tab === 'tycoon' && <AdminTycoon />}
       {tab === 'subs' && isAdmin && <AdminSubs />}
       {tab === 'group' && isAdmin && <AdminGroup />}

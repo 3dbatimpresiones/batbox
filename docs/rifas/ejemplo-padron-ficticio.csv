@@ -1,0 +1,7 @@
+﻿"number","name","phone","email","status","code","date",seller,seller_code
+"00","'=HYPERLINK(""x"")","11 5555 0001","cero@ejemplo.test","PAID","79266c0b96b64f71a99d0cfd","24/11/2026",,
+"01","María Núñez, Córdoba","351 555 0000","maria@ejemplo.test","PAID","5ea742d0c0d945cbae08235c","24/11/2026",,
+"02","María Núñez, Córdoba","351 555 0000","maria@ejemplo.test","PAID","5ea742d0c0d945cbae08235c","24/11/2026",,
+"07","José Pérez, ""el maker""","+54 9 11 5555 0000","ana@ejemplo.test","PAID","0acdf42ec1da49a5ac75ddcd","24/11/2026",,
+"08","José Pérez, ""el maker""","+54 9 11 5555 0000","ana@ejemplo.test","PAID","0acdf42ec1da49a5ac75ddcd","24/11/2026",,
+"09","José Pérez, ""el maker""","+54 9 11 5555 0000","ana@ejemplo.test","PAID","0acdf42ec1da49a5ac75ddcd","24/11/2026",,
