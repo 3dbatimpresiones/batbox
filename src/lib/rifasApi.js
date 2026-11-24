@@ -6,8 +6,8 @@ import { shrinkImage } from './communityApi.js';
 // acá solo se llama a las funciones y se da formato.
 
 export const TZ = 'America/Argentina/Buenos_Aires';
-// Etapa de prueba: SOLO ADMINS (la base también lo exige con bb_rf_admin_only()). Para abrir al público: false acá y en la base.
-export const RIFAS_ADMIN_ONLY = true;
+// El acceso público también requiere habilitar bb_rf_admin_only() en Supabase.
+export const RIFAS_ADMIN_ONLY = false;
 const FN_URL = `${SUPABASE_URL}/functions/v1/bb-rifas`;
 
 export const RAFFLE_STATUS = {
