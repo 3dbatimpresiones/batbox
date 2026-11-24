@@ -489,3 +489,12 @@ a.rf-set-tile { text-decoration: none; }
 .rf-hero2-img img { background: #fff; }
 @media (min-width: 820px) { .rf-hero2-img .rf-coverph { height: 100%; aspect-ratio: auto; min-height: 320px; } }
 .rf-hero2-left { align-content: center; } .rf-hero2-left b { white-space: nowrap; }
+.card.rf-live-wrap { padding: 20px; border: 1px solid rgba(93,218,219,.45); } .rf-live-wrap .rf-hero2 { margin: 0 auto; }
+/* Con rifa activa el bloque del Inicio usa todo el ancho de la tarjeta */
+.hero-in:has(.rf-hero2) { max-width: 1160px; }
+.rf-hero2 { max-width: 1160px; }
+@media (min-width: 820px) {
+  .rf-hero2 { grid-template-columns: 1fr 1.15fr; gap: 32px; }
+  .rf-hero2-stats b { font-size: clamp(18px, 2vw, 24px); white-space: nowrap; }
+  .rf-prizelist.mini li { padding: 10px 14px; font-size: 16px; }
+}

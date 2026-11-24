@@ -6,6 +6,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import Icon from '../components/Icon.jsx';
 import { Empty } from '../components/ui.jsx';
 import RaffleVerify from '../components/RaffleVerify.jsx';
+import RaffleHero from '../components/RaffleHero.jsx';
 import { TicketNotices } from '../components/RafflePush.jsx';
 import { linkedTicket } from '../lib/rifasPush.js';
 import '../styles/rifas.css';
@@ -96,21 +97,10 @@ function RifasHome() {
         </form>
       </details>
       {h.active.map((r) => {
-        const pct = r.total ? Math.round((r.taken / r.total) * 100) : 0;
         const list = (r.prizes || []).flatMap((p) => String(p).split(/\n+/)).filter(Boolean);
         return (
           <Fragment key={r.slug}>
-          <a className="card rf-live-card" href={'#/rifas/' + r.slug}>
-            {r.cover_url ? <img src={r.cover_url} alt="" /> : <div className="rf-coverph"><Icon name="trophy" size={44} /><b>BAT RIFAS</b></div>}
-            <div className="rf-live-txt">
-              <span className="rf-live-badge">{r.status === 'paused' ? 'Reservas pausadas' : 'Activa · elegí tus números'}</span>
-              <h2>{r.title}</h2>
-              {list.length > 0 && <ol className="rf-prizelist mini">{list.map((p, i) => <li key={i}><span className="rf-place" aria-hidden>{i + 1}°</span><span>{p}</span></li>)}</ol>}
-              <span className="rf-bar" aria-hidden><i style={{ width: pct + '%' }} /></span>
-              <small>{pct}% vendido · {api.money(r.price_cents)} por número · {api.fmtDate(r.draw_at, false) || 'se sortea al agotar los números'}</small>
-              <span className="btn primary">Participar</span>
-            </div>
-          </a>
+          <section className="card rf-live-wrap"><RaffleHero r={r} /></section>
           <RaffleVerify many={(r.prizes || []).length > 1} />
           {r.terms && (
             <section className="card rf-terms-card rf-terms-full" aria-label={'Bases y condiciones de ' + r.title}>
