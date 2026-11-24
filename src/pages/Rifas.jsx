@@ -219,7 +219,6 @@ function RaffleView({ slug, isAdmin }) {
           <section className="card rf-terms-card" aria-labelledby="rf-terms-h">
             <h2 id="rf-terms-h"><Icon name="book" size={18} /> Bases y condiciones</h2>
             <div className="rf-terms-txt" tabIndex={0}>{raffle.terms || 'Las bases todavía no se cargaron.'}</div>
-            <small className="rf-muted">Versión {raffle.terms_version}. {api.fmtDate(raffle.draw_at) ? `Sorteo: ${api.fmtDate(raffle.draw_at)} (hora de Buenos Aires).` : 'El sorteo se hace cuando se vendan todos los números.'} Se hace por fuera de BATBOX con el procedimiento de la comunidad.</small>
           </section>
           {raffle.organizer && <div className="rf-org"><Icon name="user" size={22} /><div><small>Organizador</small><b>{raffle.organizer}</b></div></div>}
           <div className="rf-phoneqr card"><Qr text={shareLink} size={130} /><div><Icon name="sparkles" size={20} /><b>Escaneá el código para ver el talonario desde tu celular</b></div></div>
