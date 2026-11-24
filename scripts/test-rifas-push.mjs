@@ -236,7 +236,7 @@ const testEvent = await rp('admin','admin_test',sa,'registered');
 assert.deepEqual(await sql('root','select device_id from public.bb_rp_deliveries where event_id=$1',[testEvent]),[{device_id:adminDevice}]);
 await rp('admin','admin_test',sa,'registered');
 await rp('admin','admin_test',sa,'registered');
-await assert.rejects(rp('admin','admin_test',sa,'registered'),/Demasiados/);
+await rp('admin','admin_test',sa,'registered'); // sin límite de pruebas para admins (pedido del usuario)
 await rp('anon','disable',s1,null);
 assert.equal((await rp('anon','inbox',second.token,s1)).subscribed,false);
 
