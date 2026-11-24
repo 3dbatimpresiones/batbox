@@ -225,6 +225,8 @@ function Entries({ raffle, stats, search }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(null);
+  const [purge, setPurge] = useState(false);
+  const [purgeMsg, setPurgeMsg] = useState('');
   const load = useCallback(() => api.adminEntries(raffle.id, { q, status, sort, page }).then(setData).catch((e) => setError(e.message)), [raffle.id, q, status, sort, page]);
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
   const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
@@ -237,7 +239,13 @@ function Entries({ raffle, stats, search }) {
         {[['pending', 'Apartado', s.held, 'blue'], ['review', 'Revisando', s.review, 'orange'], ['confirmed', 'Validado', s.confirmed, 'green']].map(([v, l, n, c]) => (
           <button key={v} type="button" className={'rf-stat ' + c + (status === v ? ' active' : '')} aria-pressed={status === v} onClick={() => filter(v)}><b>{n}</b><span>{l}</span></button>))}
       </div>
-      <small className="rf-muted">Cantidad de números. Tocá una tarjeta para filtrar la lista.</small>
+      <div className="rf-listbar">
+        <small className="rf-muted">Cantidad de números. Tocá una tarjeta para filtrar la lista.</small>
+        <button type="button" className="rf-foot-btn danger" onClick={() => setPurge(true)}><Icon name="trash" size={16} /> Borrar cancelados y vencidos</button>
+      </div>
+      {purgeMsg && <div className="cm-ok" role="status">{purgeMsg}</div>}
+      <Confirm open={purge} danger title="¿Borrar cancelados y vencidos?" text="Se borran de la lista todas las participaciones canceladas o vencidas de esta rifa, con sus comprobantes. Las apartadas, en revisión y validadas no se tocan." yes="Borrar"
+        onYes={async () => { setPurge(false); try { const r = await api.adminDeleteEntries(raffle.id); setPurgeMsg(r.deleted ? `Se borraron ${r.deleted} registro(s).` : 'No había cancelados ni vencidos.'); load(); } catch (e) { setError(e.message); } }} onNo={() => setPurge(false)} />
       {search && (
         <div className="rf-filters">
           <div className="pink-input"><input type="search" autoFocus value={q} placeholder="Número, código, nombre, teléfono o email" aria-label="Buscar participaciones" onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div>
@@ -450,6 +458,35 @@ function Share({ r }) {
 // ---------------------------------------------------------------------
 // Ficha, carga manual y cierre (lógica sin cambios)
 // ---------------------------------------------------------------------
+// Visor del comprobante: se abre ENCIMA de la página (sin pestaña nueva). Esc o la X lo cierran.
+function ProofViewer({ proof, onClose }) {
+  const [url, setUrl] = useState(null);
+  const [err, setErr] = useState('');
+  const isPdf = proof.mime === 'application/pdf';
+  useEffect(() => { api.proofUrl(proof.storage_path).then(setUrl).catch((e) => setErr(e.message)); }, [proof.storage_path]);
+  useEffect(() => {
+    const k = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); onClose(); } };
+    window.addEventListener('keydown', k, true);
+    return () => window.removeEventListener('keydown', k, true);
+  }, [onClose]);
+  return (
+    <div className="rf-lightbox" role="dialog" aria-modal="true" aria-label="Comprobante" onClick={(ev) => ev.target === ev.currentTarget && onClose()}>
+      <button type="button" className="rf-lightbox-x" aria-label="Cerrar comprobante" onClick={onClose}>×</button>
+      {err ? <div className="feedback-error">{err}</div>
+        : !url ? <span className="spinner" aria-label="Cargando" />
+          : isPdf ? <iframe className="rf-lightbox-pdf" src={url} title="Comprobante PDF" />
+            : <img className="rf-lightbox-img" src={url} alt="Comprobante de pago" />}
+      <small className="rf-lightbox-meta">Subido el {api.fmtDate(proof.created_at)} · {isPdf ? 'PDF' : proof.mime.split('/')[1].toUpperCase()} · {Math.round(proof.size_bytes / 1024)} KB</small>
+    </div>
+  );
+}
+
+const STATE_BTNS = [
+  { key: 'apartado', label: 'Apartado', cls: 'blue', match: ['pending', 'rejected'] },
+  { key: 'revisando', label: 'Revisando', cls: 'orange', match: ['review'] },
+  { key: 'validado', label: 'Validado', cls: 'green', match: ['confirmed'] },
+];
+
 function EntryDetail({ id, onClose }) {
   const [e, setE] = useState(null);
   const [error, setError] = useState('');
@@ -458,52 +495,91 @@ function EntryDetail({ id, onClose }) {
   const [reject, setReject] = useState(null);
   const [cancel, setCancel] = useState(null);
   const [ask, setAsk] = useState(false);
+  const [viewer, setViewer] = useState(null);
+  const [del, setDel] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [notesSaved, setNotesSaved] = useState(true);
+  const [copied, setCopied] = useState(false);
   const [op] = useState(() => ({ confirm: uuid(), reject: uuid(), cancel: uuid() }));
-  const load = useCallback(() => api.adminEntry(id).then(setE).catch((err) => setError(err.message)), [id]);
+  const load = useCallback(() => api.adminEntry(id).then((x) => { setE(x); setNotes(x?.admin_notes || ''); setNotesSaved(true); }).catch((err) => setError(err.message)), [id]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { const k = (ev) => ev.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
+  useEffect(() => { const k = (ev) => ev.key === 'Escape' && !viewer && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose, viewer]);
   const run = async (fn, msg) => { setBusy(true); setError(''); setOk(''); try { await fn(); setOk(msg); await load(); } catch (err) { setError(err.message); } finally { setBusy(false); } };
   const fmt = fmtOf(e);
+  const saveNotes = async () => { if (notesSaved || !e) return; try { await api.adminNote(e.id, notes); setNotesSaved(true); } catch (err) { setError(err.message); } };
+  const ticketUrl = e?.access_token ? api.entryUrl(e.access_token) : '';
+  const copyTicket = async () => { try { await navigator.clipboard.writeText(ticketUrl); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* sin portapapeles */ } };
+  const live = e && ['pending', 'rejected', 'review', 'confirmed'].includes(e.status);
+  const lastProof = e?.proofs?.[0];
+  const phoneDigits = (e?.phone || '').replace(/\D/g, '');
+  const pickState = (k) => {
+    if (!e || STATE_BTNS.find((b) => b.key === k).match.includes(e.status)) return;
+    if (k === 'validado') setAsk(true);
+    else if (k === 'apartado') setReject({ reason: '', mode: 'resend', hours: 48 });
+    else setError('“Revisando” se activa solo cuando el participante sube el comprobante.');
+  };
   return (
-    <div className="rf-drawer" role="dialog" aria-modal="true" aria-label="Ficha de participación" onClick={(ev) => ev.target === ev.currentTarget && onClose()}>
-      <div className="card rf-drawer-in">
-        <div className="cm-mod-head"><h3>Participación</h3><button type="button" className="mini-btn" aria-label="Cerrar" onClick={onClose}>×</button></div>
+    <div className="rf-drawer" role="dialog" aria-modal="true" aria-label="Detalles de la participación" onClick={(ev) => ev.target === ev.currentTarget && onClose()}>
+      <div className="card rf-drawer-in rf-detail">
+        <div className="rf-detail-head"><h3>Detalles</h3><button type="button" className="mini-btn" aria-label="Cerrar" onClick={onClose}>×</button></div>
         {!e ? <div className="cm-loading">{error ? <div className="feedback-error">{error}</div> : <span className="spinner xs" />}</div> : <>
-          <Chip map={api.ENTRY_STATUS} value={e.status} />
-          <div className="rf-summary">
-            <div><small>Números</small><b>{e.numbers.map(fmt).join(', ')}</b></div>
-            <div><small>Importe esperado</small><b>{api.money(e.total_cents)}</b></div>
-            <div><small>Código</small><b className="rf-code">{e.code}</b></div>
-          </div>
-          <dl className="rf-dl">
-            <dt>Nombre</dt><dd>{e.name}</dd>
-            <dt>Email</dt><dd><a href={'mailto:' + e.email}>{e.email}</a></dd>
-            <dt>Teléfono</dt><dd>{e.phone ? <a href={'https://wa.me/' + e.phone.replace(/\D/g, '')} target="_blank" rel="noopener noreferrer">{e.phone}</a> : '—'}</dd>
-            <dt>Creada</dt><dd>{api.fmtDate(e.created_at)} · {e.source === 'manual' ? 'carga manual' : 'talonario'} · bases v{e.terms_version}</dd>
-            {e.expires_at && <><dt>Vence</dt><dd>{api.fmtDate(e.expires_at)}</dd></>}
-            {e.confirmed_at && <><dt>Confirmada</dt><dd>{api.fmtDate(e.confirmed_at)}</dd></>}
-            {e.reject_reason && <><dt>Último rechazo</dt><dd>{e.reject_reason}</dd></>}
-          </dl>
-          <h4>Comprobantes</h4>
-          {e.proofs.length === 0 ? <small className="cm-date">Sin comprobante todavía.</small> : e.proofs.map((p, i) => (
-            <ProofItem key={p.id} p={p} open={i === 0} onError={setError} />))}
-          <p className="rf-muted">Antes de confirmar, revisá en la cuenta que el pago se haya acreditado.</p>
-          {error && <div className="feedback-error" role="alert">{error}</div>}
-          {ok && <div className="cm-ok" role="status">{ok}</div>}
-          <div className="rf-actions">
-            {['review', 'pending', 'rejected'].includes(e.status) && <button type="button" className="btn primary" disabled={busy} onClick={() => setAsk(true)}><Icon name="check" size={16} /> Confirmar pago</button>}
-            {['review', 'pending', 'rejected'].includes(e.status) && <button type="button" className="btn ghost" disabled={busy} onClick={() => setReject({ reason: '', mode: 'resend', hours: 24 })}><Icon name="x" size={16} /> Rechazar comprobante</button>}
-            {!['cancelled', 'expired'].includes(e.status) && <button type="button" className="btn text" disabled={busy} onClick={() => setCancel({ reason: '' })}>Cancelar reserva</button>}
-          </div>
+          <div className="rf-detail-who"><b>{e.name}</b><small className="rf-code">{e.code.toUpperCase()}</small></div>
+          <ul className="rf-detail-rows">
+            <li><Icon name="clipboard" size={20} /><span className="rf-detail-nums">{e.numbers.map((n) => <span key={n}>{fmt(n)}</span>)}</span></li>
+            <li><Icon name="clock" size={20} /><span>{api.fmtDate(e.created_at)}{e.expires_at && ['pending', 'rejected'].includes(e.status) ? <small> · vence {api.fmtDate(e.expires_at)}</small> : null}</span></li>
+            <li><span className="rf-detail-ico">$</span><span>{api.money(e.total_cents)}</span></li>
+            <li><Icon name="message" size={20} /><span>{e.phone || '—'}</span>
+              {phoneDigits && <><a className="rf-detail-act wa" href={'https://wa.me/' + phoneDigits} target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp" title="WhatsApp">WA</a>
+                <a className="rf-detail-act" href={'tel:' + phoneDigits} aria-label="Llamar" title="Llamar">📞</a></>}</li>
+            <li><Icon name="send" size={20} /><a href={'mailto:' + e.email}>{e.email}</a></li>
+          </ul>
+
+          <h4>Estado</h4>
+          {live ? (
+            <div className="rf-states" role="group" aria-label="Estado de la participación">
+              {STATE_BTNS.map((b) => { const on = b.match.includes(e.status); return (
+                <button key={b.key} type="button" className={'rf-state ' + b.cls + (on ? ' on' : '')} aria-pressed={on} disabled={busy} onClick={() => pickState(b.key)}>
+                  <i aria-hidden /> {b.label}{on && e.status === 'rejected' ? ' (rechazado)' : ''}</button>); })}
+            </div>
+          ) : <Chip map={api.ENTRY_STATUS} value={e.status} />}
+          {e.reject_reason && e.status === 'rejected' && <small className="rf-muted">Último rechazo: {e.reject_reason}</small>}
           {reject && (
             <div className="card cm-report">
+              <b>Volver a Apartado (rechazar el comprobante)</b>
               <label className="field"><span>Motivo (lo ve el participante)</span><div className="pink-input"><input autoFocus value={reject.reason} maxLength={300} placeholder="Ej.: el importe no coincide" onChange={(ev) => setReject({ ...reject, reason: ev.target.value })} /></div></label>
               <label className="nb-pref"><input type="radio" name="rmode" checked={reject.mode === 'resend'} onChange={() => setReject({ ...reject, mode: 'resend' })} /> Dejar reenviar con nuevo plazo de
-                <input className="rf-hours" type="number" min={1} max={720} value={reject.hours} onChange={(ev) => setReject({ ...reject, hours: Number(ev.target.value) })} aria-label="Horas" /> h (los números siguen apartados)</label>
+                <input className="rf-hours" type="number" min={1} max={720} value={reject.hours} onChange={(ev) => setReject({ ...reject, hours: Number(ev.target.value) })} aria-label="Horas" /> h</label>
               <label className="nb-pref"><input type="radio" name="rmode" checked={reject.mode === 'release'} onChange={() => setReject({ ...reject, mode: 'release' })} /> Liberar los números</label>
               <div className="modal-actions"><button type="button" className="btn text" onClick={() => setReject(null)}>Volver</button>
                 <button type="button" className="btn primary" disabled={busy || reject.reason.trim().length < 3} onClick={() => run(() => api.adminReject(id, reject.reason, reject.mode, reject.hours, op.reject), 'Comprobante rechazado; se avisó por correo.').then(() => { setReject(null); api.adminMailFlush(id).catch(() => {}); })}>Rechazar</button></div>
             </div>)}
+
+          <div className="rf-notes">
+            <label htmlFor="rf-notes-in"><b>Notas privadas</b> <small className="rf-muted">{notesSaved ? 'Solo las ven los admins' : 'Sin guardar…'}</small></label>
+            <textarea id="rf-notes-in" rows={2} maxLength={2000} placeholder="Agregar notas" value={notes} onChange={(ev) => { setNotes(ev.target.value); setNotesSaved(false); }} onBlur={saveNotes} />
+          </div>
+
+          {lastProof ? (
+            <div className="rf-proofcard">
+              <div><b><Icon name="image" size={18} /> Comprobante</b>{lastProof.status === 'rejected' && <span className="rf-proof-rej">rechazado</span>}</div>
+              <small>Subido el {api.fmtDate(lastProof.created_at, false)}</small>
+              <button type="button" className="rf-proof-open" onClick={() => setViewer(lastProof)}>Abrir</button>
+              {e.proofs.length > 1 && (
+                <details className="rf-proof-old"><summary>Comprobantes anteriores ({e.proofs.length - 1})</summary>
+                  {e.proofs.slice(1).map((p) => <button key={p.id} type="button" className="cm-link" onClick={() => setViewer(p)}>{api.fmtDate(p.created_at)}{p.reason ? ` · rechazado: ${p.reason}` : ''}</button>)}
+                </details>)}
+            </div>
+          ) : <div className="rf-proofcard empty"><b><Icon name="image" size={18} /> Comprobante</b><small>Todavía no subió el comprobante.</small></div>}
+
+          {error && <div className="feedback-error" role="alert">{error}</div>}
+          {ok && <div className="cm-ok" role="status">{ok}</div>}
+
+          <div className="rf-detail-foot">
+            <button type="button" className="rf-foot-btn" onClick={copyTicket} disabled={!ticketUrl} title="Copiar el enlace del ticket"><Icon name={copied ? 'check' : 'link'} size={18} /> {copied ? 'Copiado' : 'Copiar enlace'}</button>
+            {ticketUrl && <a className="rf-foot-btn" href={ticketUrl} target="_blank" rel="noopener noreferrer"><Icon name="clipboard" size={18} /> Abrir ticket</a>}
+            {!['cancelled', 'expired'].includes(e.status) && <button type="button" className="rf-foot-btn danger" disabled={busy} onClick={() => setCancel({ reason: '' })}><Icon name="x" size={18} /> Cancelar reserva</button>}
+            {['cancelled', 'expired'].includes(e.status) && <button type="button" className="rf-foot-btn danger" disabled={busy} onClick={() => setDel(true)}><Icon name="trash" size={18} /> Borrar registro</button>}
+          </div>
           {cancel && (
             <div className="card cm-report">
               <label className="field"><span>Motivo de la cancelación</span><div className="pink-input"><input autoFocus value={cancel.reason} maxLength={300} onChange={(ev) => setCancel({ reason: ev.target.value })} /></div></label>
@@ -511,22 +587,28 @@ function EntryDetail({ id, onClose }) {
               <div className="modal-actions"><button type="button" className="btn text" onClick={() => setCancel(null)}>Volver</button>
                 <button type="button" className="btn primary" disabled={busy || cancel.reason.trim().length < 3} onClick={() => run(() => api.adminCancel(id, cancel.reason, op.cancel), 'Reserva cancelada.').then(() => setCancel(null))}>Cancelar reserva</button></div>
             </div>)}
-          <h4>Correos</h4>
-          {e.mails.length === 0 ? <small className="cm-date">Ninguno.</small> : e.mails.map((m) => (
-            <div key={m.id} className="ap-row"><small className="cm-date">{{ reserved: 'Reserva', confirmed: 'Confirmación', rejected: 'Rechazo' }[m.kind]} · {{ queued: 'en cola', sending: 'enviando', sent: 'enviado', failed: 'falló' }[m.status]}{m.last_error ? ` (${m.last_error})` : ''} · {api.fmtDate(m.sent_at || m.created_at)}</small></div>))}
-          <div className="rf-actions">
-            <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'reserved', uuid()), 'Correo de participación reenviado.')}>Reenviar enlace</button>
-            {e.status === 'confirmed' && <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'confirmed', uuid()), 'Correo de confirmación reenviado.')}>Reenviar confirmación</button>}
-          </div>
-          <h4>Historial</h4>
-          <ol className="rf-history">{e.events.map((v, i) => <li key={i}><small>{api.fmtDate(v.created_at)}</small> {EVENT[v.kind] || v.kind}{v.detail?.reason ? `: ${v.detail.reason}` : ''}{v.actor ? <small> · {v.actor}</small> : ''}</li>)}</ol>
+
+          <details className="rf-more">
+            <summary>Correos e historial</summary>
+            {e.mails.length === 0 ? <small className="cm-date">Sin correos.</small> : e.mails.map((m) => (
+              <div key={m.id} className="ap-row"><small className="cm-date">{{ reserved: 'Reserva', confirmed: 'Confirmación', rejected: 'Rechazo' }[m.kind]} · {{ queued: 'en cola', sending: 'enviando', sent: 'enviado', failed: 'falló' }[m.status]}{m.last_error ? ` (${m.last_error})` : ''} · {api.fmtDate(m.sent_at || m.created_at)}</small></div>))}
+            <div className="rf-actions">
+              <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'reserved', uuid()), 'Correo de participación reenviado.')}>Reenviar enlace por correo</button>
+              {e.status === 'confirmed' && <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'confirmed', uuid()), 'Correo de confirmación reenviado.')}>Reenviar confirmación</button>}
+            </div>
+            <ol className="rf-history">{e.events.map((v, i) => <li key={i}><small>{api.fmtDate(v.created_at)}</small> {EVENT[v.kind] || v.kind}{v.detail?.reason ? `: ${v.detail.reason}` : ''}{v.actor ? <small> · {v.actor}</small> : ''}</li>)}</ol>
+          </details>
         </>}
-        <Confirm open={ask} title="¿Confirmar el pago?" text={e ? `Confirmás que se acreditaron ${api.money(e.total_cents)} por los números ${e.numbers.map(fmt).join(', ')}. Se habilitan los tickets y se avisa por correo.` : ''} yes="Sí, confirmar"
-          onYes={() => { setAsk(false); run(() => api.adminConfirm(id, op.confirm), 'Pago confirmado; tickets habilitados.').then(() => api.adminMailFlush(id).catch(() => {})); }} onNo={() => setAsk(false)} />
+        <Confirm open={del} danger title="¿Borrar este registro?" text="Se borra la participación cancelada o vencida y su comprobante. No se puede deshacer." yes="Borrar"
+          onYes={async () => { setDel(false); try { await api.adminDeleteEntries(e.raffle_id, e.id); onClose(); } catch (err) { setError(err.message); } }} onNo={() => setDel(false)} />
+        <Confirm open={ask} title="¿Validar el pago?" text={e ? `Confirmás que se acreditaron ${api.money(e.total_cents)} por los números ${e.numbers.map(fmt).join(', ')}. Se habilitan los tickets y se avisa por correo.` : ''} yes="Sí, validar"
+          onYes={() => { setAsk(false); run(() => api.adminConfirm(id, op.confirm), 'Pago validado; tickets habilitados.').then(() => api.adminMailFlush(id).catch(() => {})); }} onNo={() => setAsk(false)} />
       </div>
+      {viewer && <ProofViewer proof={viewer} onClose={() => setViewer(null)} />}
     </div>
   );
 }
+
 function WinnersForm({ raffle }) {
   const prizes = raffle.prizes?.length ? raffle.prizes : ['Premio'];
   const [nums, setNums] = useState(() => prizes.map((_, i) => (raffle.winners?.[i] ? String(raffle.winners[i].number) : '')));
@@ -561,28 +643,7 @@ function WinnersForm({ raffle }) {
 
 const PROOF_STATUS = { pending: { label: 'Para revisar', cls: 'cat', icon: 'search' }, accepted: { label: 'Aceptado', cls: 'ok', icon: 'check' }, rejected: { label: 'Rechazado', cls: 'err', icon: 'x' } };
 
-// Comprobante: vista previa grande (imagen) o botón para abrir el PDF. El enlace firmado dura 10 minutos.
-function ProofItem({ p, open, onError }) {
-  const [url, setUrl] = useState(null);
-  const [show, setShow] = useState(open);
-  const isPdf = p.mime === 'application/pdf';
-  useEffect(() => {
-    if (!show || url) return;
-    api.proofUrl(p.storage_path).then(setUrl).catch((err) => onError(err.message));
-  }, [show, url, p.storage_path, onError]);
-  return (
-    <div className="rf-proof-item">
-      <div className="rf-proof-meta"><Chip map={PROOF_STATUS} value={p.status} /><small className="cm-date">{api.fmtDate(p.created_at)} · {isPdf ? 'PDF' : p.mime.split('/')[1].toUpperCase()} · {Math.round(p.size_bytes / 1024)} KB{p.reason ? ` · ${p.reason}` : ''}</small></div>
-      {show && !isPdf && (url ? <a href={url} target="_blank" rel="noopener noreferrer" title="Abrir en tamaño completo"><img className="rf-proof-img" src={url} alt="Comprobante de pago" /></a> : <div className="cm-loading"><span className="spinner xs" /></div>)}
-      <div className="rf-actions">
-        {!show && <button type="button" className="btn ghost" onClick={() => setShow(true)}><Icon name="image" size={16} /> Ver comprobante</button>}
-        {show && url && <a className="btn primary" href={url} target="_blank" rel="noopener noreferrer"><Icon name="external" size={16} /> {isPdf ? 'Abrir PDF del comprobante' : 'Abrir en grande'}</a>}
-      </div>
-    </div>
-  );
-}
-
-const EVENT = { reserved: 'Reservó', proof_uploaded: 'Adjuntó comprobante', rejected: 'Comprobante rechazado', confirmed: 'Pago confirmado', expired: 'Venció sin comprobante', cancelled: 'Cancelada', mail_resend: 'Correo reenviado' };
+const EVENT = { entries_deleted: 'Registros borrados', note: 'Nota privada editada', winners: 'Ganadores informados', reserved: 'Reservó', proof_uploaded: 'Adjuntó comprobante', rejected: 'Comprobante rechazado', confirmed: 'Pago confirmado', expired: 'Venció sin comprobante', cancelled: 'Cancelada', mail_resend: 'Correo reenviado' };
 
 function Manual({ raffle, onDone }) {
   const [f, setF] = useState({ numbers: '', name: '', email: '', phone: '', confirm: true, ref: '' });

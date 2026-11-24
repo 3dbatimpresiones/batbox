@@ -358,3 +358,70 @@
 .rf-proof-item { display: grid; gap: 10px; padding: 12px; border-radius: 16px; background: rgba(19,29,71,.55); border: 1px solid var(--line); }
 .rf-proof-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .rf-proof-img { display: block; width: 100%; max-height: 520px; object-fit: contain; border-radius: 12px; background: #0b1230; cursor: zoom-in; }
+
+/* Ficha "Detalles" (estilo talonario) */
+.rf-detail { gap: 14px; }
+.rf-detail-head { display: flex; justify-content: space-between; align-items: center; }
+.rf-detail-head h3 { margin: 0; font-size: 24px; }
+.rf-detail-who { display: grid; gap: 2px; }
+.rf-detail-who b { font-size: 24px; overflow-wrap: anywhere; }
+.rf-detail-who small { color: var(--muted); }
+.rf-detail-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.rf-detail-rows li { display: flex; align-items: center; gap: 14px; font-size: 17px; flex-wrap: wrap; }
+.rf-detail-rows li > svg, .rf-detail-ico { color: var(--muted); flex: none; width: 22px; text-align: center; font-weight: 900; }
+.rf-detail-rows a { color: var(--cyan); overflow-wrap: anywhere; }
+.rf-detail-nums { display: flex; flex-wrap: wrap; gap: 6px; }
+.rf-detail-nums span { min-width: 70px; text-align: center; padding: 4px 12px; border-radius: 8px; background: var(--cyan); color: var(--dark); font-weight: 900; }
+.rf-detail-act { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); text-decoration: none; font-size: 12px; font-weight: 900; }
+.rf-detail-act.wa { color: #25D366 !important; border-color: rgba(37,211,102,.5); }
+.rf-detail h4 { margin: 4px 0 0; font-size: 17px; }
+.rf-states { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rf-state { display: flex; gap: 8px; align-items: center; justify-content: center; padding: 14px 8px; border-radius: 12px; font-weight: 800; background: transparent; border: 2px solid; }
+.rf-state i { width: 11px; height: 11px; border-radius: 50%; background: currentColor; flex: none; }
+.rf-state.blue { color: #93c5fd; border-color: rgba(59,130,246,.45); }
+.rf-state.orange { color: #fdba74; border-color: rgba(249,115,22,.45); }
+.rf-state.green { color: var(--ok); border-color: rgba(52,211,153,.45); }
+.rf-state.on.blue { background: var(--blue); color: #fff; border-color: var(--blue); }
+.rf-state.on.orange { background: var(--orange); color: #fff; border-color: var(--orange); }
+.rf-state.on.green { background: #10b981; color: #fff; border-color: #10b981; }
+.rf-state.on i { background: transparent; border: 2px solid #fff; }
+.rf-state:focus-visible { outline: 3px solid var(--pink); }
+.rf-notes { display: grid; gap: 6px; padding: 12px; border-radius: 14px; background: rgba(19,29,71,.55); border: 1px solid var(--line); }
+.rf-notes textarea { width: 100%; resize: vertical; background: transparent; border: 0; color: #e2e8f0; font: inherit; outline: none; }
+.rf-proofcard { position: relative; display: grid; gap: 4px; padding: 14px 16px; border-radius: 14px; background: var(--blue); color: #fff; }
+.rf-proofcard b { display: inline-flex; gap: 8px; align-items: center; font-size: 18px; }
+.rf-proofcard.empty { background: rgba(19,29,71,.55); color: var(--muted); border: 1px dashed var(--indigo); }
+.rf-proof-open { justify-self: start; margin-top: 4px; padding: 8px 18px; border-radius: 10px; border: 0; background: #fff; color: #1d4ed8; font-weight: 900; font-size: 15px; }
+.rf-proof-open:focus-visible { outline: 3px solid var(--pink); }
+.rf-proof-rej { margin-left: 8px; font-size: 12px; padding: 2px 8px; border-radius: 99px; background: rgba(239,68,68,.9); }
+.rf-proof-old summary { cursor: pointer; font-size: 13px; }
+.rf-proof-old .cm-link { display: block; color: #fff; text-align: left; }
+.rf-detail-foot { display: flex; flex-wrap: wrap; gap: 8px; }
+.rf-foot-btn { display: inline-flex; gap: 8px; align-items: center; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(59,130,246,.4); background: rgba(59,130,246,.14); color: #bfdbfe; font-weight: 800; text-decoration: none; font-size: 14px; }
+.rf-foot-btn.danger { border-color: rgba(239,68,68,.45); background: rgba(239,68,68,.12); color: #fca5a5; }
+.rf-foot-btn:focus-visible { outline: 3px solid var(--pink); }
+
+/* Visor del comprobante sobre la página */
+.rf-lightbox { position: fixed; inset: 0; z-index: 500; display: grid; place-items: center; align-content: center; gap: 10px; padding: 56px 16px 16px; background: rgba(3,6,20,.92); }
+.rf-lightbox-img { max-width: min(96vw, 1100px); max-height: calc(100vh - 110px); object-fit: contain; border-radius: 12px; background: #fff; }
+.rf-lightbox-pdf { width: min(96vw, 900px); height: calc(100vh - 110px); border: 0; border-radius: 12px; background: #fff; }
+.rf-lightbox-x { position: fixed; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.4); background: rgba(19,29,71,.9); color: #fff; font-size: 26px; line-height: 1; }
+.rf-lightbox-x:focus-visible { outline: 3px solid var(--pink); }
+.rf-lightbox-meta { color: #cbd5e1; }
+
+/* Números apartados y vendidos: el botón entero cambia de aspecto */
+.rf-n.held { background: linear-gradient(135deg, #7c3aed, #8B5CF6); border: 1px solid #a78bfa; border-style: solid; color: #fff; display: grid; place-items: center; align-content: center; gap: 0; }
+.rf-n.sold { background: linear-gradient(135deg, #1e293b, #475569); border-color: #64748b; color: #e2e8f0; text-decoration: none; display: grid; place-items: center; align-content: center; gap: 0; }
+.rf-n .rf-n-ico { font-size: 20px; line-height: 1; }
+.rf-n .rf-n-small { font-size: 11px; font-weight: 800; opacity: .9; line-height: 1.1; }
+.rf-sw.held { background: linear-gradient(135deg, #7c3aed, #8B5CF6); border: 1px solid #a78bfa; color: #fff; }
+.rf-sw.sold { background: linear-gradient(135deg, #1e293b, #475569); border-color: #64748b; color: #e2e8f0; }
+/* Botón Rifas activo (estás en Rifas): texto oscuro sobre celeste como los demás; solo late el brillo */
+@keyframes rf-glow-active {
+  0%, 100% { box-shadow: 0 0 10px 2px rgba(93,218,219,.75); }
+  25% { box-shadow: 0 0 12px 3px rgba(59,130,246,.75); }
+  50% { box-shadow: 0 0 12px 3px rgba(139,92,246,.75); }
+  75% { box-shadow: 0 0 12px 3px rgba(247,142,182,.8); }
+}
+.nav-link.rifa-live.active { animation-name: rf-glow-active; color: var(--dark) !important; border-color: transparent !important; }
+.nav-link.rifa-live.active svg { color: var(--dark); }

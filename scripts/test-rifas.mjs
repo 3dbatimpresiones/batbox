@@ -119,7 +119,9 @@ check((await as(ADMIN, 'select public.bb_rf_admin_confirm($1,$2)', [e1id, uuid()
 const det = await as(ADMIN, 'select public.bb_rf_admin_entry($1)', [e1id]);
 check(det.confirmed_by === '00000000-0000-0000-0000-00000000000a' && det.events.some((v) => v.kind === 'confirmed' && v.actor === 'admin@ejemplo.test'), 'registra quién y cuándo');
 check(det.proofs.length === 2 && det.proofs.some((p) => p.status === 'rejected'), 'historial de comprobantes conservado');
-check(!('access_token' in det), 'la ficha admin no expone el token');
+check(det.access_token?.length === 64 && !('client_key' in det), 'la ficha admin trae el enlace del ticket (solo admins)');
+check((await as(ADMIN, 'select public.bb_rf_admin_note($1,$2)', [det.id, 'Pagó en efectivo'])).ok && (await as(ADMIN, 'select public.bb_rf_admin_entry($1)', [det.id])).admin_notes === 'Pagó en efectivo', 'notas privadas');
+check(await fails(USER, 'select public.bb_rf_admin_note($1,$2)', [det.id, 'x']), 'usuario no escribe notas');
 const mails = await as(SU, 'select jsonb_agg(kind order by created_at) from public.bb_raffle_mail where entry_id = $1', [e1id]);
 check(JSON.stringify(mails) === '["reserved","rejected","confirmed"]', 'correos en cola sin duplicar: ' + JSON.stringify(mails));
 
@@ -218,6 +220,19 @@ const home = await as(ANON, 'select public.bb_rf_home()');
 check(home.finished?.slug === 'rifa-prueba-makers' && home.finished.winners.length === 1, 'inicio muestra la rifa finalizada con ganador');
 await as(ADMIN, 'select public.bb_rf_admin_set_winners($1,$2)', [rid, [50]]);
 check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-prueba-makers'])).winners[0].name === null, 'número no vendido: sin nombre');
+
+// ---- Borrar cancelados/vencidos ----
+{
+  const before = await as(SU, "select count(*)::int from public.bb_raffle_entries where raffle_id = $1 and status in ('cancelled','expired')", [rid]);
+  const live = await as(SU, "select count(*)::int from public.bb_raffle_entries where raffle_id = $1 and status not in ('cancelled','expired')", [rid]);
+  check(await fails(USER, 'select public.bb_rf_admin_delete_entries($1,null)', [rid]), 'usuario no borra registros');
+  const conf = await as(SU, "select id from public.bb_raffle_entries where raffle_id = $1 and status = 'confirmed' limit 1", [rid]);
+  check((await as(ADMIN, 'select public.bb_rf_admin_delete_entries($1,$2)', [rid, conf])).ok === false, 'no borra una validada');
+  const d = await as(ADMIN, 'select public.bb_rf_admin_delete_entries($1,null)', [rid]);
+  check(d.ok && d.deleted === before && before > 0, 'borra todos los cancelados/vencidos: ' + before);
+  check((await as(SU, "select count(*)::int from public.bb_raffle_entries where raffle_id = $1", [rid])) === live, 'las vigentes quedan intactas');
+  check((await as(ADMIN, 'select public.bb_rf_admin_export_get($1)', [x1.export_id])).csv === d1.csv, 'el padrón ya exportado no cambia');
+}
 
 if (outDir) {
   mkdirSync(outDir, { recursive: true });

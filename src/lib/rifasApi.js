@@ -135,6 +135,13 @@ export const adminEntry = (id) => rpc('bb_rf_admin_entry', { p_entry: id });
 export const adminManual = async (raffleId, p, op) => must(await rpc('bb_rf_admin_manual', { p_raffle: raffleId, p, p_op: op }));
 export const adminConfirm = async (id, op) => must(await rpc('bb_rf_admin_confirm', { p_entry: id, p_op: op }));
 export const adminReject = async (id, reason, mode, hours, op) => must(await rpc('bb_rf_admin_reject', { p_entry: id, p_reason: reason, p_mode: mode, p_hours: hours, p_op: op }));
+// Borra canceladas/vencidas (una o todas) y después sus archivos de comprobante.
+export async function adminDeleteEntries(raffleId, entryId = null) {
+  const r = must(await rpc('bb_rf_admin_delete_entries', { p_raffle: raffleId, p_entry: entryId }));
+  if (r.paths?.length) await sb.storage.from('bb-rifas-comprobantes').remove(r.paths).catch(() => {});
+  return r;
+}
+export const adminNote = async (id, note) => must(await rpc('bb_rf_admin_note', { p_entry: id, p_note: note }));
 export const adminCancel = async (id, reason, op) => must(await rpc('bb_rf_admin_cancel', { p_entry: id, p_reason: reason, p_op: op }));
 export async function adminResend(id, kind, op) {
   must(await rpc('bb_rf_admin_resend', { p_entry: id, p_kind: kind, p_op: op }));

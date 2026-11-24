@@ -204,7 +204,7 @@ function RaffleView({ slug, isAdmin }) {
         <section className="rf-left">
           <header className="rf-head">
             <span className="rf-avatar">{raffle.cover_url ? <img src={raffle.cover_url} alt="" /> : <Icon name="star" size={22} />}</span>
-            <div><h1>{raffle.title}</h1><small>{(api.fmtDate(raffle.draw_at, false) || 'Se sortea al agotar los números').toUpperCase()}</small></div>
+            <div><h1 className={'rf-title ' + (raffle.title.length > 26 ? 'xl' : raffle.title.length > 16 ? 'l' : '')}>{raffle.title}</h1><small>{(api.fmtDate(raffle.draw_at, false) || 'Se sortea al agotar los números').toUpperCase()}</small></div>
           </header>
           <div className="rf-coverbox card">{raffle.cover_url ? <img src={raffle.cover_url} alt={'Portada de ' + raffle.title} /> : <div className="rf-coverph"><Icon name="trophy" size={48} /><b>BAT RIFAS</b><small>Makers 3DBAT</small></div>}</div>
           {raffle.prizes?.length > 0 && (() => {
@@ -273,7 +273,7 @@ function RaffleView({ slug, isAdmin }) {
                 <button key={n} id={'rf-n-' + n} type="button" className={'rf-n ' + (mine ? 'mine' : st || 'free') + (flash?.n === n ? ' flash' : '')}
                   disabled={!!st || !open} aria-pressed={mine}
                   aria-label={`Número ${label}${st === 'sold' ? ', vendido' : st === 'held' ? ', apartado' : mine ? ', elegido' : ', libre'}`}
-                  onClick={() => toggle(n)}>{label}{st === 'held' && <i aria-hidden>⏳</i>}{st === 'sold' && <i aria-hidden>✕</i>}</button>);
+                  onClick={() => toggle(n)}>{st ? <><span className="rf-n-ico" aria-hidden>{st === 'held' ? '⏳' : '✕'}</span><span className="rf-n-small">{label}</span></> : label}</button>);
             })}
           </div>
           {open && free === 0 && <p className="rf-banner closed">No quedan números disponibles.</p>}
