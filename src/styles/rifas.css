@@ -273,3 +273,77 @@
 .rf-prizelist li:nth-child(1) .rf-place { background: linear-gradient(135deg, #fde68a, #f59e0b); }
 .rf-prizelist li:nth-child(2) .rf-place { background: linear-gradient(135deg, #e5e7eb, #94a3b8); }
 .rf-prizelist li:nth-child(3) .rf-place { background: linear-gradient(135deg, #fdba74, #c2410c); color: #fff; }
+
+/* Botón "Rifas" del menú: brillo en ciclo con los colores de 3DBAT cuando hay una rifa activa */
+@keyframes rf-glow-cycle {
+  0%, 100% { box-shadow: 0 0 10px 2px rgba(93,218,219,.75); color: #5DDADB; border-color: rgba(93,218,219,.8); }
+  25% { box-shadow: 0 0 12px 3px rgba(59,130,246,.75); color: #93c5fd; border-color: rgba(59,130,246,.8); }
+  50% { box-shadow: 0 0 12px 3px rgba(139,92,246,.75); color: #c4b5fd; border-color: rgba(139,92,246,.8); }
+  75% { box-shadow: 0 0 12px 3px rgba(247,142,182,.8); color: #F78EB6; border-color: rgba(247,142,182,.85); }
+}
+.nav-link.rifa-live, .sheet-link.rifa-live { border: 1px solid rgba(93,218,219,.8); font-weight: 900; animation: rf-glow-cycle 4s ease-in-out infinite; }
+.bn-rifa-dot { position: absolute; top: 6px; right: calc(50% - 18px); width: 9px; height: 9px; border-radius: 50%; background: var(--pink); animation: rf-glow-cycle 4s ease-in-out infinite; }
+.bottom-nav .bn-item { position: relative; }
+@media (prefers-reduced-motion: reduce) { .nav-link.rifa-live, .sheet-link.rifa-live, .bn-rifa-dot { animation-duration: 12s; } }
+
+/* Inicio de Rifas, rifa finalizada y ganadores */
+.rf-home-head h1 { margin: 4px 0 0; font-size: clamp(26px, 5vw, 38px); background: var(--bb-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.card.rf-live-card { display: grid; gap: 0; padding: 0; overflow: hidden; text-decoration: none; color: inherit; border: 1px solid rgba(93,218,219,.45); }
+@media (min-width: 760px) { .card.rf-live-card { grid-template-columns: 2fr 3fr; } }
+.rf-live-card img { width: 100%; height: 100%; min-height: 200px; object-fit: cover; display: block; }
+.rf-live-txt { display: grid; gap: 10px; padding: 18px; align-content: start; }
+.rf-live-txt h2 { margin: 0; font-size: 24px; }
+.rf-live-txt small { color: var(--muted); }
+.rf-live-txt .btn { justify-self: start; }
+.rf-live-badge { justify-self: start; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 900; color: var(--dark); background: var(--bb-gradient); }
+.rf-prizelist.mini li { padding: 6px 10px; font-size: 14px; }
+.rf-prizelist.mini .rf-place { width: 28px; height: 28px; font-size: 12px; }
+.rf-finished { display: grid; gap: 14px; }
+.rf-fin-banner { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 18px; background: linear-gradient(120deg, rgba(247,142,182,.22), rgba(139,92,246,.22)); border: 1px solid rgba(247,142,182,.5); color: var(--pink); }
+.rf-fin-banner small { color: #f9a8d4; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+.rf-fin-banner h2 { margin: 0; color: #fff; font-size: 22px; }
+.rf-fin-cover { width: 100%; max-height: 360px; object-fit: cover; border-radius: 20px; }
+.rf-winners { display: grid; gap: 12px; border: 1px solid rgba(253,230,138,.5); background: linear-gradient(135deg, rgba(245,158,11,.14), rgba(139,92,246,.16)); }
+.rf-winners h2 { margin: 0; display: flex; gap: 8px; align-items: center; color: #fde68a; font-size: 22px; }
+.rf-winlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.rf-winlist li { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 16px; background: rgba(19,29,71,.6); border: 1px solid var(--line); }
+.rf-winlist li:nth-child(1) .rf-place, .rf-winrow:nth-of-type(1) .rf-place { background: linear-gradient(135deg, #fde68a, #f59e0b); }
+.rf-winlist li:nth-child(2) .rf-place { background: linear-gradient(135deg, #e5e7eb, #94a3b8); }
+.rf-winlist li:nth-child(3) .rf-place { background: linear-gradient(135deg, #fdba74, #c2410c); color: #fff; }
+.rf-win-txt { flex: 1; min-width: 0; display: grid; }
+.rf-win-txt small { color: var(--muted); }
+.rf-win-txt b { font-size: 18px; overflow-wrap: anywhere; }
+.rf-win-n { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; color: #fff; padding: 4px 12px; border-radius: 12px; background: var(--bb-gradient); }
+.rf-winform { display: grid; gap: 10px; }
+.rf-winform h4 { margin: 0; display: flex; gap: 8px; align-items: center; }
+.rf-winrow { display: grid; grid-template-columns: auto 1fr 110px; gap: 10px; align-items: center; }
+.rf-winprize { font-weight: 700; overflow-wrap: anywhere; }
+.rf-winpreview { margin: 0; padding-left: 18px; color: #cbd5e1; }
+.rf-slug { display: flex; align-items: center; gap: 6px; }
+.rf-slug .pink-input { flex: 1; }
+.rf-slug-base { color: var(--muted); font-family: ui-monospace, monospace; font-size: 13px; white-space: nowrap; }
+
+/* Carrusel de destacados del Inicio (Maker destacado ↔ Ganadores de la rifa) */
+.hl-carousel { position: relative; display: grid; }
+.hl-carousel:has(.hl-slide > *) { margin: 0; }
+.hl-slide { grid-area: 1 / 1; min-width: 0; }
+.hl-carousel.multi .hl-slide { transition: opacity .6s ease, visibility .6s; opacity: 0; visibility: hidden; }
+.hl-carousel.multi .hl-slide.on { opacity: 1; visibility: visible; }
+.hl-slide:empty { display: none; }
+.hl-ctrl { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 10px; }
+.hl-ctrl .icon-btn { font-size: 22px; line-height: 1; }
+.hl-dot { width: 10px; height: 10px; border-radius: 99px; border: 0; background: rgba(255,255,255,.3); transition: width .2s, background .2s; padding: 0; }
+.hl-dot.on { width: 28px; background: var(--bb-gradient); }
+.hl-dot:focus-visible { outline: 3px solid var(--pink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .hl-carousel.multi .hl-slide { transition: none; } }
+
+.rf-winblock .ga-weekbanner span { background: linear-gradient(90deg, #fde68a, #F78EB6, #8B5CF6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.rf-wincard { display: grid; text-decoration: none; color: inherit; overflow: hidden; border-radius: 20px; border: 2px solid rgba(253,230,138,.7); background: #162057; }
+.rf-wincard-img { position: relative; }
+.rf-wincard-img img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+.rf-wincard-tag { position: absolute; top: 10px; left: 10px; display: inline-flex; gap: 5px; align-items: center; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 900; color: var(--dark); background: linear-gradient(135deg, #fde68a, #f59e0b); }
+.rf-wincard-body { display: grid; gap: 10px; padding: 14px; }
+.rf-wincard-title { font-size: 17px; }
+.rf-winlist.compact li { padding: 8px 10px; }
+.rf-winlist.compact .rf-win-n { font-size: 22px; padding: 2px 10px; }
+.rf-winlist.compact .rf-win-txt b { font-size: 15px; }

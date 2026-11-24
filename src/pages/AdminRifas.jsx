@@ -311,7 +311,7 @@ function Settings({ r }) {
 }
 
 const PART_FIELDS = {
-  general: ['title', 'description', 'prizes', 'terms', 'price', 'draw_at', 'transfer_info', 'require_phone', 'min_per_entry', 'pay_hours', 'num_from', 'num_to', 'csv_profile', 'slug'],
+  general: ['title', 'prizes', 'terms', 'price', 'draw_at', 'transfer_info', 'require_phone', 'min_per_entry', 'pay_hours', 'num_from', 'num_to', 'csv_profile', 'slug'],
   personal: ['cover_url'],
   perfil: ['organizer', 'support_contact'],
 };
@@ -347,7 +347,7 @@ function Editor({ r, part, missing, onSaved }) {
       const f2 = { ...fresh, prizes: fresh.prizes?.length ? fresh.prizes : [], price: api.centsToPesos(fresh.price_cents), draw_at: api.toLocalInput(fresh.draw_at), ...mine };
       const cents = api.pesosToCents(f2.price);
       if (cents === null) throw new Error('Revisá el precio.');
-      await api.adminSave({ ...f2, id: r.id, price_cents: cents, prizes: f2.prizes.map((p) => p.trim()).filter(Boolean), draw_at: api.fromLocalInput(f2.draw_at),
+      await api.adminSave({ ...f2, slug: slugify(f2.slug || '') || r.slug, id: r.id, price_cents: cents, prizes: f2.prizes.map((p) => p.trim()).filter(Boolean), draw_at: api.fromLocalInput(f2.draw_at),
         num_from: Number(f2.num_from), num_to: Number(f2.num_to), max_per_entry: 1000, min_per_entry: Math.max(1, Number(f2.min_per_entry) || 1), pay_hours: Number(f2.pay_hours) });
       setOk('Guardado.'); onSaved();
       if (missing && r.status === 'draft' && f2.transfer_info.trim().length >= 5 && f2.terms.trim().length >= 10) {
@@ -365,7 +365,11 @@ function Editor({ r, part, missing, onSaved }) {
       {part === 'general' && <>
         <div className="rf-info"><Icon name="alert" size={14} /> Talonario de <b>{Number(f.num_to) - Number(f.num_from) + 1}</b> números ({fmtOf(f)(Number(f.num_from))} a {fmtOf(f)(Number(f.num_to))}).{locked ? ' Ya tiene participaciones: el tamaño y el precio no se pueden cambiar.' : ''}</div>
         <label className="field"><span>Título</span><div className="pink-input"><input value={f.title} maxLength={120} onChange={(e) => set({ title: e.target.value })} /></div></label>
-        <label className="field"><span>Descripción</span><div className="pink-input feedback-text"><textarea rows={4} maxLength={2000} placeholder="Descripción del sorteo, premios y cómo participar" value={f.description} onChange={(e) => set({ description: e.target.value })} /></div></label>
+        <label className="field"><span>Dirección del enlace</span>
+          <div className="rf-slug"><span className="rf-slug-base">…/rifas/</span><div className="pink-input"><input value={f.slug} maxLength={60} spellCheck={false} autoCapitalize="none"
+            onChange={(e) => set({ slug: e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]+/g, '-').replace(/-{2,}/g, '-').slice(0, 60) })}
+            onBlur={() => set({ slug: slugify(f.slug) })} /></div></div>
+          <small className="rf-muted">Link: {api.shareUrl(slugify(f.slug) || '…')}{r.status !== 'draft' && f.slug !== r.slug ? ' · ⚠️ El link anterior deja de funcionar: volvé a compartir el nuevo.' : ''}</small></label>
         <div className="field"><span>Premios</span>
           {f.prizes.map((p, i) => (
             <div key={i} className="ga-kv"><div className="pink-input"><input value={p} maxLength={140} placeholder={`${i + 1}° premio`} onChange={(e) => set({ prizes: f.prizes.map((x, j) => (j === i ? e.target.value : x)) })} /></div>
@@ -394,7 +398,6 @@ function Editor({ r, part, missing, onSaved }) {
         <details className="rf-more"><summary>Más opciones</summary>
           <label className="field"><span>Formato del CSV</span><div className="pink-input"><select value={f.csv_profile} onChange={(e) => set({ csv_profile: e.target.value })}>
             <option value="rifary">Compatible Rifary</option><option value="provisional">Provisional (numero,nombre,…)</option></select></div></label>
-          <label className="field"><span>Dirección del enlace (slug)</span><div className="pink-input"><input value={f.slug} maxLength={60} disabled={r.status !== 'draft'} onChange={(e) => set({ slug: slugify(e.target.value) })} /></div></label>
         </details>
       </>}
       {part === 'personal' && <>
@@ -523,6 +526,38 @@ function EntryDetail({ id, onClose }) {
     </div>
   );
 }
+function WinnersForm({ raffle }) {
+  const prizes = raffle.prizes?.length ? raffle.prizes : ['Premio'];
+  const [nums, setNums] = useState(() => prizes.map((_, i) => (raffle.winners?.[i] ? String(raffle.winners[i].number) : '')));
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState({});
+  const [result, setResult] = useState(null);
+  const fmt = fmtOf(raffle);
+  const save = async () => {
+    setBusy(true); setMsg({});
+    try {
+      const list = nums.map((n) => n.trim()).filter((n, i, all) => all.slice(i).some(Boolean)); // quita vacíos del final
+      if (list.some((n) => !/^\d+$/.test(n))) throw new Error('Completá los números en orden (sin dejar premios vacíos en el medio).');
+      const r = await api.adminSetWinners(raffle.id, list.map(Number));
+      setResult(r.winners); setMsg({ ok: r.winners.length ? 'Ganadores informados: ya se ven en la página de Rifas y en el talonario.' : 'Ganadores borrados.' });
+    } catch (e) { setMsg({ err: e.message }); } finally { setBusy(false); }
+  };
+  return (
+    <div className="card cm-composer rf-winform">
+      <h4><Icon name="trophy" size={16} /> Informar ganadores</h4>
+      <small className="cm-date">Cargá el número que salió para cada premio (por ejemplo, los últimos 2 dígitos de la Quiniela). En público se muestra solo el nombre y la inicial del apellido.</small>
+      {prizes.map((p, i) => (
+        <label key={i} className="rf-winrow"><span className="rf-place">{i + 1}°</span><span className="rf-winprize">{p}</span>
+          <div className="pink-input"><input inputMode="numeric" value={nums[i]} placeholder={fmt(raffle.num_from)} aria-label={`Número ganador del ${i + 1}° premio`}
+            onChange={(e) => setNums(nums.map((x, j) => (j === i ? e.target.value.replace(/\D/g, '') : x)))} /></div></label>))}
+      {result?.length > 0 && <ul className="rf-winpreview">{result.map((w) => <li key={w.place}>{w.place}° · N° {w.number} · <b>{w.name || 'número no vendido'}</b></li>)}</ul>}
+      {msg.ok && <div className="cm-ok" role="status">{msg.ok}</div>}
+      {msg.err && <div className="feedback-error" role="alert">{msg.err}</div>}
+      <div className="rf-actions"><button type="button" className="btn primary" disabled={busy} onClick={save}>{busy ? 'Guardando…' : 'Informar ganadores'}</button></div>
+    </div>
+  );
+}
+
 const EVENT = { reserved: 'Reservó', proof_uploaded: 'Adjuntó comprobante', rejected: 'Comprobante rechazado', confirmed: 'Pago confirmado', expired: 'Venció sin comprobante', cancelled: 'Cancelada', mail_resend: 'Correo reenviado' };
 
 function Manual({ raffle, onDone }) {
@@ -601,6 +636,7 @@ function Closing({ raffle, reload }) {
             <div key={x.id} className="cm-mod-head ap-row"><span><b>v{x.version}</b> · {x.row_count} números · {x.profile === 'rifary' ? 'formato Rifary' : 'provisional'} · {api.fmtDate(x.created_at)}{x.created_by ? ` · ${x.created_by}` : ''}{x.reason ? ` · Motivo: ${x.reason}` : ''}<br /><small className="cm-date rf-code">SHA-256 {x.sha256.slice(0, 16)}…</small></span>
               <button type="button" className="btn ghost" onClick={() => download(x)}><Icon name="download" size={16} /> CSV</button></div>))}
         </div>)}
+      {closed && <WinnersForm raffle={raffle} />}
       <Confirm open={ask} danger title="¿Cerrar la rifa?" yes="Cerrar"
         text={`Se frenan las reservas nuevas.${s.pending.length ? ` Se cancelan ${s.pending.length} apartados sin comprobante y sus números se liberan.` : ''}${s.review.length ? ` Quedan ${s.review.length} comprobantes por revisar antes de generar el padrón.` : ''} Van ${s.confirmed_numbers} números validados.`}
         onYes={() => { setAsk(false); close(); }} onNo={() => setAsk(false)} />

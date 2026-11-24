@@ -15,6 +15,8 @@ export const NAV = [
   { to: '/patrocinadores', key: 'patrocinadores', label: 'Patrocinadores', short: 'Patrocinadores', icon: 'star', flag: 'batpartners', sub: true, public: true, blurb: 'Las marcas y creadores que colaboran con 3DBAT y la comunidad.' },
   { to: '/batforum', key: 'batforum', label: 'BATFORUM', short: 'BATFORUM', icon: 'message', flag: 'batforum', sub: true, blurb: 'Preguntas y respuestas entre makers.' },
   { to: '/mapa', key: 'mapa', label: 'Mapa Maker', short: 'Mapa Maker', icon: 'pin', flag: 'batmap', sub: true, blurb: 'Encontrá makers de tu ciudad (voluntario, solo ciudad).' },
+  // Rifas: brilla cuando hay una rifa activa (Layout.jsx). En etapa de prueba solo la ven admins.
+  { to: '/rifas', key: 'rifas', label: 'Rifas', short: 'Rifas', icon: 'trophy', rifas: true },
   { to: '/club', key: 'club', label: 'Makers Club', short: 'Makers Club', icon: 'crown' },
 ];
 

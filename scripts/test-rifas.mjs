@@ -195,6 +195,28 @@ const x2 = await as(ADMIN, 'select public.bb_rf_admin_export_create($1,$2,$3)', 
 check(x2.ok && x2.version === 2, 'versión 2 con motivo');
 check((await as(SU, 'select count(*)::int from public.bb_raffle_export_downloads')) === 2, 'registra cada descarga');
 
+// ---- Dirección editable con la rifa publicada ----
+{
+  const g = await as(ADMIN, 'select public.bb_rf_admin_get($1)', [dup]);
+  await as(ADMIN, 'select public.bb_rf_admin_save($1)', [{ ...g, transfer_info: 'Alias x.y.z', terms: 'Bases de la copia.' }]);
+  await as(ADMIN, "select public.bb_rf_admin_set_status($1, 'published')", [dup]);
+  await as(ADMIN, 'select public.bb_rf_admin_save($1)', [{ ...(await as(ADMIN, 'select public.bb_rf_admin_get($1)', [dup])), slug: 'rifa-navidena' }]);
+  check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-navidena']))?.status === 'published', 'cambiar el link con la rifa publicada');
+  check(await fails(ADMIN, 'select public.bb_rf_admin_save($1)', [{ ...(await as(ADMIN, 'select public.bb_rf_admin_get($1)', [dup])), slug: 'rifa-gate' }]), 'no deja repetir un link de otra rifa');
+}
+
+// ---- Ganadores e inicio de Rifas ----
+check((await as(ANON, 'select public.bb_rf_active_count()')) >= 1, 'contador de rifas activas');
+check(await fails(USER, 'select public.bb_rf_admin_set_winners($1,$2)', [rid, [7]]), 'usuario no carga ganadores');
+check((await as(ADMIN, 'select public.bb_rf_admin_set_winners($1,$2)', [rid, [7, 1, 2]])).ok === false, 'no más ganadores que premios');
+const win = await as(ADMIN, 'select public.bb_rf_admin_set_winners($1,$2)', [rid, [7]]);
+check(win.ok && win.winners[0].number === '07' && /^José /.test(win.winners[0].name) && win.winners[0].prize === 'Rollo PLA 1 kg', 'ganador: número, premio y nombre corto');
+check(!JSON.stringify(win.winners).includes('@') && !JSON.stringify(win.winners).includes('5555'), 'ganador sin email ni teléfono');
+const home = await as(ANON, 'select public.bb_rf_home()');
+check(home.finished?.slug === 'rifa-prueba-makers' && home.finished.winners.length === 1, 'inicio muestra la rifa finalizada con ganador');
+await as(ADMIN, 'select public.bb_rf_admin_set_winners($1,$2)', [rid, [50]]);
+check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-prueba-makers'])).winners[0].name === null, 'número no vendido: sin nombre');
+
 if (outDir) {
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, 'rifa-prueba-makers_v1.csv'), d1.csv, 'utf8');

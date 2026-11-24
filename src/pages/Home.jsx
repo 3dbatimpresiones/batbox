@@ -9,7 +9,7 @@ import { TRIAL_DAYS } from '../config.js';
 import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
-import { WeekMakerBlock } from '../components/GalleryCards.jsx';
+import HomeHighlights from '../components/HomeHighlights.jsx';
 import { PartnersBanner } from '../components/PartnerBits.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 import { TycoonHomeBlock } from '../components/Tycoon.jsx';
@@ -106,7 +106,7 @@ export default function Home() {
 
       <LibraryLaunchBanner />
 
-      <WeekMakerBlock isMember={isMember} isAdmin={isAdmin} />
+      <HomeHighlights isMember={isMember} isAdmin={isAdmin} />
 
       <TycoonHomeBlock />
 

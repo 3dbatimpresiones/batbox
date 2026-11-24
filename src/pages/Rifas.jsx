@@ -12,8 +12,7 @@ import '../styles/rifas.css';
 //   #/rifas/p/<token>[?nuevo=1]  ticket digital (enlace personal)
 //   #/rifas/v/<código>           verificación pública del QR de un número
 
-// Etapa de prueba: SOLO ADMINS (la base también lo exige con bb_rf_admin_only()).
-const ADMIN_ONLY = true;
+const ADMIN_ONLY = api.RIFAS_ADMIN_ONLY;
 
 export default function Rifas({ route }) {
   const { isAdmin, access } = useAuth();
@@ -30,7 +29,67 @@ export default function Rifas({ route }) {
   if (a === 'p' && b) return <TicketView token={b} isNew={route.query.nuevo === '1'} />;
   if (a === 'v' && b) return <VerifyView code={b} />;
   if (a) return <RaffleView slug={a} isAdmin={isAdmin} />;
-  return <div className="narrow rf"><Empty icon="star" title="BAT RIFAS" text="Abrí el enlace de la rifa que te compartieron para ver el talonario." /></div>;
+  return <RifasHome />;
+}
+
+// ---------------------------------------------------------------------
+// #/rifas: rifas activas y la última finalizada con sus ganadores
+// ---------------------------------------------------------------------
+function Winners({ winners, title = 'Ganadores' }) {
+  if (!winners?.length) return null;
+  return (
+    <section className="card rf-winners" aria-labelledby="rf-win-h">
+      <h2 id="rf-win-h"><Icon name="trophy" size={20} /> {title}</h2>
+      <ol className="rf-winlist">
+        {winners.map((w) => (
+          <li key={w.place}>
+            <span className="rf-place" aria-hidden>{w.place}°</span>
+            <div className="rf-win-txt"><small>{w.prize}</small><b>{w.name || 'Número no vendido'}</b></div>
+            <span className="rf-win-n" aria-label={'Número ' + w.number}>{w.number}</span>
+          </li>))}
+      </ol>
+    </section>
+  );
+}
+
+function RifasHome() {
+  const [h, setH] = useState(undefined);
+  const [error, setError] = useState('');
+  useEffect(() => { api.getHome().then(setH).catch((e) => { setError(e.message); setH(null); }); }, []);
+  if (h === undefined) return <Loading />;
+  if (!h) return <div className="narrow rf"><Empty icon="alert" title="No pudimos cargar las rifas" text={error || 'Probá de nuevo en un rato.'} /></div>;
+  const fin = h.finished;
+  return (
+    <div className="rf">
+      <header className="rf-home-head"><span className="rf-kicker">BAT RIFAS · Makers 3DBAT</span><h1>{h.active.length ? '¡Rifa activa!' : 'Rifas'}</h1></header>
+      {h.active.map((r) => {
+        const pct = r.total ? Math.round((r.taken / r.total) * 100) : 0;
+        const list = (r.prizes || []).flatMap((p) => String(p).split(/\n+/)).filter(Boolean);
+        return (
+          <a key={r.slug} className="card rf-live-card" href={'#/rifas/' + r.slug}>
+            {r.cover_url ? <img src={r.cover_url} alt="" /> : <div className="rf-coverph"><Icon name="trophy" size={44} /><b>BAT RIFAS</b></div>}
+            <div className="rf-live-txt">
+              <span className="rf-live-badge">{r.status === 'paused' ? 'Reservas pausadas' : 'Activa · elegí tus números'}</span>
+              <h2>{r.title}</h2>
+              {list.length > 0 && <ol className="rf-prizelist mini">{list.map((p, i) => <li key={i}><span className="rf-place" aria-hidden>{i + 1}°</span><span>{p}</span></li>)}</ol>}
+              <span className="rf-bar" aria-hidden><i style={{ width: pct + '%' }} /></span>
+              <small>{pct}% vendido · {api.money(r.price_cents)} por número · {api.fmtDate(r.draw_at, false) || 'se sortea al agotar los números'}</small>
+              <span className="btn primary">Participar</span>
+            </div>
+          </a>);
+      })}
+      {fin && (
+        <section className="rf-finished" aria-labelledby="rf-fin-h">
+          <div className="rf-fin-banner"><Icon name="trophy" size={22} /><div><small>{h.active.length ? 'Última rifa finalizada' : 'Rifa finalizada'}</small><h2 id="rf-fin-h">{fin.title}</h2></div></div>
+          {fin.cover_url && <img className="rf-fin-cover" src={fin.cover_url} alt="" />}
+          {fin.winners?.length ? <Winners winners={fin.winners} title={fin.winners.length > 1 ? 'Ganadores' : 'Ganador'} />
+            : <p className="rf-note"><Icon name="clock" size={16} /> La rifa cerró. Los ganadores se informan acá apenas se haga el sorteo.</p>}
+          <a className="rf-back" href={'#/rifas/' + fin.slug}>Ver el talonario de esta rifa →</a>
+        </section>
+      )}
+      {!h.active.length && !fin && <Empty icon="star" title="Todavía no hay rifas" text="Cuando haya una rifa activa la vas a ver acá. ¡Atento al botón Rifas del menú!" />}
+    </div>
+  );
 }
 
 function Loading() { return <div className="rf-center"><span className="spinner" aria-label="Cargando" /></div>; }
@@ -129,6 +188,7 @@ function RaffleView({ slug, isAdmin }) {
   return (
     <div className="rf rf-wide">
       <StatusBanner status={raffle.status} />
+      {raffle.winners?.length > 0 && <Winners winners={raffle.winners} title={raffle.winners.length > 1 ? '¡Ganadores!' : '¡Ganador!'} />}
       <div className="rf-layout">
         <section className="rf-left">
           <header className="rf-head">
@@ -149,7 +209,6 @@ function RaffleView({ slug, isAdmin }) {
             <h2 id="rf-how-h"><Icon name="sparkles" size={18} /> ¿Cómo participar?</h2>
             <ol className="rf-steps"><li>Elegí tus números en el talonario.</li><li>Completá tus datos: quedan <b>apartados</b> por {raffle.pay_hours} h.</li><li>Transferí el total y subí el comprobante en tu ticket digital.</li><li>Cuando verificamos la acreditación, quedan <b>validados</b>.</li></ol>
           </section>
-          {raffle.description && <section className="card rf-desc"><p className="rf-pre-txt">{raffle.description}</p></section>}
           <section className="card rf-terms-card" aria-labelledby="rf-terms-h">
             <h2 id="rf-terms-h"><Icon name="book" size={18} /> Bases y condiciones</h2>
             <div className="rf-terms-txt" tabIndex={0}>{raffle.terms || 'Las bases todavía no se cargaron.'}</div>
@@ -237,7 +296,6 @@ function RaffleView({ slug, isAdmin }) {
       {modal === 'bases' && (
         <Modal title="¿Cómo participar?" onClose={() => setModal(null)}>
           <ol className="rf-steps"><li>Elegí tus números en el talonario.</li><li>Completá tus datos y reservá: quedan <b>apartados</b> por {raffle.pay_hours} h.</li><li>Transferí el total y subí el comprobante desde tu ticket digital.</li><li>Cuando verificamos la acreditación, tus números quedan <b>validados</b>.</li></ol>
-          {raffle.description && <p className="rf-pre-txt">{raffle.description}</p>}
           <details open><summary><b>Bases y condiciones (versión {raffle.terms_version})</b></summary><p className="rf-pre-txt">{raffle.terms}</p></details>
           <small className="rf-muted">{api.fmtDate(raffle.draw_at) ? `Sorteo: ${api.fmtDate(raffle.draw_at)} (hora de Buenos Aires).` : 'El sorteo se hace cuando se vendan todos los números.'} Se hace por fuera de BATBOX con el procedimiento de la comunidad.</small>
         </Modal>

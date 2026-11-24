@@ -6,6 +6,8 @@ import { shrinkImage } from './communityApi.js';
 // acá solo se llama a las funciones y se da formato.
 
 export const TZ = 'America/Argentina/Buenos_Aires';
+// Etapa de prueba: SOLO ADMINS (la base también lo exige con bb_rf_admin_only()). Para abrir al público: false acá y en la base.
+export const RIFAS_ADMIN_ONLY = true;
 const FN_URL = `${SUPABASE_URL}/functions/v1/bb-rifas`;
 
 export const RAFFLE_STATUS = {
@@ -66,7 +68,7 @@ export const whatsappShare = (text) => `https://wa.me/?text=${encodeURIComponent
 async function rpc(fn, args) {
   const { data, error } = await sb.rpc(fn, args);
   if (error) {
-    const e = new Error(error.code === '42501' ? 'No tenés permiso para esta acción.' : /function .* does not exist|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 076 (BAT RIFAS) en Supabase.' : error.message);
+    const e = new Error(error.code === '42501' ? 'No tenés permiso para esta acción.' : /bb_raffles_slug_key/.test(error.message) ? 'Esa dirección ya la usa otra rifa: elegí otra.' : /bb_raffles_slug_check/.test(error.message) ? 'La dirección debe tener entre 3 y 60 caracteres: letras minúsculas, números y guiones.' : /function .* does not exist|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 076 (BAT RIFAS) en Supabase.' : error.message);
     e.code = error.code;
     throw e;
   }
@@ -81,6 +83,18 @@ export const reserve = (slug, f) => rpc('bb_rf_reserve', {
 });
 export const getEntry = (token) => rpc('bb_rf_entry', { p_token: token });
 export const verifyTicket = (code) => rpc('bb_rf_verify', { p_code: code });
+export const getHome = () => rpc('bb_rf_home', {});
+
+// ¿Hay alguna rifa activa? (para el brillo del botón del menú). Cacheado 2 min; si falla, no brilla.
+let liveCache = { at: 0, value: false, p: null };
+export function fetchRafflesLive() {
+  if (Date.now() - liveCache.at < 120000) return Promise.resolve(liveCache.value);
+  if (!liveCache.p) {
+    liveCache.p = sb.rpc('bb_rf_active_count').then(({ data }) => { liveCache = { at: Date.now(), value: (data || 0) > 0, p: null }; return liveCache.value; })
+      .catch(() => { liveCache = { at: Date.now(), value: false, p: null }; return false; });
+  }
+  return liveCache.p;
+}
 
 async function callFn(body, { auth = false } = {}) {
   const headers = { apikey: SUPABASE_PUBLISHABLE_KEY };
@@ -126,6 +140,7 @@ export async function adminResend(id, kind, op) {
 }
 export const adminMailFlush = (id) => callFn({ action: 'mail', entry_id: id }, { auth: true });
 export const adminCloseSummary = (id) => rpc('bb_rf_admin_close_summary', { p_raffle: id });
+export const adminSetWinners = async (id, numbers) => must(await rpc('bb_rf_admin_set_winners', { p_raffle: id, p_numbers: numbers }));
 export const adminClose = async (id, releasePending) => must(await rpc('bb_rf_admin_close', { p_raffle: id, p_release_pending: releasePending }));
 export const adminExportCreate = async (id, reason, op) => must(await rpc('bb_rf_admin_export_create', { p_raffle: id, p_reason: reason, p_op: op }));
 export const adminExportGet = (id) => rpc('bb_rf_admin_export_get', { p_export: id });

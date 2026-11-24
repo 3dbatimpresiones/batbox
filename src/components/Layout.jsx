@@ -10,15 +10,23 @@ import { LiveChip } from './Tycoon.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import { FeatIso, useFeaturedUid } from './Featured.jsx';
 import { useCommunityFlags } from '../lib/communityApi.js';
+import { fetchRafflesLive, RIFAS_ADMIN_ONLY } from '../lib/rifasApi.js';
 
 const SUB_KEYS = NAV.filter((n) => n.sub).map((n) => n.key);
 
 // Oculta del menú los módulos de comunidad apagados o sin acceso.
 // La Biblioteca 3D se ve como "Próximamente" hasta que se prende el interruptor "biblioteca" (los admins ya la usan).
+function useRafflesLive() {
+  const [live, setLive] = useState(false);
+  useEffect(() => { let on = true; fetchRafflesLive().then((v) => on && setLive(v)); return () => { on = false; }; }, []);
+  return live;
+}
+
 function useNav() {
   const { isMember, isAdmin } = useAuth();
   const flags = useCommunityFlags();
-  return NAV.filter((n) => !n.flag || ((isMember || n.public) && flags?.[n.flag]))
+  return NAV.filter((n) => !n.rifas || !RIFAS_ADMIN_ONLY || isAdmin)
+    .filter((n) => !n.flag || ((isMember || n.public) && flags?.[n.flag]))
     .map((n) => (n.key === 'biblioteca' && !isAdmin && !flags?.biblioteca ? { ...n, soon: true } : n));
 }
 const Soon = ({ n }) => (n.soon ? <span className="nav-soon">Pronto</span> : null);
@@ -59,6 +67,7 @@ function AccountButton() {
 export function Header({ route }) {
   const section = route.parts[0] ?? '';
   const nav = useNav();
+  const rifaLive = useRafflesLive();
   return (
     <header className="bb-top">
       <div className="bb-top-in">
@@ -70,8 +79,10 @@ export function Header({ route }) {
         <Brand />
         <nav className="top-nav" aria-label="Secciones">
           {nav.filter((n) => !n.sub).map((n) => (
-            <a key={n.key} href={'#' + n.to} className={'nav-link' + (section === n.key || (n.key === 'community' && SUB_KEYS.includes(section)) ? ' active' : '') + (n.key === 'club' ? ' club' : '') + (n.key === 'juego' ? ' game' : '')}>
+            <a key={n.key} href={'#' + n.to} className={'nav-link' + (section === n.key || (n.key === 'community' && SUB_KEYS.includes(section)) ? ' active' : '') + (n.key === 'club' ? ' club' : '') + (n.key === 'juego' ? ' game' : '') + (n.rifas && rifaLive ? ' rifa-live' : '')}
+              title={n.rifas && rifaLive ? '¡Hay una rifa activa!' : undefined}>
               {n.key === 'club' && <Icon name="crown" size={15} />}
+              {n.rifas && <Icon name="trophy" size={15} />}
               {n.key === 'juego' && <Icon name="gamepad" size={15} />}
               {n.short}<Soon n={n} />
             </a>
@@ -95,6 +106,7 @@ export function BottomNav({ route }) {
   const [open, setOpen] = useState(false);
   const { canEdit, isAdmin } = useAuth();
   const nav = useNav();
+  const rifaLive = useRafflesLive();
   useEffect(() => setOpen(false), [route.path]);
 
   const main = nav.filter((n) => MOBILE_MAIN.includes(n.key));
@@ -107,7 +119,7 @@ export function BottomNav({ route }) {
         <div className="sheet-back" onClick={() => setOpen(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             {more.map((n) => (
-              <a key={n.key} href={'#' + n.to} className={'sheet-link' + (section === n.key ? ' active' : '')}>
+              <a key={n.key} href={'#' + n.to} className={'sheet-link' + (section === n.key ? ' active' : '') + (n.rifas && rifaLive ? ' rifa-live' : '')}>
                 <Icon name={n.icon} /> {n.label}<Soon n={n} />
               </a>
             ))}
@@ -124,7 +136,7 @@ export function BottomNav({ route }) {
           </a>
         ))}
         <button className={'bn-item' + (open || moreActive ? ' active' : '')} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-          <Icon name="grid" /><span>Más</span>
+          <Icon name="grid" /><span>Más</span>{rifaLive && nav.some((n) => n.rifas) && <i className="bn-rifa-dot" aria-label="Hay una rifa activa" />}
         </button>
       </nav>
     </>

@@ -93,7 +93,7 @@ export function GalleryGrid({ filters, limit = 12, empty, compact, bare }) {
 
 // Confeti decorativo (solo CSS, sin librerías). Valores fijos para que no cambie en cada render.
 const CONFETTI_COLORS = ['#F78EB6', '#5DDADB', '#8B5CF6', '#3B82F6', '#ffffff'];
-const CONFETTI = Array.from({ length: 80 }, (_, i) => ({
+export const CONFETTI = Array.from({ length: 80 }, (_, i) => ({
   left: `${(i * 37 + 7) % 101}%`, background: CONFETTI_COLORS[i % 5], animationDelay: `${((i * 53) % 70) / 10}s`,
   animationDuration: `${5 + ((i * 29) % 40) / 10}s`, transform: `rotate(${(i * 47) % 360}deg)`, width: `${6 + (i % 3) * 2}px`, height: `${9 + (i % 4) * 2}px`,
   borderRadius: i % 3 === 0 ? '50%' : '2px',
