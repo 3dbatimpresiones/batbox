@@ -464,7 +464,6 @@ function EntryDetail({ id, onClose }) {
   useEffect(() => { const k = (ev) => ev.key === 'Escape' && onClose(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
   const run = async (fn, msg) => { setBusy(true); setError(''); setOk(''); try { await fn(); setOk(msg); await load(); } catch (err) { setError(err.message); } finally { setBusy(false); } };
   const fmt = fmtOf(e);
-  const openProof = async (p) => { try { window.open(await api.proofUrl(p.storage_path), '_blank', 'noopener'); } catch (err) { setError(err.message); } };
   return (
     <div className="rf-drawer" role="dialog" aria-modal="true" aria-label="Ficha de participación" onClick={(ev) => ev.target === ev.currentTarget && onClose()}>
       <div className="card rf-drawer-in">
@@ -486,10 +485,9 @@ function EntryDetail({ id, onClose }) {
             {e.reject_reason && <><dt>Último rechazo</dt><dd>{e.reject_reason}</dd></>}
           </dl>
           <h4>Comprobantes</h4>
-          {e.proofs.length === 0 ? <small className="cm-date">Sin comprobante todavía.</small> : e.proofs.map((p) => (
-            <div key={p.id} className="cm-mod-head ap-row"><span><Chip map={{ pending: { label: 'Para revisar', cls: 'cat', icon: 'search' }, accepted: { label: 'Aceptado', cls: 'ok', icon: 'check' }, rejected: { label: 'Rechazado', cls: 'err', icon: 'x' } }} value={p.status} /> <small className="cm-date">{api.fmtDate(p.created_at)} · {p.mime.split('/')[1].toUpperCase()} · {Math.round(p.size_bytes / 1024)} KB{p.reason ? ` · ${p.reason}` : ''}</small></span>
-              <button type="button" className="cm-link" onClick={() => openProof(p)}>Ver</button></div>))}
-          <p className="rf-muted">Un comprobante solo no confirma: verificá la acreditación en la cuenta antes de confirmar.</p>
+          {e.proofs.length === 0 ? <small className="cm-date">Sin comprobante todavía.</small> : e.proofs.map((p, i) => (
+            <ProofItem key={p.id} p={p} open={i === 0} onError={setError} />))}
+          <p className="rf-muted">Antes de confirmar, revisá en la cuenta que el pago se haya acreditado.</p>
           {error && <div className="feedback-error" role="alert">{error}</div>}
           {ok && <div className="cm-ok" role="status">{ok}</div>}
           <div className="rf-actions">
@@ -557,6 +555,29 @@ function WinnersForm({ raffle }) {
       {msg.ok && <div className="cm-ok" role="status">{msg.ok}</div>}
       {msg.err && <div className="feedback-error" role="alert">{msg.err}</div>}
       <div className="rf-actions"><button type="button" className="btn primary" disabled={busy} onClick={save}>{busy ? 'Guardando…' : 'Informar ganadores'}</button></div>
+    </div>
+  );
+}
+
+const PROOF_STATUS = { pending: { label: 'Para revisar', cls: 'cat', icon: 'search' }, accepted: { label: 'Aceptado', cls: 'ok', icon: 'check' }, rejected: { label: 'Rechazado', cls: 'err', icon: 'x' } };
+
+// Comprobante: vista previa grande (imagen) o botón para abrir el PDF. El enlace firmado dura 10 minutos.
+function ProofItem({ p, open, onError }) {
+  const [url, setUrl] = useState(null);
+  const [show, setShow] = useState(open);
+  const isPdf = p.mime === 'application/pdf';
+  useEffect(() => {
+    if (!show || url) return;
+    api.proofUrl(p.storage_path).then(setUrl).catch((err) => onError(err.message));
+  }, [show, url, p.storage_path, onError]);
+  return (
+    <div className="rf-proof-item">
+      <div className="rf-proof-meta"><Chip map={PROOF_STATUS} value={p.status} /><small className="cm-date">{api.fmtDate(p.created_at)} · {isPdf ? 'PDF' : p.mime.split('/')[1].toUpperCase()} · {Math.round(p.size_bytes / 1024)} KB{p.reason ? ` · ${p.reason}` : ''}</small></div>
+      {show && !isPdf && (url ? <a href={url} target="_blank" rel="noopener noreferrer" title="Abrir en tamaño completo"><img className="rf-proof-img" src={url} alt="Comprobante de pago" /></a> : <div className="cm-loading"><span className="spinner xs" /></div>)}
+      <div className="rf-actions">
+        {!show && <button type="button" className="btn ghost" onClick={() => setShow(true)}><Icon name="image" size={16} /> Ver comprobante</button>}
+        {show && url && <a className="btn primary" href={url} target="_blank" rel="noopener noreferrer"><Icon name="external" size={16} /> {isPdf ? 'Abrir PDF del comprobante' : 'Abrir en grande'}</a>}
+      </div>
     </div>
   );
 }

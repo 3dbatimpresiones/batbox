@@ -157,7 +157,7 @@ export async function uploadCover(raffleId, file) {
 }
 
 export async function proofUrl(path) {
-  const { data, error } = await sb.storage.from('bb-rifas-comprobantes').createSignedUrl(path, 120);
+  const { data, error } = await sb.storage.from('bb-rifas-comprobantes').createSignedUrl(path, 600);
   if (error) throw new Error('No se pudo abrir el comprobante (¿sos admin?).');
   return data.signedUrl;
 }
