@@ -24,7 +24,7 @@ export const ENTRY_STATUS = {
 };
 
 export const money = (cents) => '$' + (Number(cents || 0) / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 });
-export const fmtNum = (n, to) => String(n).padStart(Math.max(String(to).length, 1), '0');
+export const fmtNum = (n, to, from = 0) => (Number(from) > 0 ? String(n) : String(n).padStart(Math.max(String(to).length, 1), '0'));
 export const fmtDate = (iso, withTime = true) => (iso ? new Date(iso).toLocaleString('es-AR', { timeZone: TZ, dateStyle: 'medium', ...(withTime ? { timeStyle: 'short' } : {}) }) : '');
 
 // <input type="datetime-local"> se interpreta SIEMPRE como hora de Buenos Aires (UTC−3, sin horario de verano).

@@ -7,10 +7,10 @@ import Icon from '../components/Icon.jsx';
 import { Empty } from '../components/ui.jsx';
 import '../styles/rifas.css';
 
-// BAT RIFAS — vistas públicas (sin cuenta):
-//   #/rifas/<slug>      talonario
-//   #/rifas/p/<token>   participación privada (enlace personal)
-//   #/rifas/v/<código>  verificación pública del QR de un ticket
+// BAT RIFAS — vistas públicas:
+//   #/rifas/<slug>               talonario
+//   #/rifas/p/<token>[?nuevo=1]  ticket digital (enlace personal)
+//   #/rifas/v/<código>           verificación pública del QR de un número
 
 // Etapa de prueba: SOLO ADMINS (la base también lo exige con bb_rf_admin_only()).
 const ADMIN_ONLY = true;
@@ -27,36 +27,38 @@ export default function Rifas({ route }) {
       </div>
     );
   }
-  if (a === 'p' && b) return <EntryView token={b} />;
+  if (a === 'p' && b) return <TicketView token={b} isNew={route.query.nuevo === '1'} />;
   if (a === 'v' && b) return <VerifyView code={b} />;
-  if (a) return <RaffleView slug={a} />;
-  return (
-    <div className="narrow rf">
-      <Empty icon="star" title="BAT RIFAS" text="Abrí el enlace de la rifa que te compartieron para ver el talonario." />
-    </div>
-  );
+  if (a) return <RaffleView slug={a} isAdmin={isAdmin} />;
+  return <div className="narrow rf"><Empty icon="star" title="BAT RIFAS" text="Abrí el enlace de la rifa que te compartieron para ver el talonario." /></div>;
 }
 
 function Loading() { return <div className="rf-center"><span className="spinner" aria-label="Cargando" /></div>; }
+const fmtOf = (r) => (n) => api.fmtNum(n, r.num_to, r.num_from);
 
-function Copy({ text, label = 'Copiar enlace' }) {
-  const [done, setDone] = useState(false);
-  const go = async () => {
-    try { await navigator.clipboard.writeText(text); } catch {
-      const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
-    }
-    setDone(true); setTimeout(() => setDone(false), 1800);
-  };
-  return <button type="button" className="btn ghost" onClick={go}><Icon name={done ? 'check' : 'link'} size={16} /> {done ? 'Copiado' : label}</button>;
+function Qr({ text, size = 132 }) {
+  const svg = useMemo(() => { const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }, [text]);
+  return <div className="rf-qr" style={{ width: size, height: size }} role="img" aria-label="Código QR" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
-function ShareBar({ raffle }) {
-  const url = api.shareUrl(raffle.slug);
-  const msg = `${raffle.title} — elegí tus números acá: ${url}`;
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); } catch {
+    const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+  }
+}
+function Copy({ text, label = 'Copiar enlace', className = 'btn ghost' }) {
+  const [done, setDone] = useState(false);
+  return <button type="button" className={className} onClick={async () => { await copyText(text); setDone(true); setTimeout(() => setDone(false), 1800); }}><Icon name={done ? 'check' : 'link'} size={16} /> {done ? 'Copiado' : label}</button>;
+}
+
+function Modal({ title, onClose, children, labelId = 'rf-modal-h' }) {
+  useEffect(() => { const k = (e) => e.key === 'Escape' && onClose?.(); window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
   return (
-    <div className="rf-share">
-      <a className="btn primary" href={api.whatsappShare(msg)} target="_blank" rel="noopener noreferrer"><Icon name="message" size={16} /> Compartir por WhatsApp</a>
-      <Copy text={url} />
+    <div className="modal-back" onClick={onClose}>
+      <div className="modal rf-modal" role="dialog" aria-modal="true" aria-labelledby={labelId} onClick={(e) => e.stopPropagation()}>
+        <div className="rf-modal-head"><h2 id={labelId}>{title}</h2>{onClose && <button type="button" className="mini-btn" aria-label="Cerrar" onClick={onClose}>×</button>}</div>
+        {children}
+      </div>
     </div>
   );
 }
@@ -74,16 +76,17 @@ function StatusBanner({ status }) {
 // ---------------------------------------------------------------------
 // Talonario
 // ---------------------------------------------------------------------
-const BLOCK = 100;
+const PAGE = 100;
 
-function RaffleView({ slug }) {
+function RaffleView({ slug, isAdmin }) {
   const [raffle, setRaffle] = useState(undefined);
   const [error, setError] = useState('');
   const [sel, setSel] = useState([]);
-  const [step, setStep] = useState('pick'); // pick | form
-  const [block, setBlock] = useState(0);
+  const [onlyFree, setOnlyFree] = useState(false);
+  const [page, setPage] = useState(0);
   const [find, setFind] = useState('');
   const [flash, setFlash] = useState(null);
+  const [modal, setModal] = useState(null); // participar | bases | verificar | organizador | menu
   const load = useCallback(() => api.getRaffle(slug).then((r) => { setRaffle(r); setError(''); }).catch((e) => { setError(e.message); setRaffle(null); }), [slug]);
   useEffect(() => { load(); }, [load]);
 
@@ -97,153 +100,222 @@ function RaffleView({ slug }) {
   if (raffle === undefined) return <Loading />;
   if (!raffle) return <div className="narrow rf"><Empty icon="alert" title="No encontramos esta rifa" text={error || 'Revisá el enlace o pedile uno nuevo a quien te lo pasó.'} /></div>;
 
+  const fmt = fmtOf(raffle);
   const total = raffle.num_to - raffle.num_from + 1;
   const free = total - taken.size;
+  const pct = Math.round((taken.size / total) * 100);
   const open = raffle.status === 'published';
-  const blocks = Math.ceil(total / BLOCK);
-  const start = raffle.num_from + block * BLOCK;
-  const nums = Array.from({ length: Math.min(BLOCK, raffle.num_to - start + 1) }, (_, i) => start + i);
+  const all = [];
+  for (let n = raffle.num_from; n <= raffle.num_to; n++) if (!onlyFree || !taken.has(n) || sel.includes(n)) all.push(n);
+  const pages = Math.max(1, Math.ceil(all.length / PAGE));
+  const pg = Math.min(page, pages - 1);
+  const nums = all.slice(pg * PAGE, pg * PAGE + PAGE);
   const toggle = (n) => setSel((s) => (s.includes(n) ? s.filter((x) => x !== n) : s.length >= raffle.max_per_entry ? s : [...s, n].sort((x, y) => x - y)));
+  const shareLink = api.shareUrl(raffle.slug);
   const goFind = (e) => {
     e.preventDefault();
     const n = parseInt(find, 10);
-    if (Number.isNaN(n) || n < raffle.num_from || n > raffle.num_to) { setFlash({ n: null, msg: `Ese número no está en el talonario (${api.fmtNum(raffle.num_from, raffle.num_to)} a ${api.fmtNum(raffle.num_to, raffle.num_to)}).` }); return; }
-    setBlock(Math.floor((n - raffle.num_from) / BLOCK));
+    if (Number.isNaN(n) || n < raffle.num_from || n > raffle.num_to) { setFlash({ n: null, msg: `Ese número no está en el talonario (${fmt(raffle.num_from)} a ${fmt(raffle.num_to)}).` }); return; }
+    setOnlyFree(false); setPage(Math.floor((n - raffle.num_from) / PAGE));
     const st = taken.get(n);
-    setFlash({ n, msg: st ? `El ${api.fmtNum(n, raffle.num_to)} ya está ${st === 'sold' ? 'vendido' : 'reservado'}.` : `El ${api.fmtNum(n, raffle.num_to)} está libre.` });
-    setTimeout(() => document.getElementById('rf-n-' + n)?.focus(), 50);
+    setFlash({ n, msg: st ? `El ${fmt(n)} ya está ${st === 'sold' ? 'vendido' : 'apartado'}.` : `El ${fmt(n)} está libre.` });
+    setTimeout(() => document.getElementById('rf-n-' + n)?.focus(), 60);
+  };
+  const share = async () => {
+    if (navigator.share) { try { await navigator.share({ title: raffle.title, text: `${raffle.title} — elegí tus números`, url: shareLink }); return; } catch { /* cancelado */ } }
+    setModal('compartir');
   };
 
   return (
-    <div className="rf">
+    <div className="rf rf-wide">
       <StatusBanner status={raffle.status} />
-      <header className="rf-hero card">
-        {raffle.cover_url && <img className="rf-cover" src={raffle.cover_url} alt="" loading="eager" />}
-        <div className="rf-hero-txt">
-          <span className="rf-kicker">BAT RIFAS · Makers 3DBAT</span>
-          <h1>{raffle.title}</h1>
+      <div className="rf-layout">
+        <section className="rf-left">
+          <header className="rf-head">
+            <span className="rf-avatar">{raffle.cover_url ? <img src={raffle.cover_url} alt="" /> : <Icon name="star" size={22} />}</span>
+            <div><h1>{raffle.title}</h1><small>{raffle.draw_at ? api.fmtDate(raffle.draw_at, false).toUpperCase() : 'SE SORTEA AL AGOTAR LOS NÚMEROS'}</small></div>
+          </header>
+          <div className="rf-coverbox card">{raffle.cover_url ? <img src={raffle.cover_url} alt={'Portada de ' + raffle.title} /> : <div className="rf-coverph"><Icon name="trophy" size={48} /><b>BAT RIFAS</b><small>Makers 3DBAT</small></div>}</div>
           {raffle.prizes?.length > 0 && (
-            <ul className="rf-prizes">{raffle.prizes.map((p, i) => <li key={i}><Icon name="trophy" size={16} /> <span>{raffle.prizes.length > 1 && <b>{i + 1}° premio: </b>}{p}</span></li>)}</ul>
+            <ul className="rf-prizes card">{raffle.prizes.map((p, i) => <li key={i}><Icon name="trophy" size={16} /> <span>{raffle.prizes.length > 1 && <b>{i + 1}° premio: </b>}{p}</span></li>)}</ul>
           )}
-          <div className="rf-facts">
-            <div><small>Precio por número</small><b>{api.money(raffle.price_cents)}</b></div>
-            <div><small>Sorteo (informativo)</small><b>{raffle.draw_at ? api.fmtDate(raffle.draw_at) : 'A confirmar'}</b></div>
-            <div><small>Disponibles</small><b>{free} de {total}</b></div>
-          </div>
-          {raffle.draw_at && <small className="rf-muted">Horario de Buenos Aires. El sorteo se hace por fuera de BATBOX con el procedimiento de la comunidad.</small>}
-        </div>
-      </header>
-      {raffle.description && <section className="card rf-text"><p>{raffle.description}</p></section>}
-      <ShareBar raffle={raffle} />
+          <button type="button" className="rf-howto" onClick={() => setModal('bases')}><Icon name="sparkles" size={16} /> ¿Cómo participar?</button>
+          {raffle.organizer && <div className="rf-org"><Icon name="user" size={22} /><div><small>Organizador</small><b>{raffle.organizer}</b></div></div>}
+          <div className="rf-phoneqr card"><Qr text={shareLink} size={130} /><div><Icon name="sparkles" size={20} /><b>Escaneá el código para ver el talonario desde tu celular</b></div></div>
+        </section>
 
-      {step === 'pick' && (
-        <section className="card rf-board" aria-labelledby="rf-board-h">
-          <div className="rf-board-head">
-            <h2 id="rf-board-h">Elegí tus números</h2>
-            <form className="rf-find" onSubmit={goFind} role="search">
-              <div className="pink-input"><input inputMode="numeric" value={find} onChange={(e) => setFind(e.target.value.replace(/\D/g, ''))} placeholder="Buscar número" aria-label="Buscar número" /></div>
-              <button className="btn ghost" type="submit"><Icon name="search" size={16} /> Buscar</button>
-            </form>
+        <section className="rf-right" aria-labelledby="rf-pick-h">
+          <div className="rf-topbar">
+            <div className="rf-progress" role="img" aria-label={`${pct}% del talonario ocupado`}><span className="rf-bar"><i style={{ width: pct + '%' }} /></span><small>{pct}%</small></div>
+            <button type="button" className="icon-btn" aria-label="Compartir" onClick={share}><Icon name="send" size={18} /></button>
+            <div className="rf-menuwrap">
+              <button type="button" className="icon-btn" aria-label="Menú" aria-expanded={modal === 'menu'} onClick={() => setModal(modal === 'menu' ? null : 'menu')}><Icon name="more" size={18} /></button>
+              {modal === 'menu' && (
+                <div className="rf-dropdown" role="menu">
+                  <button type="button" role="menuitem" onClick={() => setModal('verificar')}><Icon name="check" size={16} /> Verificar participación</button>
+                  <button type="button" role="menuitem" onClick={() => setModal('organizador')}><Icon name="user" size={16} /> Organizador</button>
+                  <button type="button" role="menuitem" onClick={() => { setModal(null); share(); }}><Icon name="send" size={16} /> Compartir</button>
+                  {isAdmin && <>
+                    <div className="rf-dd-sec">Administrador</div>
+                    <a role="menuitem" href={`#/admin?tab=rifas&r=${raffle.id}`}><Icon name="clipboard" size={16} /> Administración</a>
+                    <a role="menuitem" href={`#/admin?tab=rifas&r=${raffle.id}&v=ajustes`}><Icon name="edit" size={16} /> Ajustes</a>
+                    <div className="rf-dd-sec">Mi cuenta</div>
+                    <a role="menuitem" href="#/admin?tab=rifas"><Icon name="home" size={16} /> Mis rifas</a>
+                  </>}
+                </div>
+              )}
+            </div>
           </div>
+          <div className="rf-pickhead">
+            <h2 id="rf-pick-h">¡Elegí tus números!</h2>
+            <button type="button" className={'rf-onlyfree' + (onlyFree ? ' on' : '')} aria-pressed={onlyFree} onClick={() => { setOnlyFree(!onlyFree); setPage(0); }}><Icon name="search" size={14} /> {onlyFree ? 'Solo disponibles' : 'Todos'}</button>
+          </div>
+          <form className="rf-find" onSubmit={goFind} role="search">
+            <div className="pink-input"><input inputMode="numeric" value={find} onChange={(e) => setFind(e.target.value.replace(/\D/g, ''))} placeholder="Buscar número" aria-label="Buscar número" /></div>
+            <button className="btn ghost" type="submit">Buscar</button>
+          </form>
           {flash && <p className="rf-flash" role="status">{flash.msg}</p>}
           <ul className="rf-legend" aria-label="Referencias">
-            <li><span className="rf-sw free" /> Libre</li>
-            <li><span className="rf-sw mine">✓</span> Elegido</li>
-            <li><span className="rf-sw held">⏳</span> Reservado</li>
-            <li><span className="rf-sw sold">✕</span> Vendido</li>
+            <li><span className="rf-sw free" /> Libre</li><li><span className="rf-sw mine">✓</span> Elegido</li>
+            <li><span className="rf-sw held">⏳</span> Apartado</li><li><span className="rf-sw sold">✕</span> Vendido</li>
           </ul>
-          {blocks > 1 && (
-            <div className="rf-blocks" role="tablist" aria-label="Bloques de números">
-              {Array.from({ length: blocks }, (_, i) => (
-                <button key={i} type="button" role="tab" aria-selected={i === block} className={'opt' + (i === block ? ' active' : '')} onClick={() => setBlock(i)}>
-                  {api.fmtNum(raffle.num_from + i * BLOCK, raffle.num_to)}–{api.fmtNum(Math.min(raffle.num_from + (i + 1) * BLOCK - 1, raffle.num_to), raffle.num_to)}
-                </button>))}
+          {pages > 1 && (
+            <div className="rf-blocks" role="tablist" aria-label="Páginas de números">
+              {Array.from({ length: pages }, (_, i) => (
+                <button key={i} type="button" role="tab" aria-selected={i === pg} className={'opt' + (i === pg ? ' active' : '')} onClick={() => setPage(i)}>{fmt(all[i * PAGE])}–{fmt(all[Math.min((i + 1) * PAGE, all.length) - 1])}</button>))}
             </div>
           )}
           <div className="rf-grid" role="group" aria-label="Números">
             {nums.map((n) => {
-              const st = taken.get(n); const mine = sel.includes(n);
-              const label = api.fmtNum(n, raffle.num_to);
+              const st = taken.get(n); const mine = sel.includes(n); const label = fmt(n);
               return (
                 <button key={n} id={'rf-n-' + n} type="button" className={'rf-n ' + (mine ? 'mine' : st || 'free') + (flash?.n === n ? ' flash' : '')}
                   disabled={!!st || !open} aria-pressed={mine}
-                  aria-label={`Número ${label}${st === 'sold' ? ', vendido' : st === 'held' ? ', reservado' : mine ? ', elegido' : ', libre'}`}
+                  aria-label={`Número ${label}${st === 'sold' ? ', vendido' : st === 'held' ? ', apartado' : mine ? ', elegido' : ', libre'}`}
                   onClick={() => toggle(n)}>{label}{st === 'held' && <i aria-hidden>⏳</i>}{st === 'sold' && <i aria-hidden>✕</i>}</button>);
             })}
           </div>
           {open && free === 0 && <p className="rf-banner closed">No quedan números disponibles.</p>}
           {sel.length >= raffle.max_per_entry && <p className="rf-muted">Llegaste al máximo de {raffle.max_per_entry} números por reserva.</p>}
         </section>
+      </div>
+
+      <div className="rf-statsbar" aria-live="polite">
+        {sel.length && open ? (
+          <>
+            <div className="rf-statsel"><b>{sel.map((n) => '#' + fmt(n)).join(' ')}</b><small>{api.money(raffle.price_cents * sel.length)} · {sel.length} número{sel.length > 1 ? 's' : ''}</small></div>
+            <button type="button" className="btn text" onClick={() => setSel([])}>Limpiar</button>
+            <button type="button" className="btn primary" onClick={() => setModal('participar')}>Participar</button>
+          </>
+        ) : (
+          <>
+            <div><b>{free}</b><small>Disponibles</small></div>
+            <div><b>{api.money(raffle.price_cents)}</b><small>Por número</small></div>
+            <div><b>{raffle.draw_at ? new Date(raffle.draw_at).toLocaleDateString('es-AR', { timeZone: api.TZ, day: 'numeric', month: 'short' }) : 'Al agotar'}</b><small>Sorteo</small></div>
+          </>
+        )}
+      </div>
+
+      {modal === 'participar' && <ParticipateModal raffle={raffle} sel={sel} setSel={setSel} reload={load} onClose={() => setModal(null)} />}
+      {modal === 'bases' && (
+        <Modal title="¿Cómo participar?" onClose={() => setModal(null)}>
+          <ol className="rf-steps"><li>Elegí tus números en el talonario.</li><li>Completá tus datos y reservá: quedan <b>apartados</b> por {raffle.pay_hours} h.</li><li>Transferí el total y subí el comprobante desde tu ticket digital.</li><li>Cuando verificamos la acreditación, tus números quedan <b>validados</b>.</li></ol>
+          {raffle.description && <p className="rf-pre-txt">{raffle.description}</p>}
+          <details open><summary><b>Bases y condiciones (versión {raffle.terms_version})</b></summary><p className="rf-pre-txt">{raffle.terms}</p></details>
+          <small className="rf-muted">{raffle.draw_at ? `Sorteo: ${api.fmtDate(raffle.draw_at)} (hora de Buenos Aires).` : 'El sorteo se hace cuando se vendan todos los números.'} Se hace por fuera de BATBOX con el procedimiento de la comunidad.</small>
+        </Modal>
       )}
-
-      {step === 'form' && <ReserveForm raffle={raffle} sel={sel} setSel={setSel} onBack={() => setStep('pick')} reload={load} />}
-
-      {step === 'pick' && open && (
-        <div className="rf-cart" aria-live="polite">
-          <div><small>{sel.length ? `${sel.length} número${sel.length > 1 ? 's' : ''}: ${sel.map((n) => api.fmtNum(n, raffle.num_to)).join(', ')}` : 'Tocá los números que quieras'}</small>
-            <b>{api.money(raffle.price_cents * sel.length)}</b></div>
-          <button type="button" className="btn primary" disabled={!sel.length} onClick={() => { setStep('form'); window.scrollTo(0, 0); }}>Continuar</button>
-        </div>
+      {modal === 'organizador' && (
+        <Modal title="Organizador" onClose={() => setModal(null)}>
+          <p><b>{raffle.organizer || 'Makers 3DBAT · 3DBAT IMPRESIONES'}</b></p>
+          {raffle.support_contact && <p>Consultas: {raffle.support_contact}</p>}
+        </Modal>
       )}
-
-      <details className="card rf-terms"><summary>Bases y condiciones (versión {raffle.terms_version})</summary><p>{raffle.terms}</p></details>
-      {raffle.support_contact && <p className="rf-muted rf-center-txt">¿Dudas? {raffle.support_contact}</p>}
+      {modal === 'compartir' && (
+        <Modal title="Compartir" onClose={() => setModal(null)}>
+          <div className="rf-actions">
+            <a className="btn primary" href={api.whatsappShare(`${raffle.title} — elegí tus números acá: ${shareLink}`)} target="_blank" rel="noopener noreferrer"><Icon name="message" size={16} /> WhatsApp</a>
+            <Copy text={shareLink} />
+          </div>
+        </Modal>
+      )}
+      {modal === 'verificar' && <VerifyModal onClose={() => setModal(null)} />}
     </div>
   );
 }
 
-function ReserveForm({ raffle, sel, setSel, onBack, reload }) {
-  const [f, setF] = useState({ name: '', email: '', phone: '', accept: false });
+function VerifyModal({ onClose }) {
+  const [v, setV] = useState('');
+  const [err, setErr] = useState('');
+  const go = (e) => {
+    e.preventDefault();
+    const s = v.trim();
+    const tok = /([0-9a-f]{64})/.exec(s)?.[1];
+    const code = /\/v\/([0-9a-f]{20})/.exec(s)?.[1] || (/^[0-9a-f]{20}$/.test(s) ? s : null);
+    if (tok) navigate('/rifas/p/' + tok);
+    else if (code) navigate('/rifas/v/' + code);
+    else setErr('Pegá el enlace de tu ticket (lo recibiste por correo) o el código del QR.');
+  };
+  return (
+    <Modal title="Verificar participación" onClose={onClose}>
+      <form onSubmit={go} className="rf-form-in">
+        <label className="field"><span>Enlace del ticket o código del QR</span><div className="pink-input"><input autoFocus value={v} onChange={(e) => { setV(e.target.value); setErr(''); }} /></div></label>
+        {err && <div className="feedback-error" role="alert">{err}</div>}
+        <button type="submit" className="btn primary wide">Verificar</button>
+      </form>
+    </Modal>
+  );
+}
+
+function ParticipateModal({ raffle, sel, setSel, reload, onClose }) {
+  const [f, setF] = useState({ name: '', phone: '', email: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [taken, setTaken] = useState([]);
   const key = useRef(crypto.randomUUID());   // misma clave = misma operación (doble clic / reintento)
   const set = (x) => setF((c) => ({ ...c, ...x }));
-  const fmt = (n) => api.fmtNum(n, raffle.num_to);
+  const fmt = fmtOf(raffle);
+  const valid = sel.length && f.name.trim().length >= 2 && /\S+@\S+\.\S+/.test(f.email) && (!raffle.require_phone || f.phone.replace(/\D/g, '').length >= 6);
   const submit = async (e) => {
     e.preventDefault();
-    if (busy) return;
+    if (busy || !valid) return;
     setBusy(true); setError(''); setTaken([]);
     try {
       const r = await api.reserve(raffle.slug, { numbers: sel, name: f.name, email: f.email, phone: f.phone, terms_version: raffle.terms_version, client_key: key.current });
-      if (r.ok) { api.flushMail(r.token); navigate('/rifas/p/' + r.token); return; }
+      if (r.ok) { api.flushMail(r.token); navigate(`/rifas/p/${r.token}?nuevo=1`); return; }
       setError(r.error);
       if (r.taken?.length) { setTaken(r.taken); setSel((s) => s.filter((n) => !r.taken.includes(n))); reload(); }
       if (r.terms_version) reload();
     } catch (err) { setError(err.message); } finally { setBusy(false); }
   };
   return (
-    <form className="card rf-form" onSubmit={submit} noValidate>
-      <h2>Tus datos</h2>
-      <div className="rf-summary">
-        <div><small>Números</small><b>{sel.map(fmt).join(', ') || '—'}</b></div>
-        <div><small>Total a transferir</small><b>{api.money(raffle.price_cents * sel.length)}</b></div>
-      </div>
-      {taken.length > 0 && (
-        <div className="feedback-error" role="alert">Se ocuparon: <b>{taken.map(fmt).join(', ')}</b>. Los sacamos de tu selección; podés seguir con el resto o elegir otros.</div>
-      )}
-      <label className="field"><span>Nombre y apellido</span><div className="pink-input"><input required autoComplete="name" maxLength={80} value={f.name} onChange={(e) => set({ name: e.target.value })} /></div></label>
-      <label className="field"><span>Email (te mandamos el ticket)</span><div className="pink-input"><input required type="email" inputMode="email" autoComplete="email" maxLength={120} value={f.email} onChange={(e) => set({ email: e.target.value })} /></div></label>
-      <label className="field"><span>Teléfono / WhatsApp{raffle.require_phone ? '' : ' (opcional)'}</span><div className="pink-input"><input type="tel" inputMode="tel" autoComplete="tel" maxLength={24} placeholder="11 5555 5555" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></div></label>
-      <label className="nb-pref rf-accept"><input type="checkbox" checked={f.accept} onChange={(e) => set({ accept: e.target.checked })} /> Leí y acepto las <a href="#rf-bases" onClick={(e) => { e.preventDefault(); document.querySelector('.rf-terms')?.setAttribute('open', ''); document.querySelector('.rf-terms')?.scrollIntoView({ behavior: 'smooth' }); }}>bases (versión {raffle.terms_version})</a>.</label>
-      <p className="rf-muted">Tenés {raffle.pay_hours} h para transferir y adjuntar el comprobante. Si no, los números se liberan solos.</p>
-      {error && !taken.length && <div className="feedback-error" role="alert">{error}</div>}
-      <div className="modal-actions">
-        <button type="button" className="btn text" onClick={onBack}>Volver a los números</button>
-        <button type="submit" className="btn primary" disabled={busy || !sel.length || !f.accept || f.name.trim().length < 2 || !f.email.includes('@') || (raffle.require_phone && f.phone.replace(/\D/g, '').length < 6)}>
-          {busy ? <><span className="spinner xs" /> Reservando…</> : 'Reservar números'}</button>
-      </div>
-    </form>
+    <Modal title="Participar" onClose={busy ? undefined : onClose}>
+      <form onSubmit={submit} className="rf-form-in" noValidate>
+        <div className="rf-chosen">{sel.map((n) => <span key={n}>#{fmt(n)}</span>)}</div>
+        {taken.length > 0 && <div className="feedback-error" role="alert">Se ocuparon: <b>{taken.map(fmt).join(', ')}</b>. Los sacamos de tu selección; podés seguir con el resto o volver a elegir.</div>}
+        <label className="field"><span>Nombre y apellido</span><div className="pink-input"><input autoFocus required autoComplete="name" maxLength={80} placeholder="Nombre" value={f.name} onChange={(e) => set({ name: e.target.value })} /></div></label>
+        <label className="field"><span>Teléfono{raffle.require_phone ? '' : ' (opcional)'}</span><div className="pink-input"><input type="tel" inputMode="tel" autoComplete="tel" maxLength={24} placeholder="Teléfono de contacto" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></div></label>
+        <label className="field"><span>Enviar ticket por email</span><div className="pink-input"><input required type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder="Email" value={f.email} onChange={(e) => set({ email: e.target.value })} /></div></label>
+        <p className="rf-total"><b>Total: {api.money(raffle.price_cents * sel.length)}</b> ({sel.length} número{sel.length > 1 ? 's' : ''})</p>
+        <small className="rf-muted">Al tocar «Aceptar y continuar» confirmás que leíste y aceptás las bases y condiciones (versión {raffle.terms_version}).</small>
+        {error && !taken.length && <div className="feedback-error" role="alert">{error}</div>}
+        <button type="submit" className="btn primary wide" disabled={busy || !valid}>{busy ? <><span className="spinner xs" /> Reservando…</> : 'Aceptar y continuar'}</button>
+      </form>
+    </Modal>
   );
 }
 
 // ---------------------------------------------------------------------
-// Participación privada
+// Ticket digital (participación privada)
 // ---------------------------------------------------------------------
-function Qr({ text, size = 132 }) {
-  const svg = useMemo(() => { const q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true }); }, [text]);
-  return <div className="rf-qr" style={{ width: size, height: size }} role="img" aria-label="Código QR de verificación" dangerouslySetInnerHTML={{ __html: svg }} />;
-}
+const BADGE = {
+  pending: ['blue', 'APARTADO', 'Estos números están reservados temporalmente.'],
+  rejected: ['red', 'COMPROBANTE RECHAZADO', 'Subí un comprobante nuevo antes de que venza el plazo.'],
+  review: ['orange', 'EN REVISIÓN', 'Recibimos tu comprobante. Lo verificamos contra la cuenta y te avisamos por correo.'],
+  confirmed: ['green', 'VALIDADO', '¡Pago verificado! Tus números ya participan.'],
+  expired: ['gray', 'VENCIDO', 'El plazo venció sin comprobante y los números se liberaron.'],
+  cancelled: ['gray', 'CANCELADO', 'Esta participación se canceló.'],
+};
 
 function Countdown({ until }) {
   const [now, setNow] = useState(Date.now());
@@ -254,63 +326,68 @@ function Countdown({ until }) {
   return <b>{h ? `${h} h ` : ''}{m} min</b>;
 }
 
-function EntryView({ token }) {
+function TicketView({ token, isNew }) {
   const [e, setE] = useState(undefined);
   const [error, setError] = useState('');
+  const [intro, setIntro] = useState(isNew);
   const load = useCallback(() => api.getEntry(token).then(setE).catch((err) => { setError(err.message); setE(null); }), [token]);
   useEffect(() => { load(); }, [load]);
   if (e === undefined) return <Loading />;
   if (!e) return <div className="narrow rf"><Empty icon="lock" title="No encontramos esta participación" text={error || 'El enlace puede estar incompleto. Buscá el correo de BAT RIFAS y abrilo desde ahí.'} /></div>;
-  const st = api.ENTRY_STATUS[e.status];
-  const fmt = (n) => api.fmtNum(n, e.raffle.num_to);
+  const fmt = fmtOf(e.raffle);
   const myUrl = api.entryUrl(token);
+  const [cls, label, note] = BADGE[e.status];
+  const save = async () => {
+    if (navigator.share) { try { await navigator.share({ title: 'Mi ticket · ' + e.raffle.title, url: myUrl }); return; } catch { /* cancelado */ } }
+    await copyText(myUrl); alert('Copiamos el enlace de tu ticket. Guardalo: con él volvés a esta página.');
+  };
   return (
-    <div className="rf narrow">
-      <a className="rf-back" href={'#/rifas/' + e.raffle.slug}>← {e.raffle.title}</a>
-      <section className="card rf-entry">
-        <span className={'chip ' + st.cls}><Icon name={st.icon} size={14} /> {st.label}</span>
-        <h1>Tu participación</h1>
-        <div className="rf-summary">
-          <div><small>Números</small><b>{e.numbers.map(fmt).join(', ')}</b></div>
-          <div><small>Importe</small><b>{api.money(e.total_cents)}</b></div>
-          <div><small>Código</small><b className="rf-code">{e.code}</b></div>
-        </div>
-        {['pending', 'rejected'].includes(e.status) && e.expires_at && (
-          <p className="rf-deadline"><Icon name="clock" size={16} /> Tenés hasta el <b>{api.fmtDate(e.expires_at)}</b> (quedan <Countdown until={e.expires_at} />) para enviar el comprobante.</p>
+    <div className="rf-ticketpage">
+      <div className="rf-tk-band">
+        <div className="rf-tk-top"><span>Ticket digital</span><button type="button" className="btn ghost rf-tk-save" onClick={save}><Icon name="download" size={16} /> Guardar</button></div>
+        <h1>{e.raffle.title}</h1>
+        <small>{e.raffle.draw_at ? api.fmtDate(e.raffle.draw_at, false) : 'Se sortea al agotar los números'}</small>
+      </div>
+      <article className="rf-tk-card">
+        <Qr text={myUrl} size={200} />
+        <hr className="rf-dash" />
+        <p className="rf-code rf-tk-code">{e.code.toUpperCase()}</p>
+        <p className="rf-tk-name">{e.name.toUpperCase()}</p>
+        <div className="rf-tk-nums">{e.numbers.map((n) => <span key={n}>{fmt(n)}</span>)}</div>
+        <span className={'rf-tk-badge ' + cls}>{label} · {e.numbers.length} NÚMERO{e.numbers.length > 1 ? 'S' : ''}</span>
+        <p className={'rf-tk-note ' + cls}>{note}</p>
+        {['pending', 'rejected'].includes(e.status) && e.expires_at && <p className="rf-tk-deadline"><Icon name="clock" size={14} /> Plazo: {api.fmtDate(e.expires_at)} (quedan <Countdown until={e.expires_at} />)</p>}
+        {e.status === 'rejected' && <div className="feedback-error" role="alert"><b>Motivo:</b> {e.reject_reason}</div>}
+        <hr className="rf-dash" />
+        <p className="rf-tk-total">Total a transferir: <b>{api.money(e.total_cents)}</b></p>
+        {e.raffle.transfer_info && ['pending', 'rejected'].includes(e.status) && (
+          <div className="rf-tk-pay"><b>Datos para transferir</b><p className="rf-pre">{e.raffle.transfer_info}</p><Copy text={e.raffle.transfer_info} label="Copiar datos de pago" /></div>
         )}
-        {e.status === 'rejected' && <div className="feedback-error" role="alert"><b>Rechazamos tu comprobante:</b> {e.reject_reason}{e.can_upload ? ' Podés enviar uno nuevo.' : ''}</div>}
-        {e.status === 'review' && <p className="rf-note"><Icon name="search" size={16} /> Recibimos tu comprobante. Lo revisamos contra la cuenta y te avisamos por correo. Tus números siguen apartados.</p>}
-        {e.status === 'expired' && <p className="rf-note">El plazo venció sin comprobante y los números se liberaron. Si querés participar, volvé al talonario.</p>}
-        {e.status === 'cancelled' && <p className="rf-note">Esta participación se canceló{e.cancel_reason ? `: ${e.cancel_reason}` : ''}.</p>}
-      </section>
-
-      {e.raffle.transfer_info && ['pending', 'rejected'].includes(e.status) && (
-        <section className="card rf-pay">
-          <h2>Cómo pagar</h2>
-          <p className="rf-pre">{e.raffle.transfer_info}</p>
-          <p>Transferí <b>{api.money(e.total_cents)}</b> exactos y adjuntá el comprobante acá abajo.</p>
-          <Copy text={e.raffle.transfer_info} label="Copiar datos de pago" />
-        </section>
-      )}
-      {e.can_upload && <ProofUpload token={token} onDone={load} />}
+        {e.can_upload && <ProofUpload token={token} onDone={load} />}
+      </article>
 
       {e.status === 'confirmed' && (
-        <section className="rf-tickets" aria-label="Tickets">
+        <section className="rf-tickets" aria-label="Números validados">
           {e.tickets.map((t) => (
             <article key={t.verify_code} className="card rf-ticket">
-              <div><span className="rf-kicker">{e.raffle.title}</span><div className="rf-ticket-n">{t.label}</div><small>Ticket válido · {e.name}</small></div>
+              <div><span className="rf-kicker">{e.raffle.title}</span><div className="rf-ticket-n">{t.label}</div><small>Número validado · {e.name}</small></div>
               <Qr text={api.verifyUrl(t.verify_code)} />
             </article>))}
           <p className="rf-muted">Cada QR verifica solo la rifa, el número y si es válido. No muestra tus datos.</p>
         </section>
       )}
+      <p className="rf-muted rf-center-txt">Te mandamos este ticket por correo a {e.email}.{e.raffle.support_contact ? ` ¿Dudas? ${e.raffle.support_contact}` : ''}</p>
+      <p className="rf-center-txt"><a className="rf-back" href={'#/rifas/' + e.raffle.slug}>← Volver al talonario</a></p>
 
-      <section className="card rf-keep">
-        <b>Guardá este enlace</b>
-        <p className="rf-muted">Es personal: con él volvés a esta página. También te lo mandamos por correo a {e.email}.</p>
-        <Copy text={myUrl} label="Copiar mi enlace" />
-      </section>
-      {e.raffle.support_contact && <p className="rf-muted rf-center-txt">¿Dudas? {e.raffle.support_contact}</p>}
+      {intro && (
+        <Modal title="Números apartados" onClose={() => setIntro(false)} labelId="rf-intro-h">
+          <p>Revisá bien los requisitos para que tu participación sea válida.</p>
+          <p>Para completar tu participación:</p>
+          <ul className="rf-intro-list"><li><b>Realizá el pago</b> de {api.money(e.total_cents)}</li><li><b>Subí el comprobante</b> en este ticket</li></ul>
+          {e.expires_at && <small className="rf-muted">Tenés tiempo hasta el {api.fmtDate(e.expires_at)}.</small>}
+          <button type="button" className="btn primary wide" autoFocus onClick={() => { setIntro(false); navigate('/rifas/p/' + token); }}>Continuar</button>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -332,13 +409,14 @@ function ProofUpload({ token, onDone }) {
     try { await api.uploadProof(token, file); onDone(); } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
   return (
-    <section className="card rf-upload">
-      <h2>Adjuntar comprobante</h2>
+    <section className="rf-proof">
+      <h2><Icon name="image" size={18} /> Enviar comprobante</h2>
       <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" hidden onChange={(e) => pick(e.target.files?.[0])} />
-      <button type="button" className="btn ghost wide" disabled={busy} onClick={() => input.current?.click()}><Icon name="image" size={16} /> {file ? `Cambiar: ${file.name}` : 'Elegir foto o PDF'}</button>
-      <small className="rf-muted">JPG, PNG, WebP o PDF de hasta 5 MB. Adjuntar no confirma el pago: lo validamos contra la acreditación.</small>
+      <button type="button" className="rf-proof-tile" disabled={busy} onClick={() => input.current?.click()}>
+        <Icon name="download" size={28} /><span>{file ? file.name : 'Subir archivo'}</span></button>
+      <p>Enviá una imagen o captura de tu comprobante para validar tu participación. JPG, PNG, WebP o PDF de hasta 5 MB.</p>
       {error && <div className="feedback-error" role="alert">{error}</div>}
-      <button type="button" className="btn primary wide" disabled={!file || busy} onClick={send}>{busy ? <><span className="spinner xs" /> Enviando…</> : 'Enviar comprobante'}</button>
+      {file && <button type="button" className="btn dark wide" disabled={busy} onClick={send}>{busy ? <><span className="spinner xs" /> Enviando…</> : 'Enviar comprobante'}</button>}
     </section>
   );
 }
@@ -352,7 +430,7 @@ function VerifyView({ code }) {
       <section className={'card rf-verify ' + (v.found && v.valid ? 'ok' : 'bad')}>
         <div className="big-ico"><Icon name={v.found && v.valid ? 'check' : 'x'} size={30} /></div>
         {v.found ? <>
-          <h1>{v.valid ? 'Ticket válido' : 'Ticket NO válido'}</h1>
+          <h1>{v.valid ? 'Número válido' : 'Número NO válido'}</h1>
           <p>{v.raffle}</p>
           <div className="rf-ticket-n">{v.number}</div>
         </> : <><h1>Ticket inexistente</h1><p>Este código no corresponde a ningún ticket de BAT RIFAS.</p></>}
