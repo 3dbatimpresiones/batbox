@@ -82,6 +82,7 @@ function RifasHome() {
               <span className="btn primary">Participar</span>
             </div>
           </a>
+          <RaffleVerify many={(r.prizes || []).length > 1} />
           {r.terms && (
             <section className="card rf-terms-card rf-terms-full" aria-label={'Bases y condiciones de ' + r.title}>
               <h2><Icon name="book" size={18} /> Bases y condiciones</h2>
@@ -215,6 +216,7 @@ function RaffleView({ slug, isAdmin }) {
               <section className="card rf-prizecard" aria-labelledby="rf-prize-h">
                 <h2 id="rf-prize-h"><Icon name="trophy" size={18} /> {list.length > 1 ? `${list.length} ganadores` : 'Premio'}</h2>
                 <ol className="rf-prizelist">{list.map((p, i) => <li key={i}><span className="rf-place" aria-hidden>{i + 1}°</span><span>{p}</span></li>)}</ol>
+                <RaffleVerify many={list.length > 1} />
               </section>
             );
           })()}
