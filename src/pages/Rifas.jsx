@@ -136,9 +136,15 @@ function RaffleView({ slug, isAdmin }) {
             <div><h1>{raffle.title}</h1><small>{(api.fmtDate(raffle.draw_at, false) || 'Se sortea al agotar los números').toUpperCase()}</small></div>
           </header>
           <div className="rf-coverbox card">{raffle.cover_url ? <img src={raffle.cover_url} alt={'Portada de ' + raffle.title} /> : <div className="rf-coverph"><Icon name="trophy" size={48} /><b>BAT RIFAS</b><small>Makers 3DBAT</small></div>}</div>
-          {raffle.prizes?.length > 0 && (
-            <ul className="rf-prizes card">{raffle.prizes.map((p, i) => <li key={i}><Icon name="trophy" size={16} /> <span>{raffle.prizes.length > 1 && <b>{i + 1}° premio: </b>}{p}</span></li>)}</ul>
-          )}
+          {raffle.prizes?.length > 0 && (() => {
+            const list = raffle.prizes.flatMap((p) => String(p).split(/\n+/)).map((p) => p.trim()).filter(Boolean);
+            return (
+              <section className="card rf-prizecard" aria-labelledby="rf-prize-h">
+                <h2 id="rf-prize-h"><Icon name="trophy" size={18} /> {list.length > 1 ? `${list.length} ganadores` : 'Premio'}</h2>
+                <ol className="rf-prizelist">{list.map((p, i) => <li key={i}><span className="rf-place" aria-hidden>{i + 1}°</span><span>{p}</span></li>)}</ol>
+              </section>
+            );
+          })()}
           <section className="card rf-howcard" aria-labelledby="rf-how-h">
             <h2 id="rf-how-h"><Icon name="sparkles" size={18} /> ¿Cómo participar?</h2>
             <ol className="rf-steps"><li>Elegí tus números en el talonario.</li><li>Completá tus datos: quedan <b>apartados</b> por {raffle.pay_hours} h.</li><li>Transferí el total y subí el comprobante en tu ticket digital.</li><li>Cuando verificamos la acreditación, quedan <b>validados</b>.</li></ol>

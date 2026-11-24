@@ -265,3 +265,11 @@
 .rf-cover-empty { width: 100%; max-width: 360px; aspect-ratio: 16 / 9; border-radius: 14px; border: 2px dashed var(--indigo); display: grid; place-items: center; align-content: center; gap: 4px; color: var(--muted); }
 .rf-fixlinks { margin-top: 8px; }
 .rf-minbuy { margin: 0; display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-radius: 12px; color: var(--warn); background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.4); font-size: 14px; }
+.rf-prizecard { display: grid; gap: 10px; }
+.rf-prizecard h2 { margin: 0; font-size: 18px; display: flex; gap: 8px; align-items: center; color: var(--pink); }
+.rf-prizelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rf-prizelist li { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; background: rgba(19,29,71,.55); border: 1px solid var(--line); font-weight: 700; overflow-wrap: anywhere; }
+.rf-place { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; color: var(--dark); background: var(--cyan); }
+.rf-prizelist li:nth-child(1) .rf-place { background: linear-gradient(135deg, #fde68a, #f59e0b); }
+.rf-prizelist li:nth-child(2) .rf-place { background: linear-gradient(135deg, #e5e7eb, #94a3b8); }
+.rf-prizelist li:nth-child(3) .rf-place { background: linear-gradient(135deg, #fdba74, #c2410c); color: #fff; }

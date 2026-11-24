@@ -286,7 +286,7 @@ function Advanced({ r, reload }) {
       {msg.err && <div className="feedback-error" role="alert">{msg.err}
         {msg.missing?.length > 0 && <div className="rf-actions rf-fixlinks">
           {msg.missing.some((m) => /precio|pago/.test(m)) && <button type="button" className="btn ghost" onClick={() => go(r.id, 'general')}>Ir a General</button>}
-          {msg.missing.some((m) => /bases/.test(m)) && <button type="button" className="btn ghost" onClick={() => go(r.id, 'personal')}>Ir a Personalización (bases)</button>}
+          {msg.missing.some((m) => /bases/.test(m)) && <button type="button" className="btn ghost" onClick={() => go(r.id, 'general')}>Ir a General (bases)</button>}
         </div>}</div>}
       <Confirm open={!!ask} title={ask?.title} text={ask?.text} yes={ask?.yes} onYes={() => { const a = ask; setAsk(null); a.run(); }} onNo={() => setAsk(null)} />
     </div>
@@ -295,8 +295,8 @@ function Advanced({ r, reload }) {
 
 function Settings({ r }) {
   const tiles = [
-    { v: 'general', icon: 'grid', title: 'General', text: 'Configuración general: precio, fecha, pago y números' },
-    { v: 'personal', icon: 'image', title: 'Personalización', text: 'Portada, premios y bases del talonario' },
+    { v: 'general', icon: 'grid', title: 'General', text: 'Precio, premios, bases, fecha, pago y números' },
+    { v: 'personal', icon: 'image', title: 'Personalización', text: 'Portada del talonario' },
     { v: 'perfil', icon: 'user', title: 'Mi perfil', text: 'Organizador y contacto de soporte' },
   ];
   return (
@@ -310,8 +310,19 @@ function Settings({ r }) {
   );
 }
 
+const PART_FIELDS = {
+  general: ['title', 'description', 'prizes', 'terms', 'price', 'draw_at', 'transfer_info', 'require_phone', 'min_per_entry', 'pay_hours', 'num_from', 'num_to', 'csv_profile', 'slug'],
+  personal: ['cover_url'],
+  perfil: ['organizer', 'support_contact'],
+};
+
 function Editor({ r, part, missing, onSaved }) {
   const [f, setF] = useState(() => ({ ...r, prizes: r.prizes?.length ? r.prizes : [''], price: api.centsToPesos(r.price_cents), draw_at: api.toLocalInput(r.draw_at) }));
+  useEffect(() => {
+    let alive = true;
+    api.adminGet(r.id).then((x) => { if (alive && x) setF({ ...x, prizes: x.prizes?.length ? x.prizes : [''], price: api.centsToPesos(x.price_cents), draw_at: api.toLocalInput(x.draw_at) }); }).catch(() => {});
+    return () => { alive = false; };
+  }, [r.id, part]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
@@ -327,9 +338,15 @@ function Editor({ r, part, missing, onSaved }) {
     finally { if (coverInput.current) coverInput.current.value = ''; }
   };
   const save = async (over = {}) => {
-    const f2 = { ...f, ...over };
     setBusy(true); setError(''); setOk('');
     try {
+      // Tomamos lo último guardado y pisamos solo los campos de esta pantalla:
+      // así General no borra las bases ni Personalización el precio, aunque la pantalla esté desactualizada.
+      const fresh = await api.adminGet(r.id);
+      const mine = Object.fromEntries(PART_FIELDS[part].map((k) => [k, { ...f, ...over }[k]]));
+      const f2 = { ...fresh, prizes: fresh.prizes?.length ? fresh.prizes : [], price: api.centsToPesos(fresh.price_cents), draw_at: api.toLocalInput(fresh.draw_at), ...mine };
+      const cents = api.pesosToCents(f2.price);
+      if (cents === null) throw new Error('Revisá el precio.');
       await api.adminSave({ ...f2, id: r.id, price_cents: cents, prizes: f2.prizes.map((p) => p.trim()).filter(Boolean), draw_at: api.fromLocalInput(f2.draw_at),
         num_from: Number(f2.num_from), num_to: Number(f2.num_to), max_per_entry: 1000, min_per_entry: Math.max(1, Number(f2.min_per_entry) || 1), pay_hours: Number(f2.pay_hours) });
       setOk('Guardado.'); onSaved();
@@ -343,12 +360,21 @@ function Editor({ r, part, missing, onSaved }) {
     <div className="card cm-composer rf-editor">
       <button type="button" className="cm-link" onClick={() => go(r.id, 'ajustes')}>← Ajustes</button>
       <h3 className="rf-h">Ajustes › {title}</h3>
-      {missing && <div className="admin-warn"><Icon name="alert" size={16} /> Para publicarla faltan las instrucciones de transferencia (General) y las bases (Personalización).</div>}
+      {missing && <div className="admin-warn"><Icon name="alert" size={16} /> Para publicarla faltan la información de pago y las bases (las dos en General).</div>}
       {locked && part === 'general' && <div className="admin-warn"><Icon name="lock" size={16} /> Ya hay participaciones: el precio y el rango quedan fijos.</div>}
       {part === 'general' && <>
         <div className="rf-info"><Icon name="alert" size={14} /> Talonario de <b>{Number(f.num_to) - Number(f.num_from) + 1}</b> números ({fmtOf(f)(Number(f.num_from))} a {fmtOf(f)(Number(f.num_to))}).{locked ? ' Ya tiene participaciones: el tamaño y el precio no se pueden cambiar.' : ''}</div>
         <label className="field"><span>Título</span><div className="pink-input"><input value={f.title} maxLength={120} onChange={(e) => set({ title: e.target.value })} /></div></label>
         <label className="field"><span>Descripción</span><div className="pink-input feedback-text"><textarea rows={4} maxLength={2000} placeholder="Descripción del sorteo, premios y cómo participar" value={f.description} onChange={(e) => set({ description: e.target.value })} /></div></label>
+        <div className="field"><span>Premios</span>
+          {f.prizes.map((p, i) => (
+            <div key={i} className="ga-kv"><div className="pink-input"><input value={p} maxLength={140} placeholder={`${i + 1}° premio`} onChange={(e) => set({ prizes: f.prizes.map((x, j) => (j === i ? e.target.value : x)) })} /></div>
+              {f.prizes.length > 1 && <button type="button" className="mini-btn" aria-label="Quitar premio" onClick={() => set({ prizes: f.prizes.filter((_, j) => j !== i) })}>×</button>}</div>))}
+          {f.prizes.length < 10 && <button type="button" className="cm-link" onClick={() => set({ prizes: [...f.prizes, ''] })}>+ Agregar premio</button>}
+        </div>
+        <label className="field"><span>Bases y condiciones (obligatorio para publicar · se muestran en el talonario)</span><div className="pink-input feedback-text"><textarea rows={6} maxLength={8000} placeholder="Ej.: El sorteo se hace cuando se vendan todos los números, en vivo por Instagram. Los números se validan con el comprobante de transferencia…" value={f.terms} onChange={(e) => set({ terms: e.target.value })} /></div>
+          <small className="rf-muted">{f.terms.trim().length} caracteres · mínimo 10</small></label>
+        {locked && <small className="cm-date">Si cambiás las bases se crea una versión nueva; las participaciones anteriores conservan la que aceptaron.</small>}
         <div className="cm-row">
           <label className="field"><span>Precio por número</span><div className="pink-input"><input value={f.price} inputMode="decimal" disabled={locked} onChange={(e) => set({ price: e.target.value })} /></div></label>
           <label className="field"><span>Moneda</span><div className="pink-input"><input value="ARS · Peso argentino" disabled /></div></label>
@@ -385,15 +411,6 @@ function Editor({ r, part, missing, onSaved }) {
           <details className="rf-more"><summary>O pegá el link de una imagen</summary>
             <div className="pink-input"><input value={f.cover_url} inputMode="url" maxLength={500} placeholder="https://…" onChange={(e) => set({ cover_url: e.target.value })} /></div></details>
         </div>
-        <div className="field"><span>Premios</span>
-          {f.prizes.map((p, i) => (
-            <div key={i} className="ga-kv"><div className="pink-input"><input value={p} maxLength={140} placeholder={`${i + 1}° premio`} onChange={(e) => set({ prizes: f.prizes.map((x, j) => (j === i ? e.target.value : x)) })} /></div>
-              {f.prizes.length > 1 && <button type="button" className="mini-btn" aria-label="Quitar premio" onClick={() => set({ prizes: f.prizes.filter((_, j) => j !== i) })}>×</button>}</div>))}
-          {f.prizes.length < 10 && <button type="button" className="cm-link" onClick={() => set({ prizes: [...f.prizes, ''] })}>+ Agregar premio</button>}
-        </div>
-        <label className="field"><span>Bases y condiciones (obligatorio para publicar · se muestran en el talonario)</span><div className="pink-input feedback-text"><textarea rows={6} maxLength={8000} placeholder="Ej.: El sorteo se hace cuando se vendan todos los números, en vivo por Instagram. Los números se validan con el comprobante de transferencia…" value={f.terms} onChange={(e) => set({ terms: e.target.value })} /></div>
-          <small className="rf-muted">{f.terms.trim().length} caracteres · mínimo 10</small></label>
-        {locked && <small className="cm-date">Si cambiás las bases se crea una versión nueva; las participaciones anteriores conservan la que aceptaron.</small>}
       </>}
       {part === 'perfil' && <>
         <label className="field"><span>Organizador (se muestra en el talonario)</span><div className="pink-input"><input value={f.organizer || ''} maxLength={120} placeholder="@3DBAT IMPRESIONES & @FILACOLOR" onChange={(e) => set({ organizer: e.target.value })} /></div></label>
