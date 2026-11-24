@@ -25,15 +25,18 @@ export const ENTRY_STATUS = {
 
 export const money = (cents) => '$' + (Number(cents || 0) / 100).toLocaleString('es-AR', { maximumFractionDigits: 2 });
 export const fmtNum = (n, to, from = 0) => (Number(from) > 0 ? String(n) : String(n).padStart(Math.max(String(to).length, 1), '0'));
-export const fmtDate = (iso, withTime = true) => (iso ? new Date(iso).toLocaleString('es-AR', { timeZone: TZ, dateStyle: 'medium', ...(withTime ? { timeStyle: 'short' } : {}) }) : '');
+// Fechas a prueba de valores inválidos (una fecha imposible nunca debe romper la pantalla).
+const okDate = (iso) => { const d = iso ? new Date(iso) : null; return d && !Number.isNaN(d.getTime()) && d.getUTCFullYear() >= 2000 && d.getUTCFullYear() <= 2100 ? d : null; };
+export const fmtDate = (iso, withTime = true) => { const d = okDate(iso); return d ? d.toLocaleString('es-AR', { timeZone: TZ, dateStyle: 'medium', ...(withTime ? { timeStyle: 'short' } : {}) }) : ''; };
 
 // <input type="datetime-local"> se interpreta SIEMPRE como hora de Buenos Aires (UTC−3, sin horario de verano).
 export const toLocalInput = (iso) => {
-  if (!iso) return '';
-  const d = new Date(new Date(iso).getTime() - 3 * 3600e3);
-  return d.toISOString().slice(0, 16);
+  const d = okDate(iso);
+  return d ? new Date(d.getTime() - 3 * 3600e3).toISOString().slice(0, 16) : '';
 };
-export const fromLocalInput = (v) => (v ? `${v}:00-03:00` : '');
+export const DATE_MIN = '2024-01-01T00:00';
+export const DATE_MAX = '2099-12-31T23:59';
+export const fromLocalInput = (v) => (/^20\d\d-\d\d-\d\dT\d\d:\d\d$/.test(v || '') ? `${v}:00-03:00` : '');
 
 // Pesos escritos por el admin ("1.500" o "1500,50") → centavos enteros.
 export function pesosToCents(v) {

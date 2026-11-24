@@ -133,7 +133,7 @@ function RaffleView({ slug, isAdmin }) {
         <section className="rf-left">
           <header className="rf-head">
             <span className="rf-avatar">{raffle.cover_url ? <img src={raffle.cover_url} alt="" /> : <Icon name="star" size={22} />}</span>
-            <div><h1>{raffle.title}</h1><small>{raffle.draw_at ? api.fmtDate(raffle.draw_at, false).toUpperCase() : 'SE SORTEA AL AGOTAR LOS NÚMEROS'}</small></div>
+            <div><h1>{raffle.title}</h1><small>{(api.fmtDate(raffle.draw_at, false) || 'Se sortea al agotar los números').toUpperCase()}</small></div>
           </header>
           <div className="rf-coverbox card">{raffle.cover_url ? <img src={raffle.cover_url} alt={'Portada de ' + raffle.title} /> : <div className="rf-coverph"><Icon name="trophy" size={48} /><b>BAT RIFAS</b><small>Makers 3DBAT</small></div>}</div>
           {raffle.prizes?.length > 0 && (
@@ -211,7 +211,7 @@ function RaffleView({ slug, isAdmin }) {
           <>
             <div><b>{free}</b><small>Disponibles</small></div>
             <div><b>{api.money(raffle.price_cents)}</b><small>Por número</small></div>
-            <div><b>{raffle.draw_at ? new Date(raffle.draw_at).toLocaleDateString('es-AR', { timeZone: api.TZ, day: 'numeric', month: 'short' }) : 'Al agotar'}</b><small>Sorteo</small></div>
+            <div><b>{api.fmtDate(raffle.draw_at, false) ? new Date(raffle.draw_at).toLocaleDateString('es-AR', { timeZone: api.TZ, day: 'numeric', month: 'short' }) : 'Al agotar'}</b><small>Sorteo</small></div>
           </>
         )}
       </div>
@@ -222,7 +222,7 @@ function RaffleView({ slug, isAdmin }) {
           <ol className="rf-steps"><li>Elegí tus números en el talonario.</li><li>Completá tus datos y reservá: quedan <b>apartados</b> por {raffle.pay_hours} h.</li><li>Transferí el total y subí el comprobante desde tu ticket digital.</li><li>Cuando verificamos la acreditación, tus números quedan <b>validados</b>.</li></ol>
           {raffle.description && <p className="rf-pre-txt">{raffle.description}</p>}
           <details open><summary><b>Bases y condiciones (versión {raffle.terms_version})</b></summary><p className="rf-pre-txt">{raffle.terms}</p></details>
-          <small className="rf-muted">{raffle.draw_at ? `Sorteo: ${api.fmtDate(raffle.draw_at)} (hora de Buenos Aires).` : 'El sorteo se hace cuando se vendan todos los números.'} Se hace por fuera de BATBOX con el procedimiento de la comunidad.</small>
+          <small className="rf-muted">{api.fmtDate(raffle.draw_at) ? `Sorteo: ${api.fmtDate(raffle.draw_at)} (hora de Buenos Aires).` : 'El sorteo se hace cuando se vendan todos los números.'} Se hace por fuera de BATBOX con el procedimiento de la comunidad.</small>
         </Modal>
       )}
       {modal === 'organizador' && (
@@ -346,7 +346,7 @@ function TicketView({ token, isNew }) {
       <div className="rf-tk-band">
         <div className="rf-tk-top"><span>Ticket digital</span><button type="button" className="btn ghost rf-tk-save" onClick={save}><Icon name="download" size={16} /> Guardar</button></div>
         <h1>{e.raffle.title}</h1>
-        <small>{e.raffle.draw_at ? api.fmtDate(e.raffle.draw_at, false) : 'Se sortea al agotar los números'}</small>
+        <small>{api.fmtDate(e.raffle.draw_at, false) || 'Se sortea al agotar los números'}</small>
       </div>
       <article className="rf-tk-card">
         <Qr text={myUrl} size={200} />

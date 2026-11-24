@@ -74,7 +74,7 @@ function RaffleCard({ r, reload }) {
       <button type="button" className="rf-card-main" onClick={() => go(r.id)}>
         <span className="rf-card-img">{r.cover_url ? <img src={r.cover_url} alt="" loading="lazy" /> : <Icon name="star" size={26} />}</span>
         <span className="rf-card-txt">
-          <small>{r.draw_at ? api.fmtDate(r.draw_at, false) : 'Al agotar números'}{r.status !== 'published' && <> · <Chip map={api.RAFFLE_STATUS} value={r.status} /></>}</small>
+          <small>{api.fmtDate(r.draw_at, false) || 'Al agotar números'}{r.status !== 'published' && <> · <Chip map={api.RAFFLE_STATUS} value={r.status} /></>}</small>
           <b>{r.title}</b>
           <span className="rf-bar" aria-hidden><i style={{ width: pct + '%' }} /></span>
           <small>{sold}/{r.total} <b className="rf-pct">{pct}%</b>{r.review > 0 && <> · <span className="rf-badge-review">{r.review} por revisar</span></>}</small>
@@ -111,7 +111,7 @@ function CreateModal({ last, onClose }) {
       const base = last ? await api.adminGet(last.id).catch(() => null) : null;
       const id = await api.adminSave({
         title: f.title.trim(), slug: `${slugify(f.title) || 'rifa'}-${Math.random().toString(36).slice(2, 6)}`,
-        price_cents: cents, num_from: 1, num_to: count, draw_at: f.date ? `${f.date}T21:00:00-03:00` : '',
+        price_cents: cents, num_from: 1, num_to: count, draw_at: /^20\d\d-\d\d-\d\d$/.test(f.date) ? `${f.date}T21:00:00-03:00` : '',
         transfer_info: base?.transfer_info || '', terms: base?.terms || '', support_contact: base?.support_contact || '', organizer: base?.organizer || '',
         pay_hours: base?.pay_hours || 24, max_per_entry: base?.max_per_entry || 10, require_phone: base?.require_phone ?? true, csv_profile: base?.csv_profile || 'rifary',
         prizes: [], description: '', cover_url: '',
@@ -128,7 +128,7 @@ function CreateModal({ last, onClose }) {
           <label className="field"><span>Precio por número</span><div className="pink-input"><input value={f.price} inputMode="decimal" placeholder="12000" onChange={(e) => setF({ ...f, price: e.target.value })} /></div></label>
           <label className="field"><span>Cantidad de números</span><div className="pink-input"><input value={f.count} inputMode="numeric" placeholder="100" onChange={(e) => setF({ ...f, count: e.target.value.replace(/\D/g, '') })} /></div></label>
         </div>
-        <label className="field"><span>Fecha del sorteo (opcional)</span><div className="pink-input"><input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div><small className="rf-muted">Vacía = se sortea al agotar los números.</small></label>
+        <label className="field"><span>Fecha del sorteo (opcional)</span><div className="pink-input"><input type="date" min="2024-01-01" max="2099-12-31" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div><small className="rf-muted">Vacía = se sortea al agotar los números.</small></label>
         {valid && (
           <div className="rf-goal"><small>Objetivo de recaudación</small><b>ARS {api.money(cents * count).slice(1)}</b><small>{count} números del 1 al {count} · sin costo de activación</small></div>
         )}
@@ -340,7 +340,7 @@ function Editor({ r, part, missing, onSaved }) {
           <label className="field"><span>Precio por número</span><div className="pink-input"><input value={f.price} inputMode="decimal" disabled={locked} onChange={(e) => set({ price: e.target.value })} /></div></label>
           <label className="field"><span>Moneda</span><div className="pink-input"><input value="ARS · Peso argentino" disabled /></div></label>
         </div>
-        <label className="field"><span>Fecha del sorteo (opcional, hora de Buenos Aires)</span><div className="pink-input"><input type="datetime-local" value={f.draw_at} onChange={(e) => set({ draw_at: e.target.value })} /></div>
+        <label className="field"><span>Fecha del sorteo (opcional, hora de Buenos Aires)</span><div className="pink-input"><input type="datetime-local" min={api.DATE_MIN} max={api.DATE_MAX} value={f.draw_at} onChange={(e) => set({ draw_at: e.target.value })} /></div>
           <span className="rf-row-hint">{f.draw_at ? <button type="button" className="cm-link" onClick={() => set({ draw_at: '' })}>Quitar fecha (sortear al agotar números)</button> : <small className="rf-muted">Sin fecha: el talonario dice «Se sortea al agotar los números».</small>}</span></label>
         <label className="field"><span>Información de pago (alias, CBU, titular)</span><div className="pink-input feedback-text"><textarea rows={4} maxLength={1000} placeholder="Alias: …  ·  CBU: …  ·  Titular: …" value={f.transfer_info} onChange={(e) => set({ transfer_info: e.target.value })} /></div></label>
         <div className="cm-row">
