@@ -255,6 +255,26 @@ check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-prueba-makers']))
   check((await as(ADMIN, 'select public.bb_rf_admin_export_get($1)', [x1.export_id])).csv === d1.csv, 'el padrón ya exportado no cambia');
 }
 
+// ---- Aviso de cancelación manual ----
+{
+  await db.exec(readFileSync(join(root, 'supabase/078_batbox_rifas_correo_cancelacion.sql'), 'utf8'));
+  const entry = await as(ANON, 'select public.bb_rf_reserve($1,$2,$3,$4,$5,$6,$7)', [
+    'rifa-gate', [2], 'Participante', 'participante@ejemplo.test', '1155550001', 1, uuid(),
+  ]);
+  check(entry.ok, 'crea reserva para cancelar');
+  const resend = (who) => as(who, "select public.bb_rf_admin_resend($1,'cancelled',$2)", [entry.entry_id, uuid()]);
+  check((await resend(ADMIN)).ok === false, 'no envía aviso de cancelación para reserva vigente');
+  const op = uuid();
+  const cancel = (who) => as(who, 'select public.bb_rf_admin_cancel($1,$2,$3)', [entry.entry_id, 'Motivo de prueba', op]);
+  await cancel(ADMIN);
+  check((await cancel(ADMIN)).repeated, 'cancelación repetida es idempotente');
+  const claimed = await as(SERVICE, 'select public.bb_rf_mail_claim($1)', [entry.entry_id]);
+  check(claimed.mails.filter((m) => m.kind === 'cancelled').length === 1, 'una cancelación genera un único aviso');
+  check(claimed.entry.email === 'participante@ejemplo.test' && claimed.entry.cancel_reason === 'Motivo de prueba',
+    'el aviso usa el correo del participante y el motivo de cancelación');
+  check((await resend(ADMIN)).ok, 'el admin puede enviar el aviso para una cancelación anterior');
+}
+
 if (outDir) {
   mkdirSync(outDir, { recursive: true });
   writeFileSync(join(outDir, 'rifa-prueba-makers_v1.csv'), d1.csv, 'utf8');

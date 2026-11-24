@@ -531,7 +531,7 @@ function EntryDetail({ id, onClose }) {
             <li><Icon name="message" size={20} /><span>{e.phone || '—'}</span>
               {phoneDigits && <><a className="rf-detail-act wa" href={'https://wa.me/' + phoneDigits} target="_blank" rel="noopener noreferrer" aria-label="Escribir por WhatsApp" title="WhatsApp">WA</a>
                 <a className="rf-detail-act" href={'tel:' + phoneDigits} aria-label="Llamar" title="Llamar">📞</a></>}</li>
-            <li><Icon name="send" size={20} /><a href={'mailto:' + e.email}>{e.email}</a></li>
+            <li><Icon name="send" size={20} /><span>Correo del participante: <a href={'mailto:' + e.email}>{e.email}</a></span></li>
           </ul>
 
           <h4>Estado</h4>
@@ -582,21 +582,27 @@ function EntryDetail({ id, onClose }) {
           </div>
           {cancel && (
             <div className="card cm-report">
-              <label className="field"><span>Motivo de la cancelación</span><div className="pink-input"><input autoFocus value={cancel.reason} maxLength={300} onChange={(ev) => setCancel({ reason: ev.target.value })} /></div></label>
+              <label className="field"><span>Motivo de la cancelación (lo recibe el participante)</span><div className="pink-input"><input autoFocus value={cancel.reason} maxLength={300} onChange={(ev) => setCancel({ reason: ev.target.value })} /></div></label>
               <p className="rf-muted">Los números {e.numbers.map(fmt).join(', ')} vuelven a quedar libres.</p>
               <div className="modal-actions"><button type="button" className="btn text" onClick={() => setCancel(null)}>Volver</button>
-                <button type="button" className="btn primary" disabled={busy || cancel.reason.trim().length < 3} onClick={() => run(() => api.adminCancel(id, cancel.reason, op.cancel), 'Reserva cancelada.').then(() => setCancel(null))}>Cancelar reserva</button></div>
+                <button type="button" className="btn primary" disabled={busy || cancel.reason.trim().length < 3} onClick={() => run(async () => {
+                  await api.adminCancel(id, cancel.reason, op.cancel);
+                  setCancel(null);
+                  await api.adminMailFlush(id).catch(() => {});
+                }, 'Reserva cancelada. Revisá el estado del aviso en Correos e historial.')}>Cancelar reserva</button></div>
             </div>)}
 
           <details className="rf-more">
             <summary>Correos e historial</summary>
             {e.mails.length === 0 ? <small className="cm-date">Sin correos.</small> : e.mails.map((m) => (
-              <div key={m.id} className="ap-row"><small className="cm-date">{{ reserved: 'Reserva', confirmed: 'Confirmación', rejected: 'Rechazo' }[m.kind]} · {{ queued: 'en cola', sending: 'enviando', sent: 'enviado', failed: 'falló' }[m.status]}{m.last_error ? ` (${m.last_error})` : ''} · {api.fmtDate(m.sent_at || m.created_at)}</small></div>))}
+              <div key={m.id} className="ap-row"><small className="cm-date">{{ reserved: 'Reserva', confirmed: 'Confirmación', rejected: 'Rechazo', reminder: 'Recordatorio', expired: 'Vencimiento', cancelled: 'Cancelación' }[m.kind]} · {{ queued: 'en cola', sending: 'enviando', sent: 'enviado', failed: 'falló' }[m.status]}{m.last_error ? ` (${m.last_error})` : ''} · {api.fmtDate(m.sent_at || m.created_at)}</small></div>))}
             <div className="rf-actions">
-              <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'reserved', uuid()), 'Correo de participación reenviado.')}>Reenviar enlace por correo</button>
+              {e.status === 'cancelled'
+                ? <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'cancelled', uuid()), 'Revisá el estado del aviso en Correos e historial.')}>Enviar aviso de cancelación</button>
+                : <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'reserved', uuid()), 'Correo de participación reenviado.')}>Reenviar enlace por correo</button>}
               {e.status === 'confirmed' && <button type="button" className="btn text" disabled={busy} onClick={() => run(() => api.adminResend(id, 'confirmed', uuid()), 'Correo de confirmación reenviado.')}>Reenviar confirmación</button>}
             </div>
-            <ol className="rf-history">{e.events.map((v, i) => <li key={i}><small>{api.fmtDate(v.created_at)}</small> {EVENT[v.kind] || v.kind}{v.detail?.reason ? `: ${v.detail.reason}` : ''}{v.actor ? <small> · {v.actor}</small> : ''}</li>)}</ol>
+            <ol className="rf-history">{e.events.map((v, i) => <li key={i}><small>{api.fmtDate(v.created_at)}</small> {EVENT[v.kind] || v.kind}{v.detail?.reason ? `: ${v.detail.reason}` : ''}{v.actor ? <small> · Acción de {v.actor}</small> : ''}</li>)}</ol>
           </details>
         </>}
         <Confirm open={del} danger title="¿Borrar este registro?" text="Se borra la participación cancelada o vencida y su comprobante. No se puede deshacer." yes="Borrar"
