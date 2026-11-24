@@ -13,7 +13,10 @@ import '../styles/rifas.css';
 //   vistas: admin (Administración) · nuevo · buscar · avanzado · ajustes · general · personal · perfil · compartir · cierre
 
 const uuid = () => crypto.randomUUID();
-const slugify = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
+// Dirección del enlace: minúsculas, números, guiones y ñ (los demás acentos se quitan).
+const keepEnie = (s, fn) => fn(s.toLowerCase().replace(/ñ/g, '\u0001')).replace(/\u0001/g, 'ñ');
+const slugify = (s) => keepEnie(s, (x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\u0001]+/g, '-').replace(/^-|-$/g, '')).slice(0, 60);
+const slugTyping = (s) => keepEnie(s, (x) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\u0001-]+/g, '-').replace(/-{2,}/g, '-')).slice(0, 60);
 const go = (id, v) => navigate(`/admin?tab=rifas${id ? `&r=${id}` : ''}${v ? `&v=${v}` : ''}`);
 const fmtOf = (r) => (n) => api.fmtNum(n, r?.num_to ?? 99, r?.num_from ?? 0);
 
@@ -367,7 +370,7 @@ function Editor({ r, part, missing, onSaved }) {
         <label className="field"><span>Título</span><div className="pink-input"><input value={f.title} maxLength={120} onChange={(e) => set({ title: e.target.value })} /></div></label>
         <label className="field"><span>Dirección del enlace</span>
           <div className="rf-slug"><span className="rf-slug-base">…/rifas/</span><div className="pink-input"><input value={f.slug} maxLength={60} spellCheck={false} autoCapitalize="none"
-            onChange={(e) => set({ slug: e.target.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-]+/g, '-').replace(/-{2,}/g, '-').slice(0, 60) })}
+            onChange={(e) => set({ slug: slugTyping(e.target.value) })}
             onBlur={() => set({ slug: slugify(f.slug) })} /></div></div>
           <small className="rf-muted">Link: {api.shareUrl(slugify(f.slug) || '…')}{r.status !== 'draft' && f.slug !== r.slug ? ' · ⚠️ El link anterior deja de funcionar: volvé a compartir el nuevo.' : ''}</small></label>
         <div className="field"><span>Premios</span>

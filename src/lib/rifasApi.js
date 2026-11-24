@@ -68,7 +68,7 @@ export const whatsappShare = (text) => `https://wa.me/?text=${encodeURIComponent
 async function rpc(fn, args) {
   const { data, error } = await sb.rpc(fn, args);
   if (error) {
-    const e = new Error(error.code === '42501' ? 'No tenés permiso para esta acción.' : /bb_raffles_slug_key/.test(error.message) ? 'Esa dirección ya la usa otra rifa: elegí otra.' : /bb_raffles_slug_check/.test(error.message) ? 'La dirección debe tener entre 3 y 60 caracteres: letras minúsculas, números y guiones.' : /function .* does not exist|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 076 (BAT RIFAS) en Supabase.' : error.message);
+    const e = new Error(error.code === '42501' ? 'No tenés permiso para esta acción.' : /bb_raffles_slug_key/.test(error.message) ? 'Esa dirección ya la usa otra rifa: elegí otra.' : /bb_raffles_slug_check/.test(error.message) ? 'La dirección debe tener entre 3 y 60 caracteres: letras minúsculas (incluida la ñ), números y guiones.' : /function .* does not exist|PGRST202/.test(error.message + error.code) ? 'Falta correr la migración 076 (BAT RIFAS) en Supabase.' : error.message);
     e.code = error.code;
     throw e;
   }

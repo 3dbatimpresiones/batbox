@@ -16,7 +16,9 @@ const ADMIN_ONLY = api.RIFAS_ADMIN_ONLY;
 
 export default function Rifas({ route }) {
   const { isAdmin, access } = useAuth();
-  const [, a, b] = route.parts;
+  const dec = (x) => { try { return x ? decodeURIComponent(x) : x; } catch { return x; } };
+  const [, a0, b] = route.parts;
+  const a = dec(a0);
   if (ADMIN_ONLY && !isAdmin) {
     if (access === 'loading') return <Loading />;
     return (

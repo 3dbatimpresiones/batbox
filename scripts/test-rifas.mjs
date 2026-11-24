@@ -203,6 +203,8 @@ check((await as(SU, 'select count(*)::int from public.bb_raffle_export_downloads
   await as(ADMIN, 'select public.bb_rf_admin_save($1)', [{ ...(await as(ADMIN, 'select public.bb_rf_admin_get($1)', [dup])), slug: 'rifa-navidena' }]);
   check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-navidena']))?.status === 'published', 'cambiar el link con la rifa publicada');
   check(await fails(ADMIN, 'select public.bb_rf_admin_save($1)', [{ ...(await as(ADMIN, 'select public.bb_rf_admin_get($1)', [dup])), slug: 'rifa-gate' }]), 'no deja repetir un link de otra rifa');
+  await as(ADMIN, 'select public.bb_rf_admin_save($1)', [{ ...(await as(ADMIN, 'select public.bb_rf_admin_get($1)', [dup])), slug: 'rifa-navideña' }]);
+  check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-navideña']))?.slug === 'rifa-navideña', 'link con ñ');
 }
 
 // ---- Ganadores e inicio de Rifas ----
