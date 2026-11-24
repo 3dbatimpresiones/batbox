@@ -155,6 +155,7 @@ const SIDE = [
   { v: 'ajustes', label: 'Ajustes', icon: 'edit' },
   { v: 'compartir', label: 'Compartir link', icon: 'send' },
   { v: 'cierre', label: 'Cierre y padrón', icon: 'trophy' },
+  { href: '#/admin?tab=rifas&v=notificaciones', label: 'Notificaciones', icon: 'bell' },
 ];
 
 function RafflePanel({ id, view }) {
@@ -176,7 +177,9 @@ function RafflePanel({ id, view }) {
         <div className="rf-panel-title"><Icon name="clipboard" size={16} /> <span>{r.title}</span> <Chip map={api.RAFFLE_STATUS} value={r.status} /></div>
       </div>
       <nav className="rf-side" aria-label="Secciones de la rifa">
-        {SIDE.map((s) => s.ext
+        {SIDE.map((s) => s.href
+          ? <a key={s.href} href={s.href}><Icon name={s.icon} size={16} /> {s.label}</a>
+          : s.ext
           ? <a key={s.v} href={'#/rifas/' + r.slug} target="_blank" rel="noopener noreferrer"><Icon name={s.icon} size={16} /> {s.label} <Icon name="external" size={14} /></a>
           : <button key={s.v} type="button" className={section === s.v ? 'active' : ''} aria-current={section === s.v ? 'page' : undefined} onClick={() => go(id, s.v)}><Icon name={s.icon} size={16} /> {s.label}</button>)}
       </nav>
@@ -312,12 +315,15 @@ function Settings({ r }) {
     { v: 'general', icon: 'grid', title: 'General', text: 'Precio, premios, bases, fecha, pago y números' },
     { v: 'personal', icon: 'image', title: 'Personalización', text: 'Portada del talonario' },
     { v: 'perfil', icon: 'user', title: 'Mi perfil', text: 'Organizador y contacto de soporte' },
+    { href: '#/admin?tab=rifas&v=notificaciones', icon: 'bell', title: 'Notificaciones', text: 'Avisos push de todas las rifas: prender, textos y prueba' },
   ];
   return (
     <div>
       <h3 className="rf-h">Ajustes</h3>
       <div className="rf-settings">
-        {tiles.map((t) => <button key={t.v} type="button" className="rf-set-tile" onClick={() => go(r.id, t.v)}><b><Icon name={t.icon} size={18} /> {t.title}</b><small>{t.text}</small></button>)}
+        {tiles.map((t) => t.href
+          ? <a key={t.href} className="rf-set-tile" href={t.href}><b><Icon name={t.icon} size={18} /> {t.title}</b><small>{t.text}</small></a>
+          : <button key={t.v} type="button" className="rf-set-tile" onClick={() => go(r.id, t.v)}><b><Icon name={t.icon} size={18} /> {t.title}</b><small>{t.text}</small></button>)}
       </div>
       {['published', 'paused'].includes(r.status) && <button type="button" className="btn rf-danger" onClick={() => go(r.id, 'cierre')}><Icon name="x" size={16} /> Cancelar / finalizar rifa</button>}
     </div>

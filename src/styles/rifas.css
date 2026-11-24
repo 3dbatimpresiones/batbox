@@ -454,3 +454,4 @@
 .rf-push-list li p { margin: .3rem 0; overflow-wrap: anywhere; }
 .rf-push-list .rf-push-unread { border-inline-start: 3px solid #63bcff; }
 .rf-open-ticket { margin-inline: 0; }
+a.rf-set-tile { text-decoration: none; }
