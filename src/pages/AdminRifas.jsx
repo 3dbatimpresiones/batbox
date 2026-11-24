@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import qrcode from 'qrcode-generator';
 import * as api from '../lib/rifasApi.js';
 import { navigate, useRoute } from '../lib/router.js';
@@ -113,7 +113,7 @@ function CreateModal({ last, onClose }) {
         title: f.title.trim(), slug: `${slugify(f.title) || 'rifa'}-${Math.random().toString(36).slice(2, 6)}`,
         price_cents: cents, num_from: 1, num_to: count, draw_at: /^20\d\d-\d\d-\d\d$/.test(f.date) ? `${f.date}T21:00:00-03:00` : '',
         transfer_info: base?.transfer_info || '', terms: base?.terms || '', support_contact: base?.support_contact || '', organizer: base?.organizer || '',
-        pay_hours: base?.pay_hours || 24, max_per_entry: base?.max_per_entry || 10, require_phone: base?.require_phone ?? true, csv_profile: base?.csv_profile || 'rifary',
+        pay_hours: base?.pay_hours || 24, max_per_entry: 1000, min_per_entry: base?.min_per_entry || 1, require_phone: base?.require_phone ?? true, csv_profile: base?.csv_profile || 'rifary',
         prizes: [], description: '', cover_url: '',
       });
       try { await api.adminSetStatus(id, 'published'); go(id); } catch { go(id, 'general&falta=1'); }
@@ -271,7 +271,7 @@ function Entries({ raffle, stats, search }) {
 function Advanced({ r, reload }) {
   const [ask, setAsk] = useState(null);
   const [msg, setMsg] = useState({});
-  const act = async (fn, ok) => { setMsg({}); try { await fn(); setMsg({ ok }); reload(); } catch (e) { setMsg({ err: e.message }); } };
+  const act = async (fn, ok) => { setMsg({}); try { await fn(); setMsg({ ok }); reload(); } catch (e) { setMsg({ err: e.message, missing: e.data?.missing || [] }); } };
   return (
     <div className="card rf-adv">
       <h4>Estado de la rifa</h4>
@@ -283,7 +283,11 @@ function Advanced({ r, reload }) {
         {r.status === 'closed' && <button type="button" className="btn ghost" onClick={() => setAsk({ title: '¿Archivar?', text: 'Se oculta del público. Los padrones se conservan.', yes: 'Archivar', run: () => act(() => api.adminSetStatus(r.id, 'archived'), 'Archivada.') })}>Archivar</button>}
       </div>
       {msg.ok && <div className="cm-ok" role="status">{msg.ok}</div>}
-      {msg.err && <div className="feedback-error" role="alert">{msg.err}</div>}
+      {msg.err && <div className="feedback-error" role="alert">{msg.err}
+        {msg.missing?.length > 0 && <div className="rf-actions rf-fixlinks">
+          {msg.missing.some((m) => /precio|pago/.test(m)) && <button type="button" className="btn ghost" onClick={() => go(r.id, 'general')}>Ir a General</button>}
+          {msg.missing.some((m) => /bases/.test(m)) && <button type="button" className="btn ghost" onClick={() => go(r.id, 'personal')}>Ir a Personalización (bases)</button>}
+        </div>}</div>}
       <Confirm open={!!ask} title={ask?.title} text={ask?.text} yes={ask?.yes} onYes={() => { const a = ask; setAsk(null); a.run(); }} onNo={() => setAsk(null)} />
     </div>
   );
@@ -314,13 +318,22 @@ function Editor({ r, part, missing, onSaved }) {
   const set = (x) => setF((c) => ({ ...c, ...x }));
   const cents = api.pesosToCents(f.price);
   const locked = r.locked;
-  const save = async () => {
+  const coverInput = useRef(null);
+  const uploadCover = async (file) => {
+    if (!file) return;
+    setBusy('cover'); setError(''); setOk('');
+    try { const url = await api.uploadCover(r.id, file); set({ cover_url: url }); await save({ cover_url: url }); setOk('Portada subida y guardada.'); }
+    catch (e) { setError(e.message); setBusy(false); }
+    finally { if (coverInput.current) coverInput.current.value = ''; }
+  };
+  const save = async (over = {}) => {
+    const f2 = { ...f, ...over };
     setBusy(true); setError(''); setOk('');
     try {
-      await api.adminSave({ ...f, id: r.id, price_cents: cents, prizes: f.prizes.map((p) => p.trim()).filter(Boolean), draw_at: api.fromLocalInput(f.draw_at),
-        num_from: Number(f.num_from), num_to: Number(f.num_to), max_per_entry: Number(f.max_per_entry), pay_hours: Number(f.pay_hours) });
+      await api.adminSave({ ...f2, id: r.id, price_cents: cents, prizes: f2.prizes.map((p) => p.trim()).filter(Boolean), draw_at: api.fromLocalInput(f2.draw_at),
+        num_from: Number(f2.num_from), num_to: Number(f2.num_to), max_per_entry: 1000, min_per_entry: Math.max(1, Number(f2.min_per_entry) || 1), pay_hours: Number(f2.pay_hours) });
       setOk('Guardado.'); onSaved();
-      if (missing && r.status === 'draft' && f.transfer_info.trim().length >= 5 && f.terms.trim().length >= 10) {
+      if (missing && r.status === 'draft' && f2.transfer_info.trim().length >= 5 && f2.terms.trim().length >= 10) {
         try { await api.adminSetStatus(r.id, 'published'); setOk('Guardado y publicado.'); onSaved(); } catch { /* sigue en borrador */ }
       }
     } catch (e) { setError(e.message); } finally { setBusy(false); }
@@ -345,8 +358,8 @@ function Editor({ r, part, missing, onSaved }) {
         <label className="field"><span>Información de pago (alias, CBU, titular)</span><div className="pink-input feedback-text"><textarea rows={4} maxLength={1000} placeholder="Alias: …  ·  CBU: …  ·  Titular: …" value={f.transfer_info} onChange={(e) => set({ transfer_info: e.target.value })} /></div></label>
         <div className="cm-row">
           <label className="field"><span>Datos de participantes requeridos</span><div className="pink-input"><select value={f.require_phone ? 'tel' : 'email'} onChange={(e) => set({ require_phone: e.target.value === 'tel' })}>
-            <option value="tel">Nombre, email y teléfono</option><option value="email">Nombre y email (teléfono opcional)</option></select></div></label>
-          <label className="field"><span>Selección máxima por reserva</span><div className="pink-input"><input type="number" min={1} max={1000} value={f.max_per_entry} onChange={(e) => set({ max_per_entry: e.target.value })} /></div></label>
+            <option value="tel">Nombre y apellido, email y teléfono / WhatsApp</option><option value="email">Nombre y apellido y email (teléfono / WhatsApp opcional)</option></select></div></label>
+          <label className="field"><span>Compra mínima (números por reserva)</span><div className="pink-input"><input type="number" min={1} max={1000} value={f.min_per_entry ?? 1} onChange={(e) => set({ min_per_entry: e.target.value })} /></div><small className="rf-muted">Sin máximo: cada persona compra los que quiera.</small></label>
           <label className="field"><span>Horas para pagar</span><div className="pink-input"><input type="number" min={1} max={720} value={f.pay_hours} onChange={(e) => set({ pay_hours: e.target.value })} /></div></label>
         </div>
         <label className="rf-switch"><input type="checkbox" role="switch" checked={Number(f.num_from) === 0} disabled={locked}
@@ -359,15 +372,27 @@ function Editor({ r, part, missing, onSaved }) {
         </details>
       </>}
       {part === 'personal' && <>
-        <label className="field"><span>Portada (URL https de la imagen)</span><div className="pink-input"><input value={f.cover_url} inputMode="url" maxLength={500} onChange={(e) => set({ cover_url: e.target.value })} /></div></label>
-        {f.cover_url && /^https:\/\//.test(f.cover_url) && <img className="rf-cover-prev" src={f.cover_url} alt="Vista previa de la portada" />}
+        <div className="field"><span>Portada</span>
+          <div className="rf-coverup">
+            {/^https:\/\//.test(f.cover_url || '') ? <img className="rf-cover-prev" src={f.cover_url} alt="Vista previa de la portada" /> : <div className="rf-cover-empty"><Icon name="image" size={30} /><small>Sin portada</small></div>}
+            <div className="rf-actions">
+              <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => uploadCover(e.target.files?.[0])} />
+              <button type="button" className="btn primary" disabled={!!busy} onClick={() => coverInput.current?.click()}><Icon name="image" size={16} /> {busy === 'cover' ? 'Subiendo…' : f.cover_url ? 'Cambiar foto' : 'Subir foto'}</button>
+              {f.cover_url && <button type="button" className="btn text" disabled={!!busy} onClick={() => { set({ cover_url: '' }); save({ cover_url: '' }); }}>Quitar</button>}
+            </div>
+            <small className="rf-muted">JPG, PNG o WebP desde el celular o la compu. Se achica sola y se guarda al instante.</small>
+          </div>
+          <details className="rf-more"><summary>O pegá el link de una imagen</summary>
+            <div className="pink-input"><input value={f.cover_url} inputMode="url" maxLength={500} placeholder="https://…" onChange={(e) => set({ cover_url: e.target.value })} /></div></details>
+        </div>
         <div className="field"><span>Premios</span>
           {f.prizes.map((p, i) => (
             <div key={i} className="ga-kv"><div className="pink-input"><input value={p} maxLength={140} placeholder={`${i + 1}° premio`} onChange={(e) => set({ prizes: f.prizes.map((x, j) => (j === i ? e.target.value : x)) })} /></div>
               {f.prizes.length > 1 && <button type="button" className="mini-btn" aria-label="Quitar premio" onClick={() => set({ prizes: f.prizes.filter((_, j) => j !== i) })}>×</button>}</div>))}
           {f.prizes.length < 10 && <button type="button" className="cm-link" onClick={() => set({ prizes: [...f.prizes, ''] })}>+ Agregar premio</button>}
         </div>
-        <label className="field"><span>Bases y condiciones</span><div className="pink-input feedback-text"><textarea rows={6} maxLength={8000} value={f.terms} onChange={(e) => set({ terms: e.target.value })} /></div></label>
+        <label className="field"><span>Bases y condiciones (obligatorio para publicar · se muestran en el talonario)</span><div className="pink-input feedback-text"><textarea rows={6} maxLength={8000} placeholder="Ej.: El sorteo se hace cuando se vendan todos los números, en vivo por Instagram. Los números se validan con el comprobante de transferencia…" value={f.terms} onChange={(e) => set({ terms: e.target.value })} /></div>
+          <small className="rf-muted">{f.terms.trim().length} caracteres · mínimo 10</small></label>
         {locked && <small className="cm-date">Si cambiás las bases se crea una versión nueva; las participaciones anteriores conservan la que aceptaron.</small>}
       </>}
       {part === 'perfil' && <>
@@ -376,7 +401,7 @@ function Editor({ r, part, missing, onSaved }) {
       </>}
       {error && <div className="feedback-error" role="alert">{error}</div>}
       {ok && <div className="cm-ok" role="status">{ok}</div>}
-      <div className="rf-savebar"><button type="button" className="btn primary" disabled={busy || f.title.trim().length < 3 || cents === null} onClick={save}><Icon name="check" size={16} /> {busy ? 'Guardando…' : 'Guardar'}</button></div>
+      <div className="rf-savebar"><button type="button" className="btn primary" disabled={busy || f.title.trim().length < 3 || cents === null} onClick={() => save()}><Icon name="check" size={16} /> {busy ? 'Guardando…' : 'Guardar'}</button></div>
     </div>
   );
 }

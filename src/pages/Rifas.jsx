@@ -139,7 +139,16 @@ function RaffleView({ slug, isAdmin }) {
           {raffle.prizes?.length > 0 && (
             <ul className="rf-prizes card">{raffle.prizes.map((p, i) => <li key={i}><Icon name="trophy" size={16} /> <span>{raffle.prizes.length > 1 && <b>{i + 1}° premio: </b>}{p}</span></li>)}</ul>
           )}
-          <button type="button" className="rf-howto" onClick={() => setModal('bases')}><Icon name="sparkles" size={16} /> ¿Cómo participar?</button>
+          <section className="card rf-howcard" aria-labelledby="rf-how-h">
+            <h2 id="rf-how-h"><Icon name="sparkles" size={18} /> ¿Cómo participar?</h2>
+            <ol className="rf-steps"><li>Elegí tus números en el talonario.</li><li>Completá tus datos: quedan <b>apartados</b> por {raffle.pay_hours} h.</li><li>Transferí el total y subí el comprobante en tu ticket digital.</li><li>Cuando verificamos la acreditación, quedan <b>validados</b>.</li></ol>
+          </section>
+          {raffle.description && <section className="card rf-desc"><p className="rf-pre-txt">{raffle.description}</p></section>}
+          <section className="card rf-terms-card" aria-labelledby="rf-terms-h">
+            <h2 id="rf-terms-h"><Icon name="book" size={18} /> Bases y condiciones</h2>
+            <div className="rf-terms-txt" tabIndex={0}>{raffle.terms || 'Las bases todavía no se cargaron.'}</div>
+            <small className="rf-muted">Versión {raffle.terms_version}. {api.fmtDate(raffle.draw_at) ? `Sorteo: ${api.fmtDate(raffle.draw_at)} (hora de Buenos Aires).` : 'El sorteo se hace cuando se vendan todos los números.'} Se hace por fuera de BATBOX con el procedimiento de la comunidad.</small>
+          </section>
           {raffle.organizer && <div className="rf-org"><Icon name="user" size={22} /><div><small>Organizador</small><b>{raffle.organizer}</b></div></div>}
           <div className="rf-phoneqr card"><Qr text={shareLink} size={130} /><div><Icon name="sparkles" size={20} /><b>Escaneá el código para ver el talonario desde tu celular</b></div></div>
         </section>
@@ -196,7 +205,7 @@ function RaffleView({ slug, isAdmin }) {
             })}
           </div>
           {open && free === 0 && <p className="rf-banner closed">No quedan números disponibles.</p>}
-          {sel.length >= raffle.max_per_entry && <p className="rf-muted">Llegaste al máximo de {raffle.max_per_entry} números por reserva.</p>}
+          {(raffle.min_per_entry || 1) > 1 && <p className="rf-minbuy" role="note"><Icon name="alert" size={14} /> Compra mínima: <b>{raffle.min_per_entry} números</b>.</p>}
         </section>
       </div>
 
@@ -205,7 +214,9 @@ function RaffleView({ slug, isAdmin }) {
           <>
             <div className="rf-statsel"><b>{sel.map((n) => '#' + fmt(n)).join(' ')}</b><small>{api.money(raffle.price_cents * sel.length)} · {sel.length} número{sel.length > 1 ? 's' : ''}</small></div>
             <button type="button" className="btn text" onClick={() => setSel([])}>Limpiar</button>
-            <button type="button" className="btn primary" onClick={() => setModal('participar')}>Participar</button>
+            {sel.length < (raffle.min_per_entry || 1)
+              ? <button type="button" className="btn primary" disabled>Elegí {(raffle.min_per_entry || 1) - sel.length} más</button>
+              : <button type="button" className="btn primary" onClick={() => setModal('participar')}>Participar</button>}
           </>
         ) : (
           <>
@@ -293,10 +304,11 @@ function ParticipateModal({ raffle, sel, setSel, reload, onClose }) {
       <form onSubmit={submit} className="rf-form-in" noValidate>
         <div className="rf-chosen">{sel.map((n) => <span key={n}>#{fmt(n)}</span>)}</div>
         {taken.length > 0 && <div className="feedback-error" role="alert">Se ocuparon: <b>{taken.map(fmt).join(', ')}</b>. Los sacamos de tu selección; podés seguir con el resto o volver a elegir.</div>}
-        <label className="field"><span>Nombre y apellido</span><div className="pink-input"><input autoFocus required autoComplete="name" maxLength={80} placeholder="Nombre" value={f.name} onChange={(e) => set({ name: e.target.value })} /></div></label>
-        <label className="field"><span>Teléfono{raffle.require_phone ? '' : ' (opcional)'}</span><div className="pink-input"><input type="tel" inputMode="tel" autoComplete="tel" maxLength={24} placeholder="Teléfono de contacto" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></div></label>
+        <label className="field"><span>Nombre y apellido</span><div className="pink-input"><input autoFocus required autoComplete="name" maxLength={80} placeholder="Nombre y apellido" value={f.name} onChange={(e) => set({ name: e.target.value })} /></div></label>
+        <label className="field"><span>Teléfono / WhatsApp{raffle.require_phone ? '' : ' (opcional)'}</span><div className="pink-input"><input type="tel" inputMode="tel" autoComplete="tel" maxLength={24} placeholder="11 5555 5555" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></div></label>
         <label className="field"><span>Enviar ticket por email</span><div className="pink-input"><input required type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder="Email" value={f.email} onChange={(e) => set({ email: e.target.value })} /></div></label>
         <p className="rf-total"><b>Total: {api.money(raffle.price_cents * sel.length)}</b> ({sel.length} número{sel.length > 1 ? 's' : ''})</p>
+        <div className="rf-terms-mini" tabIndex={0} aria-label="Bases y condiciones"><b>Bases y condiciones</b><p>{raffle.terms}</p></div>
         <small className="rf-muted">Al tocar «Aceptar y continuar» confirmás que leíste y aceptás las bases y condiciones (versión {raffle.terms_version}).</small>
         {error && !taken.length && <div className="feedback-error" role="alert">{error}</div>}
         <button type="submit" className="btn primary wide" disabled={busy || !valid}>{busy ? <><span className="spinner xs" /> Reservando…</> : 'Aceptar y continuar'}</button>

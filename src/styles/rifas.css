@@ -252,3 +252,16 @@
 .rf-history small { color: var(--muted); }
 .rf-hours { width: 64px; margin: 0 6px; }
 .rf-close { display: grid; gap: 12px; }
+
+/* Bases visibles, cómo participar y portada subida */
+.rf-howcard, .rf-terms-card, .rf-desc { display: grid; gap: 10px; }
+.rf-howcard h2, .rf-terms-card h2 { margin: 0; font-size: 18px; display: flex; gap: 8px; align-items: center; color: var(--cyan); }
+.rf-desc p { margin: 0; }
+.rf-terms-txt { white-space: pre-line; color: #e2e8f0; font-size: 14px; line-height: 1.5; max-height: 260px; overflow-y: auto; padding: 12px 14px; border-radius: 14px; background: rgba(19,29,71,.55); border: 1px solid var(--indigo); }
+.rf-terms-txt:focus-visible, .rf-terms-mini:focus-visible { outline: 3px solid var(--pink); }
+.rf-terms-mini { max-height: 130px; overflow-y: auto; padding: 10px 12px; border-radius: 12px; background: rgba(19,29,71,.6); border: 1px solid var(--indigo); font-size: 13px; }
+.rf-terms-mini p { margin: 4px 0 0; white-space: pre-line; color: #cbd5e1; }
+.rf-coverup { display: grid; gap: 10px; }
+.rf-cover-empty { width: 100%; max-width: 360px; aspect-ratio: 16 / 9; border-radius: 14px; border: 2px dashed var(--indigo); display: grid; place-items: center; align-content: center; gap: 4px; color: var(--muted); }
+.rf-fixlinks { margin-top: 8px; }
+.rf-minbuy { margin: 0; display: flex; gap: 6px; align-items: center; padding: 8px 12px; border-radius: 12px; color: var(--warn); background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.4); font-size: 14px; }

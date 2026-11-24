@@ -1,5 +1,6 @@
 import { sb } from './supabase.js';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from '../config.js';
+import { shrinkImage } from './communityApi.js';
 
 // BAT RIFAS (migración 076 + Edge Function bb-rifas). Toda regla vive en el servidor;
 // acá solo se llama a las funciones y se da formato.
@@ -128,6 +129,16 @@ export const adminCloseSummary = (id) => rpc('bb_rf_admin_close_summary', { p_ra
 export const adminClose = async (id, releasePending) => must(await rpc('bb_rf_admin_close', { p_raffle: id, p_release_pending: releasePending }));
 export const adminExportCreate = async (id, reason, op) => must(await rpc('bb_rf_admin_export_create', { p_raffle: id, p_reason: reason, p_op: op }));
 export const adminExportGet = (id) => rpc('bb_rf_admin_export_get', { p_export: id });
+// Portada: se achica en el navegador (máx. 1600 px, WebP) y se sube al bucket público de portadas (solo admins).
+export async function uploadCover(raffleId, file) {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) throw new Error('Elegí una foto JPG, PNG o WebP.');
+  const { blob } = await shrinkImage(file, 1600);
+  const path = `${raffleId}/${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.webp`;
+  const { error } = await sb.storage.from('bb-rifas-portadas').upload(path, blob, { contentType: 'image/webp', upsert: false });
+  if (error) throw new Error(/row-level|policy|Unauthorized/i.test(error.message) ? 'Para subir la portada tenés que iniciar sesión como admin.' : error.message || 'No se pudo subir la foto.');
+  return sb.storage.from('bb-rifas-portadas').getPublicUrl(path).data.publicUrl;
+}
+
 export async function proofUrl(path) {
   const { data, error } = await sb.storage.from('bb-rifas-comprobantes').createSignedUrl(path, 120);
   if (error) throw new Error('No se pudo abrir el comprobante (¿sos admin?).');

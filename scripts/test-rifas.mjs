@@ -156,6 +156,17 @@ const r9 = await reserve([0], '=HYPERLINK("x")', uuid(), 'cero@ejemplo.test', '1
 await as(SERVICE, 'select public.bb_rf_attach_proof($1,$2,$3,$4)', [r9.token, 'e9/p.png', 'image/png', 10]);
 await as(ADMIN, 'select public.bb_rf_admin_confirm($1,$2)', [await as(SERVICE, 'select public.bb_rf_entry_id_by_token($1)', [r9.token]), uuid()]);
 
+// ---- Compra mínima ----
+{
+  const m = await as(ADMIN, 'select public.bb_rf_admin_save($1)', [{ slug: 'rifa-minimo', title: 'Rifa minimo', terms: 'Bases de prueba minimo.', price_cents: 100, transfer_info: 'Alias x.y.z', min_per_entry: 3 }]);
+  await as(ADMIN, "select public.bb_rf_admin_set_status($1, 'published')", [m]);
+  const q = (nums) => as(ANON, 'select public.bb_rf_reserve($1,$2,$3,$4,$5,$6,$7)', ['rifa-minimo', nums, 'Ana', 'a@ejemplo.test', '1155550000', 1, uuid()]);
+  const r1 = await q([1, 2]);
+  check(r1.ok === false && /mínima es de 3/.test(r1.error), 'compra mínima: rechaza 2 de 3');
+  check((await q([1, 2, 3])).ok, 'compra mínima: acepta 3');
+  check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-minimo'])).min_per_entry === 3, 'compra mínima visible en el talonario');
+}
+
 // ---- 8/9. Cierre y CSV ----
 check((await as(ADMIN, 'select public.bb_rf_admin_close($1,false)', [rid])).ok === false, 'cierre pide confirmar reservas pendientes');
 const sum = await as(ADMIN, 'select public.bb_rf_admin_close_summary($1)', [rid]);
