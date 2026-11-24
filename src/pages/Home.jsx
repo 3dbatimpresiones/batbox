@@ -10,6 +10,7 @@ import { SocialIcon, brandClass } from '../components/BrandIcon.jsx';
 import { SearchInput, SectionHead } from '../components/ui.jsx';
 import { ContentCard, Grid, MiniCard, NewsRow, ToolCard } from '../components/Cards.jsx';
 import HomeHighlights from '../components/HomeHighlights.jsx';
+import RaffleHero, { useActiveRaffle } from '../components/RaffleHero.jsx';
 import { PartnersBanner } from '../components/PartnerBits.jsx';
 import { safeUrl } from '../lib/safeUrl.js';
 import { TycoonHomeBlock } from '../components/Tycoon.jsx';
@@ -80,6 +81,7 @@ export default function Home() {
   const allResources = byKind('resource');
   const resources = (allResources.some((i) => i.featured) ? allResources.filter((i) => i.featured) : allResources).slice(0, 4);
   const news = newest(byKind('news')).slice(0, 4);
+  const raffle = useActiveRaffle();
 
   return (
     <div className="home">
@@ -88,6 +90,7 @@ export default function Home() {
         <div className="hero-orb o1" /><div className="hero-orb o2" /><div className="hero-orb o3" />
         <div className="hero-in">
           <PartnersBanner />
+          {raffle ? <RaffleHero r={raffle} /> : <>
           <div className="hero-logo"><Icon name="box" size={26} /></div>
           <h1 className="wordmark">BAT<span>BOX</span></h1>
           <p className="hero-by">by 3DBAT IMPRESIONES</p>
@@ -101,6 +104,7 @@ export default function Home() {
               <a key={x.to} href={'#' + x.to} className="quick-item"><Icon name={x.icon} size={18} /> {x.label}</a>
             ))}
           </div>
+          </>}
         </div>
       </section>
 
