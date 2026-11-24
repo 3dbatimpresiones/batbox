@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { CONFETTI, WeekMakerBlock } from './GalleryCards.jsx';
 import Icon from './Icon.jsx';
 import * as rifas from '../lib/rifasApi.js';
+import { RESULTS_URL } from './RaffleVerify.jsx';
 import '../styles/rifas.css';
 
 // Destacados del Inicio: carrusel entre "Maker destacado de la semana" y
@@ -44,7 +45,9 @@ function RaffleWinnersBlock({ fin, isAdmin }) {
             <h3><Icon name="sparkles" size={16} /> ¡Felicitaciones!</h3>
             <p>{many ? 'Estos son los ganadores' : 'Este es el ganador'} de la última rifa de la comunidad Makers 3DBAT. ¡Gracias a todos los que participaron!</p>
             <h3><Icon name="star" size={16} /> ¿Cómo se sorteó?</h3>
-            <p>El sorteo se hizo por fuera de BATBOX, con el procedimiento de la comunidad que figura en las bases de la rifa.</p>
+            <p>Con la Quiniela, siguiendo las bases de la rifa. Verificá {many ? 'los ganadores' : 'el ganador'} en <a href={RESULTS_URL} target="_blank" rel="noopener noreferrer">notitimba.com/lots</a>, la web que usamos ese día para ver los resultados en tiempo real.</p>
+            <h3><Icon name="instagram" size={16} /> En vivo en Instagram</h3>
+            <p>El día del sorteo siempre estamos en vivo en <a href="https://www.instagram.com/3dbat.impresiones/" target="_blank" rel="noopener noreferrer">@3dbat.impresiones</a> con <a href="https://www.instagram.com/filacolor/" target="_blank" rel="noopener noreferrer">@filacolor</a>.</p>
             <h3><Icon name="trophy" size={16} /> ¿Cómo participo en la próxima?</h3>
             <ul>
               <li>Atento al botón <b>Rifas</b> del menú: brilla cuando hay una rifa activa.</li>

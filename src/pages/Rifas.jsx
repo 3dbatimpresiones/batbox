@@ -5,6 +5,7 @@ import { navigate } from '../lib/router.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 import Icon from '../components/Icon.jsx';
 import { Empty } from '../components/ui.jsx';
+import RaffleVerify from '../components/RaffleVerify.jsx';
 import '../styles/rifas.css';
 
 // BAT RIFAS — vistas públicas:
@@ -50,6 +51,7 @@ function Winners({ winners, title = 'Ganadores' }) {
             <span className="rf-win-n" aria-label={'Número ' + w.number}>{w.number}</span>
           </li>))}
       </ol>
+      <RaffleVerify many={winners.length > 1} />
     </section>
   );
 }
