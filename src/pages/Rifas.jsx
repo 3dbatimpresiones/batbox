@@ -214,10 +214,6 @@ function RaffleView({ slug, isAdmin }) {
               </section>
             );
           })()}
-          <section className="card rf-howcard" aria-labelledby="rf-how-h">
-            <h2 id="rf-how-h"><Icon name="sparkles" size={18} /> ¿Cómo participar?</h2>
-            <ol className="rf-steps"><li>Elegí tus números en el talonario.</li><li>Completá tus datos: quedan <b>apartados</b> por {raffle.pay_hours} h.</li><li>Transferí el total y subí el comprobante en tu ticket digital.</li><li>Cuando verificamos la acreditación, quedan <b>validados</b>.</li></ol>
-          </section>
           <section className="card rf-terms-card" aria-labelledby="rf-terms-h">
             <h2 id="rf-terms-h"><Icon name="book" size={18} /> Bases y condiciones</h2>
             <div className="rf-terms-txt" tabIndex={0}>{raffle.terms || 'Las bases todavía no se cargaron.'}</div>
