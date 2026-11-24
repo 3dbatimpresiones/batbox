@@ -86,12 +86,14 @@ export const verifyTicket = (code) => rpc('bb_rf_verify', { p_code: code });
 export const getHome = () => rpc('bb_rf_home', {});
 
 // ¿Hay alguna rifa activa? (para el brillo del botón del menú). Cacheado 2 min; si falla, no brilla.
-let liveCache = { at: 0, value: false, p: null };
-export function fetchRafflesLive() {
-  if (Date.now() - liveCache.at < 120000) return Promise.resolve(liveCache.value);
-  if (!liveCache.p) {
-    liveCache.p = sb.rpc('bb_rf_active_count').then(({ data }) => { liveCache = { at: Date.now(), value: (data || 0) > 0, p: null }; return liveCache.value; })
-      .catch(() => { liveCache = { at: Date.now(), value: false, p: null }; return false; });
+// La caché depende de quién mira (en etapa de prueba la base solo responde a admins).
+let liveCache = { key: '', at: 0, value: false, p: null };
+export function fetchRafflesLive(who = '') {
+  if (liveCache.key === who && Date.now() - liveCache.at < 60000) return Promise.resolve(liveCache.value);
+  if (!(liveCache.p && liveCache.key === who)) {
+    const p = sb.rpc('bb_rf_active_count').then(({ data }) => { liveCache = { key: who, at: Date.now(), value: (data || 0) > 0, p: null }; return liveCache.value; })
+      .catch(() => { liveCache = { key: who, at: Date.now(), value: false, p: null }; return false; });
+    liveCache = { ...liveCache, key: who, p };
   }
   return liveCache.p;
 }

@@ -17,8 +17,17 @@ const SUB_KEYS = NAV.filter((n) => n.sub).map((n) => n.key);
 // Oculta del menú los módulos de comunidad apagados o sin acceso.
 // La Biblioteca 3D se ve como "Próximamente" hasta que se prende el interruptor "biblioteca" (los admins ya la usan).
 function useRafflesLive() {
+  const { access, isAdmin, user } = useAuth();
+  const who = access === 'loading' ? '' : `${user?.id || 'anon'}:${isAdmin ? 'a' : 'u'}`;
   const [live, setLive] = useState(false);
-  useEffect(() => { let on = true; fetchRafflesLive().then((v) => on && setLive(v)); return () => { on = false; }; }, []);
+  useEffect(() => {
+    if (!who) return undefined;            // esperar a que se confirme la sesión
+    let on = true;
+    const check = () => fetchRafflesLive(who).then((v) => on && setLive(v));
+    check();
+    const t = setInterval(check, 120000);
+    return () => { on = false; clearInterval(t); };
+  }, [who]);
   return live;
 }
 
