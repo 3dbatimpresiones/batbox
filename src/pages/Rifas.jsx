@@ -394,7 +394,7 @@ function ParticipateModal({ raffle, sel, setSel, reload, onClose }) {
 const BADGE = {
   pending: ['blue', 'APARTADO', 'Estos números están reservados temporalmente.'],
   rejected: ['red', 'COMPROBANTE RECHAZADO', 'Subí un comprobante nuevo antes de que venza el plazo.'],
-  review: ['orange', 'EN REVISIÓN', 'Recibimos tu comprobante. Lo verificamos contra la cuenta y te avisamos por correo.'],
+  review: ['orange', 'EN REVISIÓN', 'Recibimos tu comprobante. Un administrador va a revisar que el pago se haya acreditado y te avisamos por correo.'],
   confirmed: ['green', 'VALIDADO', '¡Pago verificado! Tus números ya participan.'],
   expired: ['gray', 'VENCIDO', 'El plazo venció sin comprobante y los números se liberaron.'],
   cancelled: ['gray', 'CANCELADO', 'Esta participación se canceló.'],
