@@ -349,3 +349,5 @@
 .rf-winlist.compact .rf-win-txt b { font-size: 15px; }
 .rf-terms-full .rf-terms-txt { max-height: none; overflow: visible; font-size: 15px; }
 .rf-terms-full .btn { justify-self: start; }
+.rf-chosen-wrap { display: grid; gap: 2px; }
+.rf-chosen-wrap > small { color: var(--muted); font-weight: 800; font-size: 13px; }

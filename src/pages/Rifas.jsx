@@ -375,7 +375,7 @@ function ParticipateModal({ raffle, sel, setSel, reload, onClose }) {
   return (
     <Modal title="Participar" onClose={busy ? undefined : onClose}>
       <form onSubmit={submit} className="rf-form-in" noValidate>
-        <div className="rf-chosen">{sel.map((n) => <span key={n}>#{fmt(n)}</span>)}</div>
+        <div className="rf-chosen-wrap"><small>Números elegidos:</small><div className="rf-chosen">{sel.map((n) => <span key={n}>#{fmt(n)}</span>)}</div></div>
         {taken.length > 0 && <div className="feedback-error" role="alert">Se ocuparon: <b>{taken.map(fmt).join(', ')}</b>. Los sacamos de tu selección; podés seguir con el resto o volver a elegir.</div>}
         <label className="field"><span>Nombre y apellido</span><div className="pink-input"><input autoFocus required autoComplete="name" maxLength={80} placeholder="Nombre y apellido" value={f.name} onChange={(e) => set({ name: e.target.value })} /></div></label>
         <label className="field"><span>Teléfono / WhatsApp{raffle.require_phone ? '' : ' (opcional)'}</span><div className="pink-input"><input type="tel" inputMode="tel" autoComplete="tel" maxLength={24} placeholder="11 5555 5555" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></div></label>
