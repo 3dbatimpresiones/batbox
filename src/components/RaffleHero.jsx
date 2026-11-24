@@ -39,7 +39,9 @@ export default function RaffleHero({ r }) {
         <div className="rf-hero2-stats">
           <div><b>{rifas.money(r.price_cents)}</b><small>por número</small></div>
           <div className="rf-hero2-left"><small>Quedan</small><b>{left} de {r.total}</b><small>números</small></div>
-          <div><b>{rifas.fmtDate(r.draw_at, false) || 'Al agotar'}</b><small>sorteo</small></div>
+          {rifas.fmtDate(r.draw_at, false)
+            ? <div className="rf-hero2-left"><small>Sorteo</small><b>{rifas.fmtDate(r.draw_at, false)}</b></div>
+            : <div className="rf-hero2-left"><small>Se rifa</small><b>al agotar</b><small>los números</small></div>}
         </div>
         <div className="rf-hero2-bar" role="img" aria-label={`${pct}% de los números ya tomados`}>
           <span className="rf-bar"><i style={{ width: pct + '%' }} /></span><small>{pct}% vendido · {left} números disponibles</small>
