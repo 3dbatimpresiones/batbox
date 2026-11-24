@@ -24,13 +24,15 @@ export default function RaffleHero({ r }) {
   const href = '#/rifas/' + encodeURIComponent(r.slug);
   return (
     <div className="rf-hero2">
+      <header className="rf-hero2-head">
+        <span className="rf-kicker">BAT RIFAS · Makers 3DBAT</span>
+        <h1 className={'rf-hero2-title' + (r.title.length > 22 ? ' long' : '')}>{r.title}</h1>
+      </header>
       <a className="rf-hero2-img" href={href} aria-label={'Ver ' + r.title}>
         {r.cover_url ? <img src={r.cover_url} alt="" /> : <div className="rf-coverph"><Icon name="trophy" size={48} /><b>BAT RIFAS</b></div>}
         <span className="rf-live-badge">{paused ? 'Reservas pausadas' : '¡Rifa activa!'}</span>
       </a>
       <div className="rf-hero2-txt">
-        <span className="rf-kicker">BAT RIFAS · Makers 3DBAT</span>
-        <h1>{r.title}</h1>
         {prizes.length > 0 && (
           <ol className="rf-prizelist mini">{prizes.map((p, i) => <li key={i}><span className="rf-place" aria-hidden>{i + 1}°</span><span>{p}</span></li>)}</ol>
         )}

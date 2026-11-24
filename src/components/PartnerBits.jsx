@@ -41,16 +41,25 @@ export function PartnersStrip() {
 }
 
 // Banner del Inicio (arriba de BATBOX): logos de las marcas vigentes, patrocinadores primero.
-export function PartnersBanner() {
+// only: texto con los organizadores de una rifa activa (p. ej. "@3DBAT IMPRESIONES & @FILACOLOR").
+// Si viene, se muestran solo las marcas nombradas ahí (o Filacolor si no hay ninguna).
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
+export function PartnersBanner({ only = null }) {
   const flags = api.useCommunityFlags();
-  const [list, setList] = useState(null);
+  const [all, setAll] = useState(null);
   useEffect(() => {
-    if (flags?.batpartners) api.partnersList().then((l) => setList(l.slice(0, 8))).catch(() => setList(null));
+    if (flags?.batpartners) api.partnersList().then(setAll).catch(() => setAll(null));
   }, [flags]);
+  let list = all?.slice(0, 8);
+  if (only !== null && all) {
+    const text = norm(only);
+    const hit = all.filter((p) => (norm(p.name) && text.includes(norm(p.name))) || (norm(p.slug) && text.includes(norm(p.slug))));
+    list = hit.length ? hit : all.filter((p) => norm(p.name).includes('filacolor'));
+  }
   if (!list?.length) return null;
   return (
     <div className="pt-banner">
-      <span className="pt-banner-label">Con el apoyo de</span>
+      <span className="pt-banner-label">{only !== null ? 'Rifa organizada junto a' : 'Con el apoyo de'}</span>
       <div className="pt-banner-row">
         {list.map((p) => (
           <a key={p.id} href={'#/patrocinadores/' + p.slug} className="pt-banner-item" title={p.name + (p.relation === 'sponsor' ? ' · Patrocinado' : '')}>
@@ -58,7 +67,7 @@ export function PartnersBanner() {
             <span>{p.name}</span>
           </a>
         ))}
-        <a href="#/patrocinadores" className="pt-banner-more">Ver todos</a>
+        {only === null && <a href="#/patrocinadores" className="pt-banner-more">Ver todos</a>}
       </div>
     </div>
   );

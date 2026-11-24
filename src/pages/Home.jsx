@@ -89,7 +89,7 @@ export default function Home() {
       <section className="hero">
         <div className="hero-orb o1" /><div className="hero-orb o2" /><div className="hero-orb o3" />
         <div className="hero-in">
-          <PartnersBanner />
+          <PartnersBanner only={raffle ? (raffle.organizer || 'filacolor') : null} />
           {raffle ? <RaffleHero r={raffle} /> : <>
           <div className="hero-logo"><Icon name="box" size={26} /></div>
           <h1 className="wordmark">BAT<span>BOX</span></h1>

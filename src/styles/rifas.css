@@ -472,3 +472,19 @@ a.rf-set-tile { text-decoration: none; }
 .rf-hero2-bar small { color: #cbd5e1; font-weight: 700; }
 .rf-hero2-cta { justify-self: start; font-size: 18px; padding: 14px 26px; box-shadow: 0 10px 26px rgba(93,218,219,.4); }
 @media (max-width: 819px) { .rf-hero2-cta { justify-self: stretch; } }
+/* Banner de rifa activa: título arriba a todo el ancho; portada e info a la misma altura */
+.rf-hero2 { grid-template-areas: "head" "img" "info"; }
+.rf-hero2-head { grid-area: head; text-align: center; display: grid; gap: 4px; }
+.rf-hero2-title { margin: 0; font-size: clamp(20px, 4.6vw, 40px); line-height: 1.1; white-space: nowrap; }
+.rf-hero2-title.long { font-size: clamp(16px, 3.6vw, 34px); }
+.rf-hero2-img { grid-area: img; }
+.rf-hero2-txt { grid-area: info; align-content: center; }
+.rf-hero2-txt h1 { display: none; }
+@media (min-width: 820px) {
+  .rf-hero2 { grid-template-columns: 1fr 1fr; grid-template-areas: "head head" "img info"; align-items: stretch; }
+  .rf-hero2-img img { height: 100%; aspect-ratio: auto; min-height: 320px; }
+  .rf-hero2-cta { justify-self: stretch; text-align: center; justify-content: center; }
+}
+.rf-hero2-stats b { font-size: clamp(15px, 2vw, 20px); }
+.rf-hero2-img img { background: #fff; }
+@media (min-width: 820px) { .rf-hero2-img .rf-coverph { height: 100%; aspect-ratio: auto; min-height: 320px; } }
