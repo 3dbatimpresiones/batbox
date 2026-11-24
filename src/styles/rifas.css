@@ -488,3 +488,4 @@ a.rf-set-tile { text-decoration: none; }
 .rf-hero2-stats b { font-size: clamp(15px, 2vw, 20px); }
 .rf-hero2-img img { background: #fff; }
 @media (min-width: 820px) { .rf-hero2-img .rf-coverph { height: 100%; aspect-ratio: auto; min-height: 320px; } }
+.rf-hero2-left { align-content: center; } .rf-hero2-left b { white-space: nowrap; }
