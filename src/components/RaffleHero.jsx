@@ -37,10 +37,10 @@ export default function RaffleHero({ r }) {
           <ol className="rf-prizelist mini">{prizes.map((p, i) => <li key={i}><span className="rf-place" aria-hidden>{i + 1}°</span><span>{p}</span></li>)}</ol>
         )}
         <div className="rf-hero2-stats">
-          <div><b>{rifas.money(r.price_cents)}</b><small>por número</small></div>
+          <div className="rf-hero2-left"><small>Precio</small><b>{rifas.money(r.price_cents)}</b><small>por número</small></div>
           <div className="rf-hero2-left"><small>Quedan</small><b>{left} de {r.total}</b><small>números</small></div>
           {rifas.fmtDate(r.draw_at, false)
-            ? <div className="rf-hero2-left"><small>Sorteo</small><b>{rifas.fmtDate(r.draw_at, false)}</b></div>
+            ? <div className="rf-hero2-left"><small>Sorteo</small><b>{rifas.fmtDate(r.draw_at, false)}</b><small>hora de Buenos Aires</small></div>
             : <div className="rf-hero2-left"><small>Se rifa</small><b>al agotar</b><small>los números</small></div>}
         </div>
         <div className="rf-hero2-bar" role="img" aria-label={`${pct}% de los números ya tomados`}>

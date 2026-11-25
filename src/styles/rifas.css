@@ -498,3 +498,4 @@ a.rf-set-tile { text-decoration: none; }
   .rf-hero2-stats b { font-size: clamp(18px, 2vw, 24px); white-space: nowrap; }
   .rf-prizelist.mini li { padding: 10px 14px; font-size: 16px; }
 }
+.rf-hero2-stats > div.rf-hero2-left { display: grid; grid-template-rows: auto auto auto; align-content: start; gap: 2px; } .rf-hero2-stats > div.rf-hero2-left small:first-child { color: #cbd5e1; font-weight: 700; }
