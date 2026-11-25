@@ -120,7 +120,7 @@ function CreateModal({ last, onClose }) {
         title: f.title.trim(), slug: `${slugify(f.title) || 'rifa'}-${Math.random().toString(36).slice(2, 6)}`,
         price_cents: cents, num_from: 1, num_to: count, draw_at: /^20\d\d-\d\d-\d\d$/.test(f.date) ? `${f.date}T21:00:00-03:00` : '',
         transfer_info: base?.transfer_info || '', terms: base?.terms || '', support_contact: base?.support_contact || '', organizer: base?.organizer || '',
-        pay_hours: base?.pay_hours || 24, max_per_entry: 1000, min_per_entry: base?.min_per_entry || 1, require_phone: base?.require_phone ?? true, csv_profile: base?.csv_profile || 'rifary',
+        pay_hours: base?.pay_hours || 8, max_per_entry: 1000, min_per_entry: base?.min_per_entry || 1, require_phone: base?.require_phone ?? true, csv_profile: base?.csv_profile || 'rifary',
         prizes: [], description: '', cover_url: '', logo_url: '',
       });
       try { await api.adminSetStatus(id, 'published'); go(id); } catch { go(id, 'general&falta=1'); }
@@ -421,7 +421,7 @@ function Editor({ r, part, missing, onSaved }) {
           <label className="field"><span>Datos de participantes requeridos</span><div className="pink-input"><select value={f.require_phone ? 'tel' : 'email'} onChange={(e) => set({ require_phone: e.target.value === 'tel' })}>
             <option value="tel">Nombre y apellido, email y teléfono / WhatsApp</option><option value="email">Nombre y apellido y email (teléfono / WhatsApp opcional)</option></select></div></label>
           <label className="field"><span>Compra mínima (números por reserva)</span><div className="pink-input"><input type="number" min={1} max={1000} value={f.min_per_entry ?? 1} onChange={(e) => set({ min_per_entry: e.target.value })} /></div><small className="rf-muted">Sin máximo: cada persona compra los que quiera.</small></label>
-          <label className="field"><span>Horas para pagar</span><div className="pink-input"><input type="number" min={1} max={720} value={f.pay_hours} onChange={(e) => set({ pay_hours: e.target.value })} /></div></label>
+          <label className="field"><span>Horas de tolerancia para pagar</span><div className="pink-input"><input type="number" min={1} max={720} value={f.pay_hours} onChange={(e) => set({ pay_hours: e.target.value })} /></div></label>
         </div>
         <label className="rf-switch"><input type="checkbox" role="switch" checked={Number(f.num_from) === 0} disabled={locked}
           onChange={(e) => { const n = Number(f.num_to) - Number(f.num_from) + 1; set(e.target.checked ? { num_from: 0, num_to: n - 1 } : { num_from: 1, num_to: n }); }} />
@@ -551,7 +551,7 @@ function EntryDetail({ id, onClose }) {
   const pickState = (k) => {
     if (!e || STATE_BTNS.find((b) => b.key === k).match.includes(e.status)) return;
     if (k === 'validado') setAsk(true);
-    else if (k === 'apartado') setReject({ reason: '', mode: 'resend', hours: 48 });
+    else if (k === 'apartado') setReject({ reason: '', mode: 'resend', hours: 8 });
     else setError('“Revisando” se activa solo cuando el participante sube el comprobante.');
   };
   return (

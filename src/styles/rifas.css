@@ -537,3 +537,5 @@ a.rf-set-tile { text-decoration: none; }
 /* Logo de la rifa (círculo junto al título) */
 .rf-logo-prev { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--surface-2, #1b2230); border: 2px solid rgba(255,255,255,.12); }
 .rf-cropper .rf-crop-frame[style*="height: 360px"], .rf-cropper .rf-crop-frame { margin-inline: auto; }
+
+.rf-change { display: grid; gap: 6px; margin-top: 14px; text-align: center; }

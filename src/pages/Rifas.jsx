@@ -173,7 +173,7 @@ const PAGE = 100;
 function RaffleView({ slug, isAdmin }) {
   const [raffle, setRaffle] = useState(undefined);
   const [error, setError] = useState('');
-  const [sel, setSel] = useState([]);
+  const [sel, setSel] = useState(() => { try { const v = JSON.parse(sessionStorage.getItem('rf-reselect:' + slug) || '[]'); sessionStorage.removeItem('rf-reselect:' + slug); return Array.isArray(v) ? v : []; } catch { return []; } });
   const [onlyFree, setOnlyFree] = useState(false);
   const [page, setPage] = useState(0);
   const [find, setFind] = useState('');
@@ -444,6 +444,22 @@ function TicketView({ token, isNew }) {
   const fmt = fmtOf(e.raffle);
   const myUrl = api.entryUrl(token);
   const [cls, label, note] = BADGE[e.status];
+  const canChange = e.status === 'pending' && e.can_upload;
+  const change = async () => {
+    if (!window.confirm('Vas a liberar los números ' + e.numbers.map(fmt).join(', ') + ' y volver al talonario para elegir otros. ¿Seguimos?')) return;
+    try {
+      const r = await api.selfRelease(token);
+      if (!r?.ok) { alert(r?.error || 'No se pudo cambiar.'); load(); return; }
+      try { sessionStorage.setItem('rf-reselect:' + e.raffle.slug, JSON.stringify(e.numbers)); } catch { /* sin almacenamiento */ }
+      navigate('/rifas/' + encodeURIComponent(e.raffle.slug));
+    } catch (err) { alert(err.message); }
+  };
+  const changeBox = canChange && (
+    <div className="rf-change">
+      <button type="button" className="btn ghost wide" onClick={change}><Icon name="edit" size={16} /> Cambiar números</button>
+      <small className="rf-muted">¿Te equivocaste al elegir? Mientras no hayas enviado el comprobante podés liberar estos números y elegir otros. Tus números vuelven a quedar libres para cualquiera.</small>
+    </div>
+  );
   const save = async () => {
     if (navigator.share) { try { await navigator.share({ title: 'Mi ticket · ' + e.raffle.title, url: myUrl }); return; } catch { /* cancelado */ } }
     await copyText(myUrl); alert('Copiamos el enlace de tu ticket. Guardalo: con él volvés a esta página.');
@@ -471,6 +487,7 @@ function TicketView({ token, isNew }) {
           <div className="rf-tk-pay"><b>Datos para transferir</b><p className="rf-pre">{e.raffle.transfer_info}</p><Copy text={e.raffle.transfer_info} label="Copiar datos de pago" /></div>
         )}
         {e.can_upload && <ProofUpload token={token} onDone={load} />}
+        {changeBox}
       </article>
 
       <TicketNotices token={token} isNew={createdHere.current} />
@@ -489,11 +506,13 @@ function TicketView({ token, isNew }) {
 
       {intro && (
         <Modal title="Números apartados" onClose={() => setIntro(false)} labelId="rf-intro-h">
+          <div className="rf-chosen-wrap"><small>Tus números reservados:</small><div className="rf-chosen">{e.numbers.map((n) => <span key={n}>#{fmt(n)}</span>)}</div></div>
           <p>Revisá bien los requisitos para que tu participación sea válida.</p>
           <p>Para completar tu participación:</p>
           <ul className="rf-intro-list"><li><b>Realizá el pago</b> de {api.money(e.total_cents)}</li><li><b>Subí el comprobante</b> en este ticket</li></ul>
           {e.expires_at && <small className="rf-muted">Tenés tiempo hasta el {api.fmtDate(e.expires_at)}.</small>}
           <button type="button" className="btn primary wide" autoFocus onClick={() => { setIntro(false); navigate('/rifas/p/' + token); }}>Continuar</button>
+          {changeBox}
         </Modal>
       )}
     </div>

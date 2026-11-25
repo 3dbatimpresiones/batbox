@@ -82,6 +82,7 @@ export const reserve = (slug, f) => rpc('bb_rf_reserve', {
   p_slug: slug, p_numbers: f.numbers, p_name: f.name, p_email: f.email, p_phone: f.phone, p_terms_version: f.terms_version, p_client_key: f.client_key,
 });
 export const getEntry = (token) => rpc('bb_rf_entry', { p_token: token });
+export const selfRelease = (token) => rpc('bb_rf_self_release', { p_token: token });
 export const verifyTicket = (code) => rpc('bb_rf_verify', { p_code: code });
 export const getHome = () => rpc('bb_rf_home', {});
 
