@@ -121,7 +121,7 @@ function CreateModal({ last, onClose }) {
         price_cents: cents, num_from: 1, num_to: count, draw_at: /^20\d\d-\d\d-\d\d$/.test(f.date) ? `${f.date}T21:00:00-03:00` : '',
         transfer_info: base?.transfer_info || '', terms: base?.terms || '', support_contact: base?.support_contact || '', organizer: base?.organizer || '',
         pay_hours: base?.pay_hours || 24, max_per_entry: 1000, min_per_entry: base?.min_per_entry || 1, require_phone: base?.require_phone ?? true, csv_profile: base?.csv_profile || 'rifary',
-        prizes: [], description: '', cover_url: '',
+        prizes: [], description: '', cover_url: '', logo_url: '',
       });
       try { await api.adminSetStatus(id, 'published'); go(id); } catch { go(id, 'general&falta=1'); }
     } catch (err) { setError(err.message); setBusy(false); }
@@ -333,7 +333,7 @@ function Settings({ r }) {
 
 const PART_FIELDS = {
   general: ['title', 'prizes', 'terms', 'price', 'draw_at', 'transfer_info', 'require_phone', 'min_per_entry', 'pay_hours', 'num_from', 'num_to', 'csv_profile', 'slug'],
-  personal: ['cover_url'],
+  personal: ['cover_url', 'logo_url'],
   perfil: ['organizer', 'support_contact'],
 };
 
@@ -351,18 +351,20 @@ function Editor({ r, part, missing, onSaved }) {
   const cents = api.pesosToCents(f.price);
   const locked = r.locked;
   const coverInput = useRef(null);
+  const logoInput = useRef(null);
   const [crop, setCrop] = useState(null); // { src, local }
-  const pickCover = (file) => {
+  const pickCover = (file, field = 'cover_url') => {
     if (!file) return;
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError('Elegí una foto JPG, PNG o WebP.'); return; }
-    setCrop({ src: URL.createObjectURL(file), local: true });
+    setCrop({ src: URL.createObjectURL(file), local: true, field });
     if (coverInput.current) coverInput.current.value = '';
+    if (logoInput.current) logoInput.current.value = '';
   };
   const closeCrop = () => { if (crop?.local) URL.revokeObjectURL(crop.src); setCrop(null); };
-  const uploadCover = async (file) => {
+  const uploadCover = async (file, field = 'cover_url') => {
     if (!file) return;
-    setBusy('cover'); setError(''); setOk('');
-    try { const url = await api.uploadCover(r.id, file); set({ cover_url: url }); await save({ cover_url: url }); setOk('Portada subida y guardada.'); }
+    setBusy(field === 'logo_url' ? 'logo' : 'cover'); setError(''); setOk('');
+    try { const url = await api.uploadCover(r.id, file); set({ [field]: url }); await save({ [field]: url }); setOk(field === 'logo_url' ? 'Logo subido y guardado.' : 'Portada subida y guardada.'); }
     catch (e) { setError(e.message); setBusy(false); }
     finally { if (coverInput.current) coverInput.current.value = ''; }
   };
@@ -436,14 +438,28 @@ function Editor({ r, part, missing, onSaved }) {
             <div className="rf-actions">
               <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => pickCover(e.target.files?.[0])} />
               <button type="button" className="btn primary" disabled={!!busy} onClick={() => coverInput.current?.click()}><Icon name="image" size={16} /> {busy === 'cover' ? 'Subiendo…' : f.cover_url ? 'Cambiar foto' : 'Subir foto'}</button>
-              {/^https:\/\//.test(f.cover_url || '') && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => setCrop({ src: f.cover_url, local: false })}><Icon name="edit" size={16} /> Ajustar encuadre</button>}
+              {/^https:\/\//.test(f.cover_url || '') && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => setCrop({ src: f.cover_url, local: false, field: 'cover_url' })}><Icon name="edit" size={16} /> Ajustar encuadre</button>}
               {f.cover_url && <button type="button" className="btn text" disabled={!!busy} onClick={() => { set({ cover_url: '' }); save({ cover_url: '' }); }}>Quitar</button>}
             </div>
             <small className="rf-muted">JPG, PNG o WebP. Se muestra en formato banner (3:1, bien apaisado): al subirla elegís qué franja queda arrastrándola.</small>
-            {crop && <CoverCropper src={crop.src} onCancel={closeCrop} onDone={(file) => { closeCrop(); uploadCover(file); }} />}
+            {crop && (crop.field === 'logo_url'
+              ? <CoverCropper src={crop.src} ratio={1} outW={512} name="logo.webp" title="Encuadrar logo" hint="Arrastrá la foto para elegir qué se ve dentro del círculo. Con el zoom la agrandás." onCancel={closeCrop} onDone={(file) => { closeCrop(); uploadCover(file, 'logo_url'); }} />
+              : <CoverCropper src={crop.src} onCancel={closeCrop} onDone={(file) => { closeCrop(); uploadCover(file); }} />)}
           </div>
           <details className="rf-more"><summary>O pegá el link de una imagen</summary>
             <div className="pink-input"><input value={f.cover_url} inputMode="url" maxLength={500} placeholder="https://…" onChange={(e) => set({ cover_url: e.target.value })} /></div></details>
+        </div>
+        <div className="field"><span>Logo (círculo junto al título)</span>
+          <div className="rf-coverup">
+            {/^https:\/\//.test(f.logo_url || '') ? <img className="rf-logo-prev" src={f.logo_url} alt="Vista previa del logo" /> : <div className="rf-logo-prev rf-logo-empty"><Icon name="star" size={26} /></div>}
+            <div className="rf-actions">
+              <input ref={logoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => pickCover(e.target.files?.[0], 'logo_url')} />
+              <button type="button" className="btn primary" disabled={!!busy} onClick={() => logoInput.current?.click()}><Icon name="image" size={16} /> {busy === 'logo' ? 'Subiendo…' : f.logo_url ? 'Cambiar logo' : 'Subir logo'}</button>
+              {/^https:\/\//.test(f.logo_url || '') && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => setCrop({ src: f.logo_url, local: false, field: 'logo_url' })}><Icon name="edit" size={16} /> Ajustar encuadre</button>}
+              {f.logo_url && <button type="button" className="btn text" disabled={!!busy} onClick={() => { set({ logo_url: '' }); save({ logo_url: '' }); }}>Quitar</button>}
+            </div>
+            <small className="rf-muted">Cuadrado, se muestra redondo. Si no subís logo se usa la portada.</small>
+          </div>
         </div>
       </>}
       {part === 'perfil' && <>

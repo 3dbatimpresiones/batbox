@@ -225,7 +225,7 @@ function RaffleView({ slug, isAdmin }) {
       <div className="rf-layout">
         <section className="rf-left">
           <header className="rf-head">
-            <span className="rf-avatar">{raffle.cover_url ? <img src={raffle.cover_url} alt="" /> : <Icon name="star" size={22} />}</span>
+            <span className="rf-avatar">{(raffle.logo_url || raffle.cover_url) ? <img src={raffle.logo_url || raffle.cover_url} alt="" /> : <Icon name="star" size={22} />}</span>
             <div><h1 className={'rf-title ' + (raffle.title.length > 26 ? 'xl' : raffle.title.length > 16 ? 'l' : '')}>{raffle.title}</h1><small>{(api.fmtDate(raffle.draw_at, false) || 'Se sortea al agotar los números').toUpperCase()}</small></div>
           </header>
           <div className="rf-coverbox card">{raffle.cover_url ? <img src={raffle.cover_url} alt={'Portada de ' + raffle.title} /> : <div className="rf-coverph"><Icon name="trophy" size={48} /><b>BAT RIFAS</b><small>Makers 3DBAT</small></div>}</div>

@@ -6,10 +6,9 @@ import Icon from './Icon.jsx';
 // Se arrastra la foto (mouse o dedo) y se ajusta el zoom; al confirmar devuelve
 // un File WebP de 1800×600 con exactamente lo que se ve en el marco.
 export const COVER_RATIO = 3;   // banner 3:1
-const OUT_W = 1800;
-const OUT_H = Math.round(OUT_W / COVER_RATIO);
-
-export default function CoverCropper({ src, onCancel, onDone }) {
+export default function CoverCropper({ src, onCancel, onDone, ratio = COVER_RATIO, outW = 1800, title = 'Encuadrar portada', hint = 'Arrastrá la foto para elegir qué parte se ve en el banner. Con el zoom la agrandás.', name = name }) {
+  const OUT_W = outW;
+  const OUT_H = Math.round(outW / ratio);
   const frame = useRef(null);
   const wrap = useRef(null);
   const drag = useRef(null);
@@ -19,7 +18,7 @@ export default function CoverCropper({ src, onCancel, onDone }) {
   const [off, setOff] = useState({ x: 0, y: 0 });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const fh = fw / COVER_RATIO;
+  const fh = fw / ratio;
 
   useEffect(() => {
     const i = new Image();
@@ -31,7 +30,7 @@ export default function CoverCropper({ src, onCancel, onDone }) {
   useEffect(() => {
     const el = wrap.current;
     if (!el) return undefined;
-    const fit = () => setFw(Math.max(200, Math.min(720, el.clientWidth)));
+    const fit = () => setFw(Math.max(200, Math.min(ratio < 2 ? 360 : 720, el.clientWidth)));
     fit();
     const ro = new ResizeObserver(fit); ro.observe(el);
     return () => ro.disconnect();
@@ -73,8 +72,8 @@ export default function CoverCropper({ src, onCancel, onDone }) {
   return createPortal(
     <div className="modal-back" onClick={busy ? undefined : onCancel}>
       <div className="modal rf-modal rf-cropper" role="dialog" aria-modal="true" aria-labelledby="rf-crop-h" onClick={(e) => e.stopPropagation()}>
-        <div className="rf-modal-head"><h2 id="rf-crop-h">Encuadrar portada</h2><button type="button" className="mini-btn" aria-label="Cerrar" onClick={onCancel}>×</button></div>
-        <p className="rf-muted">Arrastrá la foto para elegir qué parte se ve en el banner. Con el zoom la agrandás.</p>
+        <div className="rf-modal-head"><h2 id="rf-crop-h">{title}</h2><button type="button" className="mini-btn" aria-label="Cerrar" onClick={onCancel}>×</button></div>
+        <p className="rf-muted">{hint}</p>
         <div className="rf-crop-wrap" ref={wrap}>
           <div ref={frame} className="rf-crop-frame" style={{ width: fw, height: fh }} tabIndex={0} aria-label="Área de la portada: arrastrá o usá las flechas"
             onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onKeyDown={key}>
