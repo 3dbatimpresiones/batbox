@@ -290,7 +290,7 @@ function RaffleView({ slug, isAdmin }) {
                 ? <button type="button" className="btn rf-resume-btn" onClick={() => navigate('/rifas/p/' + lastTok)}><Icon name="clock" size={18} /> Retomar mi último pedido de números ({lastEntry.numbers.map(fmt).join(', ')})</button>
                 : <button type="button" className="btn rf-resume-btn" onClick={() => setSel(draft)}><Icon name="clock" size={18} /> Retomar mi última elección ({draft.map(fmt).join(', ')})</button>}
               <small className="rf-muted">{lastEntry
-                ? 'Si se te cortó internet o cerraste la página, con este botón volvés a tu reserva: ahí podés pagar, subir el comprobante o cambiar los números mientras no esté confirmada.'
+                ? 'Si se te cortó internet o cerraste la página, con este botón volvés a tu reserva: ahí podés pagar, subir el comprobante o cambiar los números antes de enviarlo.'
                 : 'Si se te cortó internet o cerraste la página antes de reservar, con este botón recuperás los números que habías marcado (los que sigan libres).'}</small>
             </div>)}
           <div className="rf-pickhead">
@@ -472,7 +472,7 @@ function TicketView({ token, isNew }) {
   const fmt = fmtOf(e.raffle);
   const myUrl = api.entryUrl(token);
   const [cls, label, note] = BADGE[e.status];
-  const canChange = ['pending', 'rejected', 'review'].includes(e.status) && (e.status === 'review' || e.can_upload);
+  const canChange = e.status === 'pending' && e.can_upload;
   const change = async () => {
     if (!window.confirm('Vas a liberar los números ' + e.numbers.map(fmt).join(', ') + ' y volver al talonario (sin ningún número marcado) para elegir otros. ¿Seguimos?')) return;
     try {
@@ -485,7 +485,7 @@ function TicketView({ token, isNew }) {
   const changeBox = canChange && (
     <div className="rf-change">
       <button type="button" className="btn ghost wide" onClick={change}><Icon name="edit" size={16} /> Cambiar números</button>
-      <small className="rf-muted">¿Te equivocaste al elegir? Mientras tu participación no esté confirmada podés liberar estos números y elegir otros. Tus números vuelven a quedar libres para cualquiera.{e.status === 'review' ? ' Ojo: el comprobante que enviaste queda sin efecto y tenés que volver a reservar.' : ''}</small>
+      <small className="rf-muted">¿Te equivocaste al elegir? Hasta que envíes el comprobante podés liberar estos números y elegir otros. Una vez enviado, ya no hay vuelta atrás.</small>
     </div>
   );
   const save = async () => {
