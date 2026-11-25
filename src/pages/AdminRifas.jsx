@@ -730,6 +730,7 @@ function Closing({ raffle, reload }) {
   const [ask, setAsk] = useState(false);
   const [reason, setReason] = useState('');
   const [op, setOp] = useState(uuid);
+  const [askExport, setAskExport] = useState(false);
   const load = useCallback(() => api.adminCloseSummary(raffle.id).then(setS).catch((e) => setError(e.message)), [raffle.id]);
   useEffect(() => { load(); }, [load]);
   if (!s) return <div className="cm-loading">{error ? <div className="feedback-error">{error}</div> : <span className="spinner xs" />}</div>;
@@ -741,7 +742,6 @@ function Closing({ raffle, reload }) {
     try { const r = await api.adminExportCreate(raffle.id, reason, op); setOp(uuid()); setReason(''); setOk(`Padrón versión ${r.version} generado (${r.row_count} números).`); load(); } catch (e) { setError(e.message); }
   };
   const download = async (x) => { try { const d = await api.adminExportGet(x.id); api.downloadText(d.filename, d.csv); } catch (e) { setError(e.message); } };
-  const [askExport, setAskExport] = useState(false);
   // Un solo paso: cierra la rifa (si hace falta), genera el padrón (si no hay) y descarga el CSV.
   const exportNow = async () => {
     setError(''); setOk('');
