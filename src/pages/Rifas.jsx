@@ -170,6 +170,9 @@ function StatusBanner({ status }) {
 // ---------------------------------------------------------------------
 const PAGE = 100;
 
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } };
+
 function RaffleView({ slug, isAdmin }) {
   const [raffle, setRaffle] = useState(undefined);
   const [error, setError] = useState('');
@@ -179,6 +182,13 @@ function RaffleView({ slug, isAdmin }) {
   const [find, setFind] = useState('');
   const [flash, setFlash] = useState(null);
   const [modal, setModal] = useState(null); // participar | bases | verificar | organizador | menu
+  const [lastEntry, setLastEntry] = useState(null);
+  useEffect(() => {
+    const tok = lsGet('rf-last:' + slug);
+    if (!tok) return;
+    api.getEntry(tok).then((en) => { if (en && ['pending', 'rejected', 'review'].includes(en.status)) setLastEntry(en); else lsSet('rf-last:' + slug, null); }).catch(() => {});
+  }, [slug]);
+  useEffect(() => { if (sel.length) lsSet('rf-draft:' + slug, JSON.stringify(sel)); }, [sel, slug]);
   const load = useCallback(() => api.getRaffle(slug).then((r) => { setRaffle(r); setError(''); }).catch((e) => { setError(e.message); setRaffle(null); }), [slug]);
   useEffect(() => { load(); }, [load]);
 
@@ -203,6 +213,10 @@ function RaffleView({ slug, isAdmin }) {
   const pages = Math.max(1, Math.ceil(all.length / PAGE));
   const pg = Math.min(page, pages - 1);
   const nums = all.slice(pg * PAGE, pg * PAGE + PAGE);
+  // Retomar: el último pedido reservado (token) o la última elección sin reservar, guardados en este navegador.
+  const resumeKey = 'rf-last:' + raffle.slug, draftKey = 'rf-draft:' + raffle.slug;
+  const lastTok = lsGet(resumeKey);
+  const draft = (() => { try { return (JSON.parse(lsGet(draftKey) || '[]') || []).filter((n) => !taken.has(n)); } catch { return []; } })();
   const toggle = (n) => setSel((s) => (s.includes(n) ? s.filter((x) => x !== n) : s.length >= raffle.max_per_entry ? s : [...s, n].sort((x, y) => x - y)));
   const shareLink = api.shareUrl(raffle.slug);
   const goFind = (e) => {
@@ -270,6 +284,15 @@ function RaffleView({ slug, isAdmin }) {
               )}
             </div>
           </div>
+          {(lastEntry || (draft.length > 0 && !sel.length)) && (
+            <div className="rf-resume">
+              {lastEntry
+                ? <button type="button" className="btn rf-resume-btn" onClick={() => navigate('/rifas/p/' + lastTok)}><Icon name="clock" size={18} /> Retomar mi último pedido de números ({lastEntry.numbers.map(fmt).join(', ')})</button>
+                : <button type="button" className="btn rf-resume-btn" onClick={() => setSel(draft)}><Icon name="clock" size={18} /> Retomar mi última elección ({draft.map(fmt).join(', ')})</button>}
+              <small className="rf-muted">{lastEntry
+                ? 'Si se te cortó internet o cerraste la página, con este botón volvés a tu reserva: ahí podés pagar, subir el comprobante o cambiar los números mientras no esté confirmada.'
+                : 'Si se te cortó internet o cerraste la página antes de reservar, con este botón recuperás los números que habías marcado (los que sigan libres).'}</small>
+            </div>)}
           <div className="rf-pickhead">
             <h2 id="rf-pick-h">¡Elegí tus números!</h2>
             <button type="button" className={'rf-onlyfree' + (onlyFree ? ' on' : '')} aria-pressed={onlyFree} onClick={() => { setOnlyFree(!onlyFree); setPage(0); }}><Icon name="search" size={14} /> {onlyFree ? 'Solo disponibles' : 'Todos'}</button>
@@ -391,7 +414,7 @@ function ParticipateModal({ raffle, sel, setSel, reload, onClose }) {
     setBusy(true); setError(''); setTaken([]);
     try {
       const r = await api.reserve(raffle.slug, { numbers: sel, name: f.name, email: f.email, phone: f.phone, terms_version: raffle.terms_version, client_key: key.current });
-      if (r.ok) { api.flushMail(r.token); navigate(`/rifas/p/${r.token}?nuevo=1`); return; }
+      if (r.ok) { lsSet('rf-last:' + raffle.slug, r.token); lsSet('rf-draft:' + raffle.slug, null); api.flushMail(r.token); navigate(`/rifas/p/${r.token}?nuevo=1`); return; }
       setError(r.error);
       if (r.taken?.length) { setTaken(r.taken); setSel((s) => s.filter((n) => !r.taken.includes(n))); reload(); }
       if (r.terms_version) reload();
@@ -449,19 +472,20 @@ function TicketView({ token, isNew }) {
   const fmt = fmtOf(e.raffle);
   const myUrl = api.entryUrl(token);
   const [cls, label, note] = BADGE[e.status];
-  const canChange = e.status === 'pending' && e.can_upload;
+  const canChange = ['pending', 'rejected', 'review'].includes(e.status) && (e.status === 'review' || e.can_upload);
   const change = async () => {
     if (!window.confirm('Vas a liberar los números ' + e.numbers.map(fmt).join(', ') + ' y volver al talonario (sin ningún número marcado) para elegir otros. ¿Seguimos?')) return;
     try {
       const r = await api.selfRelease(token);
       if (!r?.ok) { alert(r?.error || 'No se pudo cambiar.'); load(); return; }
+      lsSet('rf-last:' + e.raffle.slug, null); lsSet('rf-draft:' + e.raffle.slug, null);
       navigate('/rifas/' + encodeURIComponent(e.raffle.slug));
     } catch (err) { alert(err.message); }
   };
   const changeBox = canChange && (
     <div className="rf-change">
       <button type="button" className="btn ghost wide" onClick={change}><Icon name="edit" size={16} /> Cambiar números</button>
-      <small className="rf-muted">¿Te equivocaste al elegir? Mientras no hayas enviado el comprobante podés liberar estos números y elegir otros. Tus números vuelven a quedar libres para cualquiera.</small>
+      <small className="rf-muted">¿Te equivocaste al elegir? Mientras tu participación no esté confirmada podés liberar estos números y elegir otros. Tus números vuelven a quedar libres para cualquiera.{e.status === 'review' ? ' Ojo: el comprobante que enviaste queda sin efecto y tenés que volver a reservar.' : ''}</small>
     </div>
   );
   const save = async () => {

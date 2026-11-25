@@ -550,7 +550,14 @@ a.rf-set-tile { text-decoration: none; }
 /* Apartado: violeta pleno y número grande legible; el reloj chico en la esquina */
 .rf-n.held, .rf-n.held:disabled { opacity: 1; position: relative; background: linear-gradient(135deg, #7c3aed, #8B5CF6); color: #fff; border: 1px solid #c4b5fd; box-shadow: 0 0 0 1px rgba(139,92,246,.4); }
 .rf-n.held .rf-n-small { font-size: inherit; font-weight: 800; opacity: 1; }
-.rf-n.held .rf-n-ico { position: absolute; top: 2px; right: 3px; font-size: 11px; }
+.rf-n.held .rf-n-ico { position: static; font-size: 15px; line-height: 1; opacity: 1; filter: none; }
+.rf-n.held .rf-n-small, .rf-n.sold .rf-n-small { font-size: 15px; font-weight: 900; opacity: 1; color: #fff; line-height: 1.1; }
+.rf-n.held, .rf-n.sold { filter: none; }
 .rf-n.sold, .rf-n.sold:disabled { opacity: 1; }
 
 .rf-export-cta { margin: 12px 0; font-size: 16px; padding: 12px 20px; }
+
+/* Retomar último pedido / elección */
+.rf-resume { display: grid; gap: 6px; margin: 10px 0 14px; }
+.rf-resume-btn { background: var(--cyan, #5DDADB); color: #131D47; font-weight: 800; border: 0; justify-content: center; white-space: normal; }
+.rf-resume-btn:hover { filter: brightness(1.08); }
