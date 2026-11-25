@@ -439,7 +439,7 @@ function Editor({ r, part, missing, onSaved }) {
               {/^https:\/\//.test(f.cover_url || '') && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => setCrop({ src: f.cover_url, local: false })}><Icon name="edit" size={16} /> Ajustar encuadre</button>}
               {f.cover_url && <button type="button" className="btn text" disabled={!!busy} onClick={() => { set({ cover_url: '' }); save({ cover_url: '' }); }}>Quitar</button>}
             </div>
-            <small className="rf-muted">JPG, PNG o WebP. Se muestra en formato banner (16:9): al subirla elegís qué parte queda arrastrándola.</small>
+            <small className="rf-muted">JPG, PNG o WebP. Se muestra en formato banner (3:1, bien apaisado): al subirla elegís qué franja queda arrastrándola.</small>
             {crop && <CoverCropper src={crop.src} onCancel={closeCrop} onDone={(file) => { closeCrop(); uploadCover(file); }} />}
           </div>
           <details className="rf-more"><summary>O pegá el link de una imagen</summary>

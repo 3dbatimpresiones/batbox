@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 
-// Encuadre de la portada de una rifa en formato banner (16:9).
+// Encuadre de la portada de una rifa en formato banner (3:1).
 // Se arrastra la foto (mouse o dedo) y se ajusta el zoom; al confirmar devuelve
-// un File WebP de 1600×900 con exactamente lo que se ve en el marco.
-export const COVER_RATIO = 16 / 9;
-const OUT_W = 1600;
+// un File WebP de 1800×600 con exactamente lo que se ve en el marco.
+export const COVER_RATIO = 3;   // banner 3:1
+const OUT_W = 1800;
 const OUT_H = Math.round(OUT_W / COVER_RATIO);
 
 export default function CoverCropper({ src, onCancel, onDone }) {

@@ -519,3 +519,17 @@ a.rf-set-tile { text-decoration: none; }
 .modal.rf-cropper { width: min(780px, 100%); max-width: calc(100vw - 32px); }
 .rf-cropper .rf-crop-wrap { display: block; width: 100%; min-width: 0; overflow: hidden; }
 .rf-cropper .rf-crop-frame { margin: 0 auto; }
+
+/* Portada BANNER 3:1 (reemplaza 16:9) */
+.rf-coverbox img, .rf-cover-prev, .rf-cover-empty, .rf-hero2-img img { aspect-ratio: 3 / 1 !important; }
+.rf-coverph { aspect-ratio: 3 / 1 !important; min-height: 0 !important; height: auto !important; }
+/* Inicio y página Rifas: banner arriba a todo el ancho; abajo título y 2 columnas */
+.rf-hero2 { grid-template-columns: 1fr !important; grid-template-areas: "img" "head" "info" !important; gap: 16px; }
+.rf-hero2-img { align-self: stretch !important; }
+@media (min-width: 820px) {
+  .rf-hero2-txt { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; align-items: start; }
+  .rf-hero2-txt .rf-prizelist { grid-column: 1; grid-row: 1 / span 3; }
+  .rf-hero2-txt .rf-hero2-stats, .rf-hero2-txt .rf-hero2-bar, .rf-hero2-txt .rf-hero2-cta { grid-column: 2; }
+  .rf-hero2-txt:not(:has(.rf-prizelist)) { grid-template-columns: 1fr; }
+  .rf-hero2-txt:not(:has(.rf-prizelist)) > * { grid-column: 1 !important; }
+}
