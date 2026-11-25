@@ -377,6 +377,10 @@ function ParticipateModal({ raffle, sel, setSel, reload, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [taken, setTaken] = useState([]);
+  const [read, setRead] = useState(false);   // hay que llegar al final de las bases para habilitar el botón
+  const termsBox = useRef(null);
+  const checkRead = () => { const el = termsBox.current; if (el && el.scrollTop + el.clientHeight >= el.scrollHeight - 6) setRead(true); };
+  useEffect(() => { checkRead(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const key = useRef(crypto.randomUUID());   // misma clave = misma operación (doble clic / reintento)
   const set = (x) => setF((c) => ({ ...c, ...x }));
   const fmt = fmtOf(raffle);
@@ -402,10 +406,11 @@ function ParticipateModal({ raffle, sel, setSel, reload, onClose }) {
         <label className="field"><span>Teléfono / WhatsApp{raffle.require_phone ? '' : ' (opcional)'}</span><div className="pink-input"><input type="tel" inputMode="tel" autoComplete="tel" maxLength={24} placeholder="11 5555 5555" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></div></label>
         <label className="field"><span>Email para enviarte el ticket de participación</span><div className="pink-input"><input required type="email" inputMode="email" autoComplete="email" maxLength={120} placeholder="Email" value={f.email} onChange={(e) => set({ email: e.target.value })} /></div></label>
         <p className="rf-total"><b>Total: {api.money(raffle.price_cents * sel.length)}</b> ({sel.length} número{sel.length > 1 ? 's' : ''})</p>
-        <div className="rf-terms-mini" tabIndex={0} aria-label="Bases y condiciones"><b>Bases y condiciones</b><p>{raffle.terms}</p></div>
+        {!read && <div className="rf-terms-warn" role="note"><Icon name="alert" size={16} /> <span><b>Deslizá y leé atentamente las bases hasta el final.</b> El botón «Aceptar y continuar» se habilita recién cuando llegás al final del texto.</span></div>}
+        <div ref={termsBox} onScroll={checkRead} className={'rf-terms-mini' + (read ? ' read' : '')} tabIndex={0} aria-label="Bases y condiciones: deslizá hasta el final"><b>Bases y condiciones</b><p>{raffle.terms}</p>{read ? <small className="rf-terms-ok">✓ Llegaste al final de las bases</small> : <small className="rf-terms-more">↓ Seguí deslizando ↓</small>}</div>
         <small className="rf-muted">Al tocar «Aceptar y continuar» confirmás que leíste y aceptás las bases y condiciones (versión {raffle.terms_version}).</small>
         {error && !taken.length && <div className="feedback-error" role="alert">{error}</div>}
-        <button type="submit" className="btn primary wide" disabled={busy || !valid}>{busy ? <><span className="spinner xs" /> Reservando…</> : 'Aceptar y continuar'}</button>
+        <button type="submit" className="btn primary wide" disabled={busy || !valid || !read}>{busy ? <><span className="spinner xs" /> Reservando…</> : read ? 'Aceptar y continuar' : 'Leé las bases hasta el final para continuar'}</button>
       </form>
     </Modal>
   );

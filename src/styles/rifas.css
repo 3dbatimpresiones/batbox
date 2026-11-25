@@ -539,3 +539,10 @@ a.rf-set-tile { text-decoration: none; }
 .rf-cropper .rf-crop-frame[style*="height: 360px"], .rf-cropper .rf-crop-frame { margin-inline: auto; }
 
 .rf-change { display: grid; gap: 6px; margin-top: 14px; text-align: center; }
+
+/* Bases: lectura obligatoria hasta el final */
+.rf-terms-warn { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 12px; background: rgba(247,142,182,.12); border: 1px solid var(--pink); color: #fde2ec; font-size: 13px; }
+.rf-terms-mini { max-height: 170px; }
+.rf-terms-mini.read { border-color: #22c55e; }
+.rf-terms-more { display: block; text-align: center; margin-top: 8px; color: var(--pink); font-weight: 700; }
+.rf-terms-ok { display: block; text-align: center; margin-top: 8px; color: #4ade80; font-weight: 700; }
