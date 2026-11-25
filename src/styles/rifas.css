@@ -567,3 +567,5 @@ a.rf-set-tile { text-decoration: none; }
 .rf-mailnote b { color: #78350f; }
 .rf-mailnote p { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: #422006; }
 .rf-mailnote-ico { font-size: 26px; line-height: 1; }
+
+.rf-reset { margin-top: 12px; border: 2px solid #ef4444; display: grid; gap: 8px; }

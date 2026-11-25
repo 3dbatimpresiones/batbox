@@ -142,6 +142,12 @@ export async function adminDeleteEntries(raffleId, entryId = null) {
   if (r.paths?.length) await sb.storage.from('bb-rifas-comprobantes').remove(r.paths).catch(() => {});
   return r;
 }
+// Resetea la rifa entera (pruebas) y borra los comprobantes del Storage.
+export async function adminReset(raffleId, confirm) {
+  const r = must(await rpc('bb_rf_admin_reset', { p_raffle: raffleId, p_confirm: confirm }));
+  if (r.paths?.length) await sb.storage.from('bb-rifas-comprobantes').remove(r.paths).catch(() => {});
+  return r;
+}
 export const adminNote = async (id, note) => must(await rpc('bb_rf_admin_note', { p_entry: id, p_note: note }));
 export const adminCancel = async (id, reason, op) => must(await rpc('bb_rf_admin_cancel', { p_entry: id, p_reason: reason, p_op: op }));
 export async function adminResend(id, kind, op) {
