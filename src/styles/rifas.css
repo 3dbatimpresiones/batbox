@@ -552,3 +552,5 @@ a.rf-set-tile { text-decoration: none; }
 .rf-n.held .rf-n-small { font-size: inherit; font-weight: 800; opacity: 1; }
 .rf-n.held .rf-n-ico { position: absolute; top: 2px; right: 3px; font-size: 11px; }
 .rf-n.sold, .rf-n.sold:disabled { opacity: 1; }
+
+.rf-export-cta { margin: 12px 0; font-size: 16px; padding: 12px 20px; }

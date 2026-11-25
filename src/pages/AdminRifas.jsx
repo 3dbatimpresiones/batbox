@@ -207,6 +207,7 @@ function AdminHome({ r, stats, view, reload }) {
         <button key={t.v} type="button" className={'rf-tile' + (view === t.v ? ' active' : '')} aria-pressed={view === t.v} onClick={() => go(r.id, view === t.v ? 'admin' : t.v)}>
           <Icon name={t.icon} size={26} /><span>{t.label}</span></button>))}
       </div>
+      <button type="button" className="btn primary rf-export-cta" onClick={() => go(r.id, 'cierre')}><Icon name="download" size={18} /> Exportar CSV para el sorteo</button>
       {view === 'nuevo' && <Manual raffle={r} onDone={() => { reload(); go(r.id); }} />}
       {view === 'avanzado' && <Advanced r={r} reload={reload} />}
       {view !== 'nuevo' && <Entries raffle={r} stats={stats} search={view === 'buscar'} />}
@@ -739,6 +740,20 @@ function Closing({ raffle, reload }) {
     try { const r = await api.adminExportCreate(raffle.id, reason, op); setOp(uuid()); setReason(''); setOk(`Padrón versión ${r.version} generado (${r.row_count} números).`); load(); } catch (e) { setError(e.message); }
   };
   const download = async (x) => { try { const d = await api.adminExportGet(x.id); api.downloadText(d.filename, d.csv); } catch (e) { setError(e.message); } };
+  const [askExport, setAskExport] = useState(false);
+  // Un solo paso: cierra la rifa (si hace falta), genera el padrón (si no hay) y descarga el CSV.
+  const exportNow = async () => {
+    setError(''); setOk('');
+    try {
+      if (!closed) await api.adminClose(raffle.id, true);
+      let id = s.exports[0]?.id;
+      if (!id) { const r = await api.adminExportCreate(raffle.id, '', op); setOp(uuid()); id = r.export_id || r.id; }
+      const fresh = await api.adminCloseSummary(raffle.id); setS(fresh); reload();
+      const x = id ? { id } : fresh.exports[0];
+      if (x) await download(x);
+      setOk('CSV descargado.');
+    } catch (e) { setError(e.message); load(); }
+  };
   return (
     <div className="rf-close">
       <h3 className="rf-h">Cierre y padrón</h3>
@@ -752,6 +767,9 @@ function Closing({ raffle, reload }) {
       {s.pending.length > 0 && <div className="admin-warn"><Icon name="clock" size={16} /> <span><b>{s.pending.length} apartados sin comprobante</b>{closed ? '' : ' se cancelan al cerrar'}: {s.pending.map((e) => `${e.name} (${e.numbers.map(fmt).join(', ')})`).join(' · ')}</span></div>}
       {error && <div className="feedback-error" role="alert">{error}</div>}
       {ok && <div className="cm-ok" role="status">{ok}</div>}
+      {s.review.length === 0 && (
+        <button type="button" className="btn primary rf-export-cta" onClick={() => (closed ? exportNow() : setAskExport(true))}><Icon name="download" size={18} /> Exportar CSV</button>)}
+      {s.review.length > 0 && <small className="rf-muted">Para exportar el CSV primero validá o rechazá los comprobantes en revisión.</small>}
       {!closed && ['published', 'paused'].includes(s.status) && <button type="button" className="btn rf-danger" onClick={() => setAsk(true)}><Icon name="lock" size={16} /> Cerrar rifa</button>}
       {closed && (
         <div className="card cm-composer">
@@ -764,6 +782,9 @@ function Closing({ raffle, reload }) {
               <button type="button" className="btn ghost" onClick={() => download(x)}><Icon name="download" size={16} /> CSV</button></div>))}
         </div>)}
       {closed && <WinnersForm raffle={raffle} />}
+      <Confirm open={askExport} title="¿Cerrar la rifa y exportar el CSV?" yes="Cerrar y exportar"
+        text={`Para exportar hay que cerrar la rifa: se frenan las reservas nuevas.${s.pending.length ? ` Se cancelan ${s.pending.length} apartados sin comprobante.` : ''} El CSV lleva ${s.confirmed_numbers} números validados.`}
+        onYes={() => { setAskExport(false); exportNow(); }} onNo={() => setAskExport(false)} />
       <Confirm open={ask} danger title="¿Cerrar la rifa?" yes="Cerrar"
         text={`Se frenan las reservas nuevas.${s.pending.length ? ` Se cancelan ${s.pending.length} apartados sin comprobante y sus números se liberan.` : ''}${s.review.length ? ` Quedan ${s.review.length} comprobantes por revisar antes de generar el padrón.` : ''} Van ${s.confirmed_numbers} números validados.`}
         onYes={() => { setAsk(false); close(); }} onNo={() => setAsk(false)} />
