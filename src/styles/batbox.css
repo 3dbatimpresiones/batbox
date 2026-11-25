@@ -1030,3 +1030,28 @@
   .quick { flex-wrap: nowrap; gap: 6px; }
   .quick-item { padding: 8px 10px; gap: 6px; font-size: 12.5px; white-space: nowrap; }
 }
+.sobremi-host { display: block; margin: -8px -4px 0; }
+/* Menú con la pestaña "Sobre mí": más compacto en pantallas medianas para que entre todo en una línea */
+@media (min-width: 1281px) and (max-width: 1560px) {
+  .top-nav { gap: 1px; padding: 3px; }
+  .nav-link { padding: 7px 7px; font-size: 13px; gap: 4px; }
+  .bb-top-in { gap: 10px; }
+}
+@media (min-width: 1281px) and (max-width: 1400px) {
+  .nav-link { padding: 7px 5px; font-size: 12.5px; }
+  .brand-name small, .brand-sub { display: none; }
+}
+/* La portada dentro de "Sobre mí" usa el fondo de BATBOX */
+.sobremi-host { background: none; }
+@media (min-width: 1281px) and (max-width: 1600px) { .brand-by { display: none; } }
+@media (min-width: 1561px) and (max-width: 1720px) {
+  .top-nav { gap: 1px; padding: 3px; }
+  .nav-link { padding: 7px 8px; font-size: 13.5px; gap: 4px; }
+  .bb-top-in { gap: 10px; }
+  .brand-by { display: none; }
+}
+@media (min-width: 1281px) and (max-width: 1345px) {
+  .nav-link { padding: 6px 4px; font-size: 12px; gap: 3px; }
+  .nav-link svg { display: none; }
+  .bb-top-in { gap: 8px; }
+}

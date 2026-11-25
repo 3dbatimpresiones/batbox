@@ -2,6 +2,7 @@
 // registrar su página en App.jsx.
 export const NAV = [
   { to: '/', key: '', label: 'Inicio', short: 'Inicio', icon: 'home' },
+  { to: '/sobre-mi', key: 'sobre-mi', label: 'Sobre mí', short: 'Sobre mí', icon: 'user' },
   { to: '/tools', key: 'tools', label: 'Herramientas', short: 'Herramientas', icon: 'wrench' },
   // Rifas: brilla cuando hay una rifa activa (Layout.jsx). En etapa de prueba solo la ven admins.
   { to: '/rifas', key: 'rifas', label: 'Rifas', short: 'Rifas', icon: 'trophy', rifas: true },

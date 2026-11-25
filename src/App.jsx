@@ -25,6 +25,7 @@ const Support = lazy(() => import('./pages/Support.jsx'));
 const Texture = lazy(() => import('./pages/Texture.jsx'));
 const Batcard = lazy(() => import('./pages/Batcard.jsx'));
 const Rifas = lazy(() => import('./pages/Rifas.jsx'));
+const SobreMi = lazy(() => import('./pages/SobreMi.jsx'));
 const Feed = lazy(() => import('./pages/Feed.jsx'));
 const Forum = lazy(() => import('./pages/Forum.jsx'));
 const MapMaker = lazy(() => import('./pages/MapMaker.jsx'));
@@ -70,6 +71,7 @@ function Page({ route }) {
     case 'biblioteca': return <Suspense fallback={<Loading />}><Biblioteca route={route} /></Suspense>;
     case 'galeria': return <Suspense fallback={<Loading />}><Gallery route={route} /></Suspense>;
     case 'batcard': return <Suspense fallback={<Loading />}><Batcard /></Suspense>;
+    case 'sobre-mi': return <Suspense fallback={<Loading />}><SobreMi /></Suspense>;
     case 'rifas': return <Suspense fallback={<Loading />}><Rifas route={route} /></Suspense>;
     case 'juego': return <Juego query={query} />;
     case 'filacolor': return <Filacolor />;

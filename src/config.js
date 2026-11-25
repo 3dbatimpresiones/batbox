@@ -37,7 +37,9 @@ export const LIBRARY_DL_URL = 'https://batbox-biblioteca-descargas.makersclub3db
 // Portada de 3DBAT: BATBOX también se publica dentro del dominio de la web (en /batbox/),
 // y desde ahí se puede volver a la portada (/). En GitHub Pages o en local no hay portada.
 const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
-export const PORTAL_URL = HOST.endsWith('github.io') || HOST === 'localhost' ? null : '/';
+// Desde 2026-11-24 3dbat.com.ar redirige a BATBOX y la portada vive en la pestaña "Sobre mí": sin botón a la portada.
+export const PORTAL_URL = null; // eslint-disable-line no-unused-vars
+void HOST;
 
 // Canales de 3DBAT (para los botones de suscribirse / seguir junto a cada video).
 export const YOUTUBE = {
