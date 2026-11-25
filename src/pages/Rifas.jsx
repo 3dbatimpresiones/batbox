@@ -529,6 +529,11 @@ function TicketView({ token, isNew }) {
           <p className="rf-muted">Cada QR verifica solo la rifa, el número y si es válido. No muestra tus datos.</p>
         </section>
       )}
+      <div className="rf-mailnote" role="note">
+        <span className="rf-mailnote-ico" aria-hidden>📧</span>
+        <div><b>Revisá tu correo: {e.email}</b>
+          <p>Todas las novedades de tu participación te llegan por mail: la reserva, el recordatorio de pago, la revisión del comprobante, la confirmación con tus números validados y cualquier cambio de estado. Si no los ves, buscá en <b>Spam</b> o <b>Promociones</b> y marcá a BAT RIFAS como contacto seguro.</p></div>
+      </div>
       <p className="rf-muted rf-center-txt">Te mandamos este ticket por correo a {e.email}.{e.raffle.support_contact ? ` ¿Dudas? ${e.raffle.support_contact}` : ''}</p>
       <p className="rf-center-txt"><a className="rf-back" href={'#/rifas/' + e.raffle.slug}>← Volver al talonario</a></p>
 

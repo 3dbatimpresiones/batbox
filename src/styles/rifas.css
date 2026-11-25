@@ -561,3 +561,9 @@ a.rf-set-tile { text-decoration: none; }
 .rf-resume { display: grid; gap: 6px; margin: 10px 0 14px; }
 .rf-resume-btn { background: var(--cyan, #5DDADB); color: #131D47; font-weight: 800; border: 0; justify-content: center; white-space: normal; }
 .rf-resume-btn:hover { filter: brightness(1.08); }
+
+/* Aviso amarillo: las novedades llegan por correo */
+.rf-mailnote { display: flex; gap: 12px; align-items: flex-start; margin: 18px auto 10px; max-width: 620px; padding: 14px 16px; border-radius: 14px; background: #fef3c7; border: 2px solid #f59e0b; color: #422006; }
+.rf-mailnote b { color: #78350f; }
+.rf-mailnote p { margin: 4px 0 0; font-size: 14px; line-height: 1.45; color: #422006; }
+.rf-mailnote-ico { font-size: 26px; line-height: 1; }
