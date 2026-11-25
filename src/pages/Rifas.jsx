@@ -192,6 +192,7 @@ function RaffleView({ slug, isAdmin }) {
   if (raffle === undefined) return <Loading />;
   if (!raffle) return <div className="narrow rf"><Empty icon="alert" title="No encontramos esta rifa" text={error || 'Revisá el enlace o pedile uno nuevo a quien te lo pasó.'} /></div>;
 
+  if (raffle.status === 'paused' && !isAdmin) return <div className="narrow rf"><Empty icon="clock" title="En breve estará disponible" text="Esta rifa todavía no está abierta. Volvé a mirar pronto." /></div>;
   const fmt = fmtOf(raffle);
   const total = raffle.num_to - raffle.num_from + 1;
   const free = total - taken.size;
