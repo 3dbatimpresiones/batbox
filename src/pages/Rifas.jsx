@@ -173,7 +173,7 @@ const PAGE = 100;
 function RaffleView({ slug, isAdmin }) {
   const [raffle, setRaffle] = useState(undefined);
   const [error, setError] = useState('');
-  const [sel, setSel] = useState(() => { try { const v = JSON.parse(sessionStorage.getItem('rf-reselect:' + slug) || '[]'); sessionStorage.removeItem('rf-reselect:' + slug); return Array.isArray(v) ? v : []; } catch { return []; } });
+  const [sel, setSel] = useState([]);
   const [onlyFree, setOnlyFree] = useState(false);
   const [page, setPage] = useState(0);
   const [find, setFind] = useState('');
@@ -451,11 +451,10 @@ function TicketView({ token, isNew }) {
   const [cls, label, note] = BADGE[e.status];
   const canChange = e.status === 'pending' && e.can_upload;
   const change = async () => {
-    if (!window.confirm('Vas a liberar los números ' + e.numbers.map(fmt).join(', ') + ' y volver al talonario para elegir otros. ¿Seguimos?')) return;
+    if (!window.confirm('Vas a liberar los números ' + e.numbers.map(fmt).join(', ') + ' y volver al talonario (sin ningún número marcado) para elegir otros. ¿Seguimos?')) return;
     try {
       const r = await api.selfRelease(token);
       if (!r?.ok) { alert(r?.error || 'No se pudo cambiar.'); load(); return; }
-      try { sessionStorage.setItem('rf-reselect:' + e.raffle.slug, JSON.stringify(e.numbers)); } catch { /* sin almacenamiento */ }
       navigate('/rifas/' + encodeURIComponent(e.raffle.slug));
     } catch (err) { alert(err.message); }
   };
