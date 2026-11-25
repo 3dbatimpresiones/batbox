@@ -22,7 +22,7 @@ Talonario propio de 3DBAT / Makers 3DBAT (reemplaza Rifary). El sorteo se hace p
 - Padrón: hay que cerrar la rifa y no puede quedar nada en revisión ni pendiente. Cada versión se congela (filas, CSV y SHA-256). Para generar una versión nueva hace falta un motivo. Cada descarga queda registrada.
 
 ## CSV
-El perfil `rifary` (por defecto) copia el export real de Rifary: UTF-8 con BOM, LF, sin salto final, encabezado `"number","name","phone","email","status","code","date",seller,seller_code`, una fila por número ordenada, número con ceros a la izquierda, `status` `PAID`, `code` compartido por participación y fecha `DD/MM/AAAA`.
+El perfil `rifary` (por defecto) copia el export real de Rifary: UTF-8 con BOM, LF, sin salto final, encabezado `"number","name","phone","email","status","code","date",seller,seller_code`, una fila por número ordenada, número con ceros a la izquierda, `status` `PAGO` (en castellano), `code` en mayúsculas, `code` compartido por participación y fecha `DD/MM/AAAA`.
 Nombre y email llevan un `'` delante si empiezan con `= + - @`. El teléfono solo admite dígitos, espacios y `+`, y sale tal cual (como en Rifary).
 El perfil `provisional` trae `numero,nombre,telefono,email,id_participacion,confirmado_el`.
 Ejemplo con datos ficticios: `ejemplo-padron-ficticio.csv`.

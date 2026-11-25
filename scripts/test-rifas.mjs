@@ -41,6 +41,7 @@ async function fails(who, sql, params = []) { try { await as(who, sql, params); 
 
 // ---- 0. Etapa "solo admins" (bb_rf_admin_only = true) ----
 {
+  await db.exec("create or replace function public.bb_rf_admin_only() returns boolean language sql immutable as $$ select true $$;");
   const g = await as(ADMIN, 'select public.bb_rf_admin_save($1)', [{ slug: 'rifa-gate', title: 'Rifa gate', terms: 'Bases de prueba gate.', price_cents: 100, transfer_info: 'Alias x.y.z' }]);
   await as(ADMIN, "select public.bb_rf_admin_set_status($1, 'published')", [g]);
   check((await as(ANON, 'select public.bb_rf_public($1)', ['rifa-gate'])) === null, 'solo admins: el público no ve la rifa');
@@ -190,7 +191,7 @@ check(new Set(nums).size === nums.length && nums.length === 6, 'cada número con
 check(nums[0] === '"00"' && nums.includes('"07"'), 'conserva ceros iniciales');
 check(d1.csv.includes('"José Pérez, ""el maker"""'), 'nombre con tilde, coma y comillas bien escapado');
 check(d1.csv.includes(`"'=HYPERLINK(""x"")"`), 'fórmula neutralizada');
-check(lines.filter((l) => l.includes(r1.code)).length === 3, 'participación con varios números comparte code');
+check(lines.filter((l) => l.includes(r1.code.toUpperCase())).length === 3, 'participación con varios números comparte code');
 check(!d1.csv.includes('Otra Persona') && !d1.csv.includes('Vence Pronto'), 'excluye pendientes y vencidas');
 check((await as(ADMIN, 'select public.bb_rf_admin_export_create($1,null,$2)', [rid, uuid()])).ok === false, 'nueva versión exige motivo');
 const x2 = await as(ADMIN, 'select public.bb_rf_admin_export_create($1,$2,$3)', [rid, 'Corrección de prueba', uuid()]);
