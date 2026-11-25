@@ -19,6 +19,7 @@ const SUB_KEYS = NAV.filter((n) => n.sub).map((n) => n.key);
 function useRafflesLive() {
   const { access, isAdmin, user } = useAuth();
   const who = access === 'loading' ? '' : `${user?.id || 'anon'}:${isAdmin ? 'a' : 'u'}`;
+  useEffect(() => { document.documentElement.dataset.admin = isAdmin ? '1' : '0'; }, [isAdmin]);
   const [live, setLive] = useState(false);
   useEffect(() => {
     if (!who) return undefined;            // esperar a que se confirme la sesión

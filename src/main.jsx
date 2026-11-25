@@ -11,6 +11,7 @@ import './styles/community.css';
 // Clic derecho desactivado (regla 3DBAT), salvo en enlaces, campos y videos
 // para poder "abrir en pestaña nueva" o copiar.
 document.addEventListener('contextmenu', (e) => {
+  if (document.documentElement.dataset.admin === '1') return; // admins: clic derecho, copiar y pegar libres
   if (!e.target.closest('a, input, textarea, iframe')) e.preventDefault();
 });
 
