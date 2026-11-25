@@ -6,6 +6,7 @@ import Icon from '../components/Icon.jsx';
 import { Confirm, Empty } from '../components/ui.jsx';
 import { RafflePushAdmin } from '../components/RafflePush.jsx';
 import '../styles/rifas.css';
+import CoverCropper from '../components/CoverCropper.jsx';
 
 // Pestaña "Rifas" del panel (#/admin?tab=rifas). Solo administradores: cada función
 // de la base vuelve a verificar is_admin().
@@ -350,6 +351,14 @@ function Editor({ r, part, missing, onSaved }) {
   const cents = api.pesosToCents(f.price);
   const locked = r.locked;
   const coverInput = useRef(null);
+  const [crop, setCrop] = useState(null); // { src, local }
+  const pickCover = (file) => {
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { setError('Elegí una foto JPG, PNG o WebP.'); return; }
+    setCrop({ src: URL.createObjectURL(file), local: true });
+    if (coverInput.current) coverInput.current.value = '';
+  };
+  const closeCrop = () => { if (crop?.local) URL.revokeObjectURL(crop.src); setCrop(null); };
   const uploadCover = async (file) => {
     if (!file) return;
     setBusy('cover'); setError(''); setOk('');
@@ -425,11 +434,13 @@ function Editor({ r, part, missing, onSaved }) {
           <div className="rf-coverup">
             {/^https:\/\//.test(f.cover_url || '') ? <img className="rf-cover-prev" src={f.cover_url} alt="Vista previa de la portada" /> : <div className="rf-cover-empty"><Icon name="image" size={30} /><small>Sin portada</small></div>}
             <div className="rf-actions">
-              <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => uploadCover(e.target.files?.[0])} />
+              <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={(e) => pickCover(e.target.files?.[0])} />
               <button type="button" className="btn primary" disabled={!!busy} onClick={() => coverInput.current?.click()}><Icon name="image" size={16} /> {busy === 'cover' ? 'Subiendo…' : f.cover_url ? 'Cambiar foto' : 'Subir foto'}</button>
+              {/^https:\/\//.test(f.cover_url || '') && <button type="button" className="btn ghost" disabled={!!busy} onClick={() => setCrop({ src: f.cover_url, local: false })}><Icon name="edit" size={16} /> Ajustar encuadre</button>}
               {f.cover_url && <button type="button" className="btn text" disabled={!!busy} onClick={() => { set({ cover_url: '' }); save({ cover_url: '' }); }}>Quitar</button>}
             </div>
-            <small className="rf-muted">JPG, PNG o WebP desde el celular o la compu. Se achica sola y se guarda al instante.</small>
+            <small className="rf-muted">JPG, PNG o WebP. Se muestra en formato banner (16:9): al subirla elegís qué parte queda arrastrándola.</small>
+            {crop && <CoverCropper src={crop.src} onCancel={closeCrop} onDone={(file) => { closeCrop(); uploadCover(file); }} />}
           </div>
           <details className="rf-more"><summary>O pegá el link de una imagen</summary>
             <div className="pink-input"><input value={f.cover_url} inputMode="url" maxLength={500} placeholder="https://…" onChange={(e) => set({ cover_url: e.target.value })} /></div></details>

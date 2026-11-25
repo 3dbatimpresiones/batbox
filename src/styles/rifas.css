@@ -499,3 +499,23 @@ a.rf-set-tile { text-decoration: none; }
   .rf-prizelist.mini li { padding: 10px 14px; font-size: 16px; }
 }
 .rf-hero2-stats > div.rf-hero2-left { display: grid; grid-template-rows: auto auto auto; align-content: start; gap: 2px; } .rf-hero2-stats > div.rf-hero2-left small:first-child { color: #cbd5e1; font-weight: 700; }
+
+/* Portada en formato banner 16:9 (talonario, página Rifas e Inicio) + recortador */
+.rf-coverbox img { aspect-ratio: 16 / 9; }
+.rf-cover-prev, .rf-cover-empty { aspect-ratio: 16 / 9; object-fit: cover; max-width: 480px; }
+.rf-hero2-img img { aspect-ratio: 16 / 9; height: auto !important; min-height: 0 !important; }
+@media (min-width: 820px) { .rf-hero2-img { align-self: center; } }
+.rf-cropper { width: min(780px, 100%); }
+.rf-crop-wrap { display: grid; place-items: center; }
+.rf-crop-frame { position: relative; overflow: hidden; border-radius: 14px; background: #0b1230; cursor: grab; touch-action: none; outline: 2px solid var(--cyan); outline-offset: 2px; max-width: 100%; }
+.rf-crop-frame:active { cursor: grabbing; }
+.rf-crop-frame:focus-visible { outline-color: var(--pink); }
+.rf-crop-frame img { position: absolute; top: 0; left: 0; max-width: none; user-select: none; pointer-events: none; }
+.rf-crop-frame .spinner { position: absolute; inset: 0; margin: auto; }
+.rf-crop-hint { position: absolute; left: 10px; bottom: 10px; display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 99px; background: rgba(19,29,71,.8); color: #fff; font-size: 12px; font-weight: 700; pointer-events: none; }
+.rf-crop-zoom { display: flex; gap: 12px; align-items: center; font-weight: 700; }
+.rf-crop-zoom input { flex: 1; accent-color: var(--cyan); }
+.rf-crop-wrap { width: 100%; }
+.modal.rf-cropper { width: min(780px, 100%); max-width: calc(100vw - 32px); }
+.rf-cropper .rf-crop-wrap { display: block; width: 100%; min-width: 0; overflow: hidden; }
+.rf-cropper .rf-crop-frame { margin: 0 auto; }
